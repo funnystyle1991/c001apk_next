@@ -18,6 +18,7 @@ import com.example.c001apk.constant.Constants
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.TokenDeviceUtils.applyDefaultFingerprint
 import com.example.c001apk.util.TokenDeviceUtils.applyRealDeviceFingerprint
+import com.example.c001apk.util.TokenDeviceUtils.defaultDeviceCode
 import com.example.c001apk.util.TokenDeviceUtils.detectRealDevice
 import com.example.c001apk.util.TokenDeviceUtils.getDeviceCode
 import com.example.c001apk.util.TokenDeviceUtils.getLastingDeviceCode
@@ -503,18 +504,19 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                     setView(view)
                     setTitle("X-App-Device")
                     setNegativeButton(android.R.string.cancel, null)
-                    // 手填/粘贴非官方设备串会被风控要求验证码，这里给一条一键回退的通道
+                    // 手填/粘贴的整串设备串会被风控要求验证码，这里给一条一键回退的通道
                     setNeutralButton("恢复默认") { _, _ ->
                         applyDefaultFingerprint()
-                        Snackbar.make(requireView(), "已恢复官方认可的默认设备串", Snackbar.LENGTH_SHORT)
+                        Snackbar.make(requireView(), "已恢复默认设备串", Snackbar.LENGTH_SHORT)
                             .show()
                     }
                     setPositiveButton(android.R.string.ok) { _, _ ->
                         val device = editText.text.toString()
-                        PrefManager.xAppDevice = device.ifEmpty { Constants.DEFAULT_DEVICE_CODE }
-                        // 与默认串一致就不算自定义，避免以后官方指纹升级时被这份旧值卡住
+                        PrefManager.xAppDevice = device.ifEmpty { defaultDeviceCode() }
+                        // 与默认串一致就不算自定义，避免以后指纹升级时被这份旧值卡住
+                        // （注意默认串含 PrefManager.SZLMID，不能用 Constants.DEFAULT_DEVICE_CODE 比）
                         PrefManager.customFingerprint =
-                            PrefManager.xAppDevice != Constants.DEFAULT_DEVICE_CODE
+                            PrefManager.xAppDevice != defaultDeviceCode()
                         if (PrefManager.customFingerprint)
                             Snackbar.make(
                                 requireView(),
@@ -533,7 +535,8 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
         findPreference<Preference>("regenerate")?.setOnPreferenceClickListener {
             PrefManager.xAppDevice = getDeviceCode(true)
             // 随机生成 = 显式自定义：置位后不再被自动还原
-            // （szlmId/MAC/尾字段仍是官方那一组，只随机机型；但随机机型未必被酷安收录）
+            // （只随机机型；szlmId 走 PrefManager.SZLMID，MAC/尾字段沿用骨架；
+            //  但随机机型未必被酷安收录，帖子下方那行「来自 xxx」可能不显示）
             PrefManager.customFingerprint = true
             Snackbar.make(
                 requireView(),

@@ -78,9 +78,7 @@ abstract class BaseAppViewModel(
 
         override fun onLikeClick(type: String, id: String, isLike: Int) {
             if (PrefManager.isLogin) {
-                if (PrefManager.SZLMID.isEmpty())
-                    toastText.postValue(Event(Constants.SZLM_ID))
-                else if (type == "feed")
+                if (type == "feed")
                     onPostLikeFeed(id, isLike)
                 else
                     onPostLikeReply(id, isLike)

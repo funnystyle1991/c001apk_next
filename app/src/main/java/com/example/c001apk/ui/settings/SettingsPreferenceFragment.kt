@@ -232,13 +232,18 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
                 setTitle(requireContext().getString(R.string.szlmId))
                 setNegativeButton(android.R.string.cancel, null)
                 setPositiveButton(android.R.string.ok) { _, _ ->
-                    PrefManager.SZLMID = editText.text.toString()
-                    // 注意：szlmId 是设备串的首字段，改它就得重造设备串，而任何非官方设备串
-                    // 都会被酷安要求验证码。所以这里只记录 SZLMID，设备后缀维持官方那一组。
+                    val id = editText.text.toString().trim()
+                    PrefManager.SZLMID = id
+                    // 填过（非空）才算「已配置」，引导弹窗不再出现；清空则回到未配置状态
+                    PrefManager.szlmIdConfigured = id.isNotEmpty()
+                    // szlmId 是设备串首字段，改完必须重造设备串才能生效
+                    // （applyDefaultFingerprint 会把当前 SZLMID 写进首字段）。
+                    // 服务端认不认取决于这个值本身：填自己设备的能过，随机值仍会被要求验证码。
                     applyDefaultFingerprint()
                 }
                 if (BuildConfig.DEBUG) {
                     setNeutralButton(R.string.random_value) { _, _ ->
+                        // 调试用：换一份随机 szlmId（不置 szlmIdConfigured，仍算未配置）
                         PrefManager.SZLMID = randHexString(16)
                         applyDefaultFingerprint()
                     }

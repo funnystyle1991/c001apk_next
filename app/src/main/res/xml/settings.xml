@@ -134,6 +134,7 @@
         <Preference
             android:icon="@drawable/ic_phone"
             android:key="szlmId"
+            android:summary="@string/szlmId_summary"
             android:title="@string/szlmId" />
         <Preference
             android:icon="@drawable/ic_dev_mode"

@@ -20,7 +20,6 @@ import com.example.c001apk.R
 import com.example.c001apk.adapter.FooterState
 import com.example.c001apk.adapter.LoadingState
 import com.example.c001apk.adapter.PlaceHolderAdapter
-import com.example.c001apk.constant.Constants.SZLM_ID
 import com.example.c001apk.databinding.BaseRefreshRecyclerviewBinding
 import com.example.c001apk.ui.article.ArticlePublishActivity
 import com.example.c001apk.ui.base.BaseAppFragment
@@ -159,20 +158,16 @@ class HomeFeedFragment : BaseAppFragment<HomeFeedViewModel>(), IOnTabClickListen
             if (SDK_INT >= 26)
                 tooltipText = getString(R.string.publishFeed)
             setOnClickListener {
-                if (PrefManager.SZLMID == "") {
-                    Toast.makeText(requireContext(), SZLM_ID, Toast.LENGTH_SHORT).show()
-                } else {
-                    // 首页发动态按钮：二选一菜单，给「图文」留入口
-                    MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(R.string.publish)
-                        .setItems(arrayOf(
-                            getString(R.string.publishFeed),
-                            getString(R.string.type_article)
-                        )) { _, which ->
-                            startReply(if (which == 0) "createFeed" else "createArticle")
-                        }
-                        .show()
-                }
+                // 首页发动态按钮：二选一菜单，给「图文」留入口
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle(R.string.publish)
+                    .setItems(arrayOf(
+                        getString(R.string.publishFeed),
+                        getString(R.string.type_article)
+                    )) { _, which ->
+                        startReply(if (which == 0) "createFeed" else "createArticle")
+                    }
+                    .show()
             }
         }
         ViewCompat.setOnApplyWindowInsetsListener(fab) { _, insets ->

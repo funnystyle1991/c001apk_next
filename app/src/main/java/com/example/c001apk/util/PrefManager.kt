@@ -150,9 +150,35 @@ object PrefManager {
         get() = pref.getString("USER_AGENT", "")!!
         set(value) = pref.edit().putString("USER_AGENT", value).apply()
 
+    /**
+     * 数字联盟 ID：设备串（`X-App-Device`）的首字段，同时用作 WebView 的 `DID` cookie。
+     *
+     * **默认为空** —— 客户端**不生成、也不内置**任何值。
+     *
+     * 它是数字联盟(SZLM) SDK 在真机上签发的设备标识：客户端既无从获得，凭空造一个
+     * 也不被服务端认（详情页会被要求人机验证，且过码后同一设备串仍被拒，
+     * 实测见 `_rev/probe_trust.py`）。所以「填随机值」并不能绕过去，只是换一种被拦的方式。
+     *
+     * 历史版本曾把某个真实设备的 szlmId 写死后分发出去，导致大量真实账号被服务端
+     * 算到「同一台设备」上并触发 `-415 账号过多`（连 `feed/replyList` 都被拒）。
+     * 留空后服务端只把本机当陌生设备：首页 / 搜索 / 个人页 / 回复列表正常，
+     * 仅 `feed/detail` 一类接口可能要求验证码。
+     *
+     * 手头有自己设备那份 ID 的用户可以填进来（[szlmIdConfigured] 随之置位，说明弹窗不再出现）。
+     */
     var SZLMID: String
-        get() = pref.getString("SZLMID", "")!!
+        get() = pref.getString("SZLMID", "") ?: ""
         set(value) = pref.edit().putString("SZLMID", value).apply()
+
+    /** 用户是否在设置里显式填过自己的数字联盟 ID（留空时为 false） */
+    var szlmIdConfigured: Boolean
+        get() = pref.getBoolean("szlmIdConfigured", false)
+        set(value) = pref.edit().putBoolean("szlmIdConfigured", value).apply()
+
+    /** 本次安装是否已经告知过「设备标识」的说明，避免反复打扰 */
+    var szlmIdNoticed: Boolean
+        get() = pref.getBoolean("szlmIdNoticed", false)
+        set(value) = pref.edit().putBoolean("szlmIdNoticed", value).apply()
 
     var isRecordHistory: Boolean
         get() = pref.getBoolean("isRecordHistory", true)

@@ -32,7 +32,6 @@ import com.example.c001apk.adapter.FooterAdapter
 import com.example.c001apk.adapter.FooterState
 import com.example.c001apk.adapter.HeaderAdapter
 import com.example.c001apk.adapter.ItemListener
-import com.example.c001apk.constant.Constants.SZLM_ID
 import com.example.c001apk.databinding.FragmentFeedBinding
 import com.example.c001apk.logic.model.TotalReplyResponse
 import com.example.c001apk.ui.base.BaseFragment
@@ -158,15 +157,11 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                     setMargins(0, 0, 25.dp, 25.dp + height)
                 }
                 setOnClickListener {
-                    if (PrefManager.SZLMID == "") {
-                        Toast.makeText(requireContext(), SZLM_ID, Toast.LENGTH_SHORT).show()
-                    } else {
-                        viewModel.rid = viewModel.id
-                        viewModel.ruid = viewModel.feedUid
-                        viewModel.uname = viewModel.funame
-                        viewModel.type = "feed"
-                        launchReply()
-                    }
+                    viewModel.rid = viewModel.id
+                    viewModel.ruid = viewModel.feedUid
+                    viewModel.uname = viewModel.funame
+                    viewModel.type = "feed"
+                    launchReply()
                 }
             }
         } else
@@ -573,26 +568,20 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                 return
             }
             if (PrefManager.isLogin) {
-                if (PrefManager.SZLMID == "") {
-                    Toast.makeText(requireContext(), SZLM_ID, Toast.LENGTH_SHORT).show()
-                } else {
-                    viewModel.rid = id
-                    viewModel.cuid = cuid
-                    viewModel.ruid = uid
-                    viewModel.uname = username
-                    viewModel.type = "reply"
-                    viewModel.position = position
-                    viewModel.rPosition = rPosition
-                    launchReply()
-                }
+                viewModel.rid = id
+                viewModel.cuid = cuid
+                viewModel.ruid = uid
+                viewModel.uname = username
+                viewModel.type = "reply"
+                viewModel.position = position
+                viewModel.rPosition = rPosition
+                launchReply()
             }
         }
 
         override fun onLikeClick(type: String, id: String, isLike: Int) {
             if (PrefManager.isLogin)
-                if (PrefManager.SZLMID.isEmpty())
-                    Toast.makeText(requireContext(), SZLM_ID, Toast.LENGTH_SHORT).show()
-                else if (type == "feed")
+                if (type == "feed")
                     viewModel.onLikeFeed(id, isLike)
                 else
                     viewModel.onLikeReply(id, isLike)

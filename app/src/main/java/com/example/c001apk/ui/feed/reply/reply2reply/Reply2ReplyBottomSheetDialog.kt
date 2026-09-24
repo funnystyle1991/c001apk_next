@@ -290,10 +290,7 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment() {
 
         override fun onLikeClick(type: String, id: String, isLike: Int) {
             if (PrefManager.isLogin)
-                if (PrefManager.SZLMID.isEmpty())
-                    Toast.makeText(requireContext(), Constants.SZLM_ID, Toast.LENGTH_SHORT).show()
-                else
-                    viewModel.onPostLikeReply(id, isLike)
+                viewModel.onPostLikeReply(id, isLike)
         }
 
         override fun onReply(
@@ -305,23 +302,18 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment() {
             rPosition: Int?
         ) {
             if (PrefManager.isLogin) {
-                if (PrefManager.SZLMID == "") {
-                    Toast.makeText(requireContext(), Constants.SZLM_ID, Toast.LENGTH_SHORT)
-                        .show()
-                } else {
-                    viewModel.rid = id
-                    viewModel.ruid = uid
-                    viewModel.uname = username
-                    viewModel.position = position
-                    val intent = Intent(requireContext(), ReplyActivity::class.java)
-                    intent.putExtra("type", "reply")
-                    intent.putExtra("rid", viewModel.rid)
-                    intent.putExtra("username", viewModel.uname)
-                    val options = ActivityOptionsCompat.makeCustomAnimation(
-                        requireContext(), R.anim.anim_bottom_sheet_slide_up, R.anim.anim_bottom_sheet_slide_down
-                    )
-                    intentActivityResultLauncher.launch(intent, options)
-                }
+                viewModel.rid = id
+                viewModel.ruid = uid
+                viewModel.uname = username
+                viewModel.position = position
+                val intent = Intent(requireContext(), ReplyActivity::class.java)
+                intent.putExtra("type", "reply")
+                intent.putExtra("rid", viewModel.rid)
+                intent.putExtra("username", viewModel.uname)
+                val options = ActivityOptionsCompat.makeCustomAnimation(
+                    requireContext(), R.anim.anim_bottom_sheet_slide_up, R.anim.anim_bottom_sheet_slide_down
+                )
+                intentActivityResultLauncher.launch(intent, options)
             }
         }
 

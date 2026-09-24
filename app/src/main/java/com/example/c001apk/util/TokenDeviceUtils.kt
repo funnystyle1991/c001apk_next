@@ -2,6 +2,7 @@ package com.example.c001apk.util
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import com.example.c001apk.constant.Constants
 import com.example.c001apk.util.Utils.getBase64
 import com.example.c001apk.util.Utils.getMD5
@@ -61,14 +62,16 @@ object TokenDeviceUtils {
         value?.trim()?.replace(";", "")?.takeIf { it.isNotEmpty() } ?: fallback
 
     /**
-     * 用给定的机型字段重建设备串：**szlmId、MAC、尾部 64hex 一律沿用官方串**
-     * （只替换厂商/品牌/型号/版本号这四个字段）。
+     * 用给定的机型字段 + szlmId 重建设备串。
      *
-     * 为什么只换这四个字段：实测（`_rev/test_device_model.py`）保留官方 szlmId/尾字段、
-     * 只改机型时，16.4.0（2607021）在 feed/detail、main/indexV8、feed/createFeed 全部正常；
-     * 而早期「随机 szlmId + 随机 MAC + null 尾字段」的整串新造会被风控要求验证码
-     * （`err_request_captcha_v2`）。服务端正是按这里的品牌/型号认机型，
-     * 帖子/回复下方的 `device_title`（「来自 xxx」）就是它的映射结果。
+     * - **首字段 szlmId** 写入 [szlmId]，默认取 [PrefManager.SZLMID]
+     *   （未配置时是本机随机生成的一份，不是任何具体设备的真实 ID）；
+     * - **厂商/品牌/型号/版本号** 写入给定机型，服务端按这四个字段认机型，
+     *   帖子/回复下方的 `device_title`（「来自 xxx」）就是它的映射结果；
+     * - **MAC、尾部 64hex** 沿用 [base] 里的值：实测（`_rev/diff_headers.py`）
+     *   连这些结构性字段一起新造的整串会被风控要求验证码（`err_request_captcha_v2`），
+     *   只换 szlmId + 机型则 `main/indexV8`、`user/profile`、`search`、
+     *   `feed/replyList` 均正常。
      */
     fun buildDeviceCode(
         manufacturer: String,
@@ -76,15 +79,30 @@ object TokenDeviceUtils {
         model: String,
         buildNumber: String,
         base: String = Constants.DEFAULT_DEVICE_CODE,
+        szlmId: String = PrefManager.SZLMID,
     ): String {
         val parts = DeviceCode.decode(base).split(";").toMutableList()
         if (parts.size < 8) return base
+        parts[0] = szlmId
         parts[4] = " $manufacturer"
         parts[5] = " $brand"
         parts[6] = " $model"
         parts[7] = " $buildNumber"
         return DeviceCode.encode(parts.joinToString(";"))
     }
+
+    /**
+     * 默认设备串：机型用官方那一组，szlmId 用 [PrefManager.SZLMID]。
+     *
+     * 注意它**不等于** [Constants.DEFAULT_DEVICE_CODE]（后者的 szlmId 字段是空的，
+     * 只是个骨架），所以判断「当前设备串是不是默认值」要用本函数，不能用常量比较。
+     */
+    fun defaultDeviceCode(): String = buildDeviceCode(
+        Constants.DEFAULT_MANUFACTURER,
+        Constants.DEFAULT_BRAND,
+        Constants.DEFAULT_MODEL,
+        Constants.DEFAULT_BUILDNUMBER,
+    )
 
     fun getDeviceCode(regenerate: Boolean): String {
         if (regenerate) {
@@ -99,7 +117,7 @@ object TokenDeviceUtils {
                     "Dalvik/2.1.0 (Linux; U; Android $ANDROID_VERSION; ${MODEL} ${BUILDNUMBER}) (#Build; ${BRAND}; ${MODEL}; ${BUILDNUMBER}; $ANDROID_VERSION) +CoolMarket/${VERSION_NAME}-${VERSION_CODE}-${Constants.MODE}"
             }
         }
-        // 随机也只随「机型字段」，szlmId/MAC/尾字段仍是官方那一组，否则会被风控拦
+        // 随机只随「机型字段」；szlmId 由 PrefManager.SZLMID 注入，MAC/尾字段沿用骨架里的值
         return buildDeviceCode(
             PrefManager.MANUFACTURER,
             PrefManager.BRAND,
@@ -203,11 +221,14 @@ object TokenDeviceUtils {
      *  2. 否则按 [PrefManager.reportRealDevice] 决定上报本机机型还是官方那一组，
      *     只要本地值和服务端期望值不一致就自动重建（系统升级、换机都能自己跟上）。
      *
-     * 两种取值都**只换机型字段**，szlmId/MAC/尾字段始终是官方串里的值；整串新造
-     * （随机 szlmId + 随机 MAC + null 尾字段）会被风控要求人机验证
+     * 两种取值都**只换机型字段**，szlmId 一律走 [PrefManager.SZLMID]，
+     * MAC/尾字段沿用骨架里的值；连骨架字段一起新造的整串会被风控要求人机验证
      * （`err_request_captcha_v2`），详情页等接口直接加载失败。
      */
     fun getLastingDeviceCode(): String {
+        // v3 迁移：存量设备串首字段里可能还留着旧版本写死的真实 szlmId
+        // （尤其点过「重新生成随机机型」的用户），先摘掉再走下面的正常流程
+        if (PrefManager.DEVICE_FINGERPRINT_VERSION < FINGERPRINT_VERSION) migrateSzlmId()
         // 用户显式指定过自定义设备串 → 完全按他的来，不再干预
         if (PrefManager.customFingerprint) return PrefManager.xAppDevice
         if (PrefManager.reportRealDevice) {
@@ -215,18 +236,41 @@ object TokenDeviceUtils {
             val device = detectRealDevice()
             if (PrefManager.xAppDevice != device.deviceCode) applyRealDeviceFingerprint(device)
         } else if (PrefManager.DEVICE_FINGERPRINT_VERSION != FINGERPRINT_VERSION ||
-            PrefManager.xAppDevice != Constants.DEFAULT_DEVICE_CODE
+            PrefManager.xAppDevice != defaultDeviceCode()
         ) {
             applyDefaultFingerprint()
         }
         return PrefManager.xAppDevice
     }
 
-    /** 把设备指纹重置为官方认可的一组（device 与 UA 必须配套，缺一不可） */
+    /**
+     * 一次性迁移：把存量设备串的首字段换成当前 [PrefManager.SZLMID]。
+     *
+     * 老版本的设备串首字段写死的是某个真实设备的 szlmId，随 APK 分发到了所有安装；
+     * 连点过「重新生成随机机型」的自定义串也带着它。这里**只替换首字段**，
+     * 机型/MAC/尾字段一律保留，避免把用户自己设过的机型冲掉。
+     *
+     * 解不出结构（用户手填的畸形串）就原样不动，只把版本号推上去，不反复重试。
+     */
+    private fun migrateSzlmId() {
+        runCatching {
+            val current = PrefManager.xAppDevice
+            if (current.isNotEmpty()) {
+                val parts = DeviceCode.decode(current).split(";").toMutableList()
+                if (parts.isNotEmpty()) {
+                    parts[0] = PrefManager.SZLMID
+                    PrefManager.xAppDevice = DeviceCode.encode(parts.joinToString(";"))
+                }
+            }
+        }.onFailure { Log.w("TokenDeviceUtils", "迁移设备串 szlmId 失败，保持原值", it) }
+        PrefManager.DEVICE_FINGERPRINT_VERSION = FINGERPRINT_VERSION
+    }
+
+    /** 把设备指纹重置为默认那一组：官方机型 + [PrefManager.SZLMID]（device 与 UA 必须配套） */
     fun applyDefaultFingerprint() {
         PrefManager.apply {
             customFingerprint = false
-            xAppDevice = Constants.DEFAULT_DEVICE_CODE
+            xAppDevice = defaultDeviceCode()
             MANUFACTURER = Constants.DEFAULT_MANUFACTURER
             BRAND = Constants.DEFAULT_BRAND
             MODEL = Constants.DEFAULT_MODEL
@@ -270,8 +314,14 @@ object TokenDeviceUtils {
             "(#Build; $brand; $model; $buildNumber; $android) " +
             "+CoolMarket/${PrefManager.VERSION_NAME}-${PrefManager.VERSION_CODE}-${Constants.MODE}"
 
-    /** 设备指纹版本号；改动默认指纹时 +1，老安装会在下次请求时自动升级 */
-    private const val FINGERPRINT_VERSION = 2
+    /**
+     * 设备指纹版本号；改动默认指纹时 +1，老安装会在下次请求时自动升级。
+     *
+     * v3：szlmId 首字段不再写死某个真实设备的 ID，改由 [PrefManager.SZLMID] 注入
+     * （默认本机随机生成）。老安装里存着写死那版的 `xAppDevice`，+1 后会自动重建，
+     * 把那台真实设备从分发出去的客户端里摘掉。
+     */
+    private const val FINGERPRINT_VERSION = 3
 
     fun getLastingInstallTime(context: Context): String {
         val sp = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)

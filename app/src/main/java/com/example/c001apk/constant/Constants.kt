@@ -22,17 +22,23 @@ object Constants {
 
     // "${System.getProperty("http.agent")} (#Build; ${android.os.Build.BRAND}; ${android.os.Build.MODEL}; ${android.os.Build.DISPLAY}; ${android.os.Build.VERSION.RELEASE}) +CoolMarket/${VERSION_NAME}-${VERSION_CODE}-${MODE}"
     /**
-     * 默认设备指纹（官方客户端上报、服务端认可的一组）。
+     * 默认设备串的骨架：解出来是 `; ; ; ; 厂商; 品牌; 型号; 版本号; 尾部64hex`。
      *
-     * 为什么必须固定：随机伪造的 X-App-Device 会被酷安风控要求人机验证
-     * （`err_request_captcha_v2`「当前访问需要验证码」），详情页等接口直接加载失败。
-     * 实测见 `_rev/diff_headers.py` / `_rev/test_device_format.py`：
-     * 同一套请求头里只把 device 换成下面这个，16.4.0 / 16.6.1 都能正常返回数据；
-     * 而任何新造的 device（哪怕字段格式完全对齐）一律被要求验证码。
+     * ⚠️ **首字段 szlmId 是空的**，这是有意的：它由 [PrefManager.SZLMID] 在
+     * `TokenDeviceUtils.buildDeviceCode()` 里注入，默认值是本机随机生成的一份，
+     * 不再是某个具体设备的真实 ID（历史版本曾把真实 szlmId 写死在这里分发出去，
+     * 导致大量真实账号被服务端算到「同一台设备」上，触发 `-415 账号过多`）。
+     *
+     * 这里只保留服务端认可的那几个结构性字段（机型 / 尾部 64hex），
+     * 因为实测（`_rev/diff_headers.py` / `_rev/test_device_format.py`）：
+     * 保留这些字段、只换 szlmId 时，`main/indexV8`、`user/profile`、`search`、
+     * `feed/replyList` 都正常；而连机型/尾字段一起新造的整串会被风控
+     * 要求人机验证（`err_request_captcha_v2`），详情页等接口直接加载失败。
+     *
      * device 与 UA 必须配套，见 TokenDeviceUtils.applyDefaultFingerprint()。
      */
     const val DEFAULT_DEVICE_CODE =
-        "lVDMjRWN2IzYjVTN3MmN2EDOiNWZjdjNhJTNkNTO3EWR4UzQzIkQ1EzN1YTMERTQFdjQ0cTMCF0QxYjNEJzM4AyOpEDMONEKzAzNuUjLw4iNx8FMxEjWKBFI7ATMxolSQByOzVHbQVmbPByOzVHbQVmbPByOgsDI7AyO3c2Xa9WaThFbxZTb0pXQplVW3FWMIJWWrZHZBdFNol1NMVFR"
+        "lVDMjRWN2IzYjVTN3MmN2EDOiNWZjdjNhJTNkNTO3EWR4UzQzIkQ1EzN1YTMERTQFdjQ0cTMCF0QxYjNEJzM4AyOpEDMONEKzAzNuUjLw4iNx8FMxEjWKBFI7ATMxolSQByOzVHbQVmbPByOzVHbQVmbPByOgsDI7AyO"
     const val DEFAULT_MANUFACTURER = "OnePlus"
     const val DEFAULT_BRAND = "OnePlus"
     const val DEFAULT_MODEL = "PJZ110"
@@ -40,7 +46,6 @@ object Constants {
     const val DEFAULT_ANDROID_VERSION = "16"
     const val DEFAULT_SDK_INT = "36"
 
-    const val SZLM_ID = "数字联盟ID不能为空"
     const val LOADING_FAILED = "加载失败"
     const val LOADING_EMPTY = "什么也没有"
     const val LOADING_END = "没有更多了"

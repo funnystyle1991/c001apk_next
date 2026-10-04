@@ -53,6 +53,8 @@
 
             <!-- ratingBarStyleSmall（Widget.RatingBar.Small）自带 isIndicator=true，只读不可点，
                  必须显式关掉；paddingTop/Bottom 把只有 14dip 高的星星点击区撑到 ~34dp -->
+            <!-- 总体分必须是 5 星：rating_score_1 云端只收 1~5，实测 6 及以上回「请正确打分」
+                 （子项才走 0~10 的 v4_score_item 量纲，那 6 个星在代码里生成） -->
             <RatingBar
                 android:id="@+id/ratingOverall"
                 style="?android:attr/ratingBarStyleSmall"
@@ -60,7 +62,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:isIndicator="false"
-                android:numStars="10"
+                android:numStars="5"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
                 android:stepSize="1" />

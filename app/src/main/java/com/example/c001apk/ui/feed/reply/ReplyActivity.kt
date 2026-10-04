@@ -813,9 +813,11 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                         viewModel.onPostCreateFeed()
                     }
                 } else if (type == "rating") {
-                    // 机型点评：rating_score_1 是 0~10 的总体分（10 星控件原值提交，真机同样是原值）；
-                    // v4_score_item_1..n 同属 0~10 量纲，但只有 5 档——每颗星 2 分，即 10/8/6/4/2。
-                    // 之前把星数(1~5)直接当分值提交、没打分的项提交 0，云端会判「请正确打分」。
+                    // 机型点评（2026-10-05 接口实测结论）：
+                    //   rating_score_1 是 1~5 星，原值提交；实测 6 及以上一律回「请正确打分」，
+                    //   所以总体分只能用 5 星控件（activity_reply.xml 里 numStars=5）。
+                    //   v4_score_item_1..n 才是 0~10 量纲，每星 2 分（真机提交 10/8/6/4/2），
+                    //   且 6 个子项必须全部 >0，漏一个或传 0 会回「-48 子项xx没有评分」。
                     val overallScore = binding.ratingOverall.rating.toInt()
                     val itemScores = subRatingBars.map { it.rating.toInt() * 2 }
                     if (overallScore <= 0 || itemScores.any { it <= 0 }) {

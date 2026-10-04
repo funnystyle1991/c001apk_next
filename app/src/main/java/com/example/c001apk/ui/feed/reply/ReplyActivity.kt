@@ -466,6 +466,11 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                     weight = 0f
                 }
             binding.ratingLayout.isVisible = true
+            // 总体分恒为 5 星：rating_score_1 云端只收 1~5（实测 6 及以上回「请正确打分」），
+            // 而 layout / layout-land 是两份文件、容易只改一份（曾出现横屏还是 10 星），
+            // 这里再兜一次，保证任何屏幕方向下总体分都是 5 星。
+            binding.ratingOverall.numStars = 5
+            binding.ratingOverall.stepSize = 1f
             initRatingItems()
             // 面板底色：Activity 是半透明主题（AppThemeTranslucent），
             // 评分面板不铺底色的话下层页面会直接透上来，评分项/输入框糊成一片

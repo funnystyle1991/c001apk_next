@@ -57,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:isIndicator="false"
-                android:numStars="10"
+                android:numStars="5"
                 android:paddingTop="10dp"
                 android:paddingBottom="10dp"
                 android:stepSize="1" />

@@ -2,6 +2,7 @@ package com.example.c001apk.ui.base
 
 import android.content.res.Configuration
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -22,6 +23,8 @@ import com.google.android.material.color.MaterialColors
 
 // SwipeRefreshLayout + RecyclerView
 abstract class BaseViewFragment<VM : BaseViewModel> : Fragment() {
+
+    private val TAG = "BaseViewFragment"
 
     var _binding: BaseRefreshRecyclerviewBinding? = null
     val binding get() = _binding!!
@@ -120,14 +123,52 @@ abstract class BaseViewFragment<VM : BaseViewModel> : Fragment() {
      * 加载中（`swipeRefresh` 尚未启用）时不响应，避免和进行中的请求打架。
      */
     fun returnTopOrRefresh() {
+        val recyclerView = binding.recyclerView
         if (!binding.swipeRefresh.isEnabled) return
-        binding.recyclerView.stopScroll()
-        if (binding.recyclerView.canScrollVertically(-1)) {
-            binding.recyclerView.smoothScrollToPosition(0)
+        recyclerView.stopScroll()
+        val atTop = isAtTop()
+        Log.d(
+            TAG, "returnTopOrRefresh ${javaClass.simpleName} type=${arguments?.getString("type")}" +
+                    " atTop=$atTop first=${firstVisibleItemPosition()}" +
+                    " canUp=${recyclerView.canScrollVertically(-1)}" +
+                    " offset=${recyclerView.computeVerticalScrollOffset()}"
+        )
+        if (!atTop) {
+            recyclerView.smoothScrollToPosition(0)
             return
         }
         binding.swipeRefresh.isRefreshing = true
         refreshData()
+    }
+
+    private fun firstVisibleItemPosition(): Int =
+        when (val layoutManager = binding.recyclerView.layoutManager) {
+            is LinearLayoutManager -> layoutManager.findFirstVisibleItemPosition()
+            is StaggeredGridLayoutManager -> layoutManager
+                .findFirstVisibleItemPositions(null)
+                .filter { it != RecyclerView.NO_POSITION }
+                .minOrNull() ?: RecyclerView.NO_POSITION
+
+            else -> RecyclerView.NO_POSITION
+        }
+
+    /**
+     * 列表是否已经贴着顶部。
+     *
+     * 不用 `canScrollVertically(-1)`：它依赖 `computeVerticalScroll*` 的估算值，
+     * 实测在本布局里会误报为“已在顶部”，从而把“滚回顶部”错走成“刷新”。
+     * 这里直接用 LayoutManager 的首个可见位置 + 该 child 的实际偏移判断：
+     * - 首个可见位置 > 0 → 顶部肯定不可见；
+     * - 首个可见位置 == 0 且其 top 被滚出了 padding → 顶部只露出了一部分，仍算“不在顶部”。
+     */
+    private fun isAtTop(): Boolean {
+        val recyclerView = binding.recyclerView
+        val first = firstVisibleItemPosition()
+        if (first == RecyclerView.NO_POSITION) return true
+        if (first > 0) return false
+        val firstChild =
+            recyclerView.layoutManager?.findViewByPosition(first) ?: return true
+        return firstChild.top >= recyclerView.paddingTop
     }
 
     open fun fetchData() {

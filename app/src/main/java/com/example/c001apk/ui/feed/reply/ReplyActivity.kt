@@ -514,8 +514,13 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
+                // ratingBarStyleSmall（Widget.RatingBar.Small）的框架样式把 isIndicator 写死为 true，
+                // 那时 ProgressBar.onTouchEvent 直接 return false → 星星点不动，必须显式关掉；
+                // 再靠 padding 把只有 14dip 高的点击区撑到 ~34dp
+                isIndicator = false
                 numStars = 5
                 stepSize = 1f
+                setPadding(0, 10.dp, 0, 10.dp)
             }
             val desc = TextView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(

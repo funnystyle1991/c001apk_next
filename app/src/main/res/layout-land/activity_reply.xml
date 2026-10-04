@@ -48,13 +48,18 @@
                 android:text="总体评分"
                 android:textStyle="bold" />
 
+            <!-- ratingBarStyleSmall（Widget.RatingBar.Small）自带 isIndicator=true，只读不可点，
+                 必须显式关掉；paddingTop/Bottom 把只有 14dip 高的星星点击区撑到 ~34dp -->
             <RatingBar
                 android:id="@+id/ratingOverall"
                 style="?android:attr/ratingBarStyleSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="2dp"
+                android:isIndicator="false"
                 android:numStars="10"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
                 android:stepSize="1" />
 
             <LinearLayout

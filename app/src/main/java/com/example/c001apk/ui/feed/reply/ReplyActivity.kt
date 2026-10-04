@@ -466,6 +466,11 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                     weight = 0f
                 }
             binding.ratingLayout.isVisible = true
+            // 总体分恒为 5 星：rating_score_1 云端只收 1~5（实测 6 及以上回「请正确打分」），
+            // 而 layout / layout-land 是两份文件、容易只改一份（曾出现横屏还是 10 星），
+            // 这里再兜一次，保证任何屏幕方向下总体分都是 5 星。
+            binding.ratingOverall.numStars = 5
+            binding.ratingOverall.stepSize = 1f
             initRatingItems()
             // 面板底色：Activity 是半透明主题（AppThemeTranslucent），
             // 评分面板不铺底色的话下层页面会直接透上来，评分项/输入框糊成一片
@@ -514,8 +519,15 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 )
+                // ratingBarStyleSmall（Widget.RatingBar.Small）的框架样式把 isIndicator 写死为 true，
+                // 那时 ProgressBar.onTouchEvent 直接 return false → 星星点不动，必须显式关掉；
+                // 再靠 padding 把只有 14dip 高的点击区撑到 ~34dp。
+                // 只能用 setIsIndicator()：框架的 getter 是 isIndicator()、setter 是 setIsIndicator()，
+                // Kotlin 合不成可写属性，写 `isIndicator = false` 会报 Val cannot be reassigned
+                setIsIndicator(false)
                 numStars = 5
                 stepSize = 1f
+                setPadding(0, 10.dp, 0, 10.dp)
             }
             val desc = TextView(this).apply {
                 layoutParams = LinearLayout.LayoutParams(
@@ -806,8 +818,17 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                         viewModel.onPostCreateFeed()
                     }
                 } else if (type == "rating") {
-                    // 机型点评：rating_score_1 为 0~10 的总体分，
-                    // v4_score_item_1..n 为各子项 0~5 分（顺序按 rating_item_info 下发）
+                    // 机型点评（2026-10-05 接口实测结论）：
+                    //   rating_score_1 是 1~5 星，原值提交；实测 6 及以上一律回「请正确打分」，
+                    //   所以总体分只能用 5 星控件（activity_reply.xml 里 numStars=5）。
+                    //   v4_score_item_1..n 才是 0~10 量纲，每星 2 分（真机提交 10/8/6/4/2），
+                    //   且 6 个子项必须全部 >0，漏一个或传 0 会回「-48 子项xx没有评分」。
+                    val overallScore = binding.ratingOverall.rating.toInt()
+                    val itemScores = subRatingBars.map { it.rating.toInt() * 2 }
+                    if (overallScore <= 0 || itemScores.any { it <= 0 }) {
+                        Toast.makeText(this, "请给总体评分和每个分项都打分", Toast.LENGTH_SHORT).show()
+                        return
+                    }
                     viewModel.replyAndFeedData.apply {
                         put("id", "")
                         put("message", binding.editText.text.toString())
@@ -816,9 +837,9 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                         put("publish_status", "0")
                         targetType?.let { put("targetType", it) }
                         targetId?.let { put("targetId", it) }
-                        put("rating_score_1", binding.ratingOverall.rating.toInt().toString())
-                        subRatingBars.forEachIndexed { index, bar ->
-                            put("v4_score_item_${index + 1}", bar.rating.toInt().toString())
+                        put("rating_score_1", overallScore.toString())
+                        itemScores.forEachIndexed { index, score ->
+                            put("v4_score_item_${index + 1}", score.toString())
                         }
                         put("comment_good", binding.goodText.text.toString())
                         put("comment_general", "")

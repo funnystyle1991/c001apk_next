@@ -56,12 +56,13 @@ abstract class BaseAppFragment<VM : BaseAppViewModel> : BaseViewFragment<VM>(),
         }
     }
 
+    /**
+     * 点标签回到顶部：不在顶部只滚动，已经在顶部才刷新。
+     * `isRefresh == false` 是需要弹选择框的特殊标签（如首页「关注」），由子类自行处理。
+     */
     override fun onReturnTop(isRefresh: Boolean?) {
-        if (binding.swipeRefresh.isEnabled) {
-            binding.swipeRefresh.isRefreshing = true
-            binding.recyclerView.scrollToPosition(0)
-            refreshData()
-        }
+        if (isRefresh == false) return
+        returnTopOrRefresh()
     }
 
     override fun onResume() {

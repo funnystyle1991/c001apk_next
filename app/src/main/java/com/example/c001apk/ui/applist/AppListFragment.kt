@@ -85,13 +85,11 @@ class AppListFragment : BaseViewFragment<AppListViewModel>(), IOnTabClickListene
     }
 
     override fun onReturnTop() {
-        onReturnTop(true)
+        onReturnTop(null)
     }
 
     override fun onReturnTop(isRefresh: Boolean?) {
-        binding.swipeRefresh.isRefreshing = true
-        binding.recyclerView.scrollToPosition(0)
-        refreshData()
+        returnTopOrRefresh()
     }
 
 }

@@ -112,6 +112,24 @@ abstract class BaseViewFragment<VM : BaseViewModel> : Fragment() {
         fetchData()
     }
 
+    /**
+     * 点击标签回到顶部：
+     * - 列表不在顶部 → 只平滑滚回顶部，**不**重新请求数据；
+     * - 已经在顶部 → 走一次刷新，等价手动下拉。
+     *
+     * 加载中（`swipeRefresh` 尚未启用）时不响应，避免和进行中的请求打架。
+     */
+    fun returnTopOrRefresh() {
+        if (!binding.swipeRefresh.isEnabled) return
+        binding.recyclerView.stopScroll()
+        if (binding.recyclerView.canScrollVertically(-1)) {
+            binding.recyclerView.smoothScrollToPosition(0)
+            return
+        }
+        binding.swipeRefresh.isRefreshing = true
+        refreshData()
+    }
+
     open fun fetchData() {
         viewModel.fetchData()
     }

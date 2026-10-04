@@ -216,74 +216,76 @@ class HomeFeedFragment : BaseAppFragment<HomeFeedViewModel>(), IOnTabClickListen
     }
 
     override fun onReturnTop(isRefresh: Boolean?) {
-        if (binding.swipeRefresh.isEnabled) {
-            binding.recyclerView.stopScroll()
-            if (isRefresh == true) {
-                if (viewModel.type == "feed" && fabViewBehavior.isScrolledDown)
-                    fabViewBehavior.slideUp(fab, true)
-                binding.recyclerView.scrollToPosition(0)
-                binding.swipeRefresh.isRefreshing = true
-                refreshData()
-            } else if (viewModel.type == "follow") {
-                MaterialAlertDialogBuilder(requireContext()).apply {
-                    setTitle("关注分组")
-                    val items = arrayOf("全部关注", "好友关注", "话题关注", "数码关注", "应用关注")
-                    viewModel.position = when (PrefManager.FOLLOWTYPE) {
-                        "all" -> 0
-                        "circle" -> 1
-                        "topic" -> 2
-                        "product" -> 3
-                        "apk" -> 4
-                        else -> 0
-                    }
-                    setSingleChoiceItems(
-                        items,
-                        viewModel.position ?: 0
-                    ) { dialog: DialogInterface, position: Int ->
-                        when (position) {
-                            0 -> {
-                                viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW"
-                                viewModel.dataListTitle = "全部关注"
-                                PrefManager.FOLLOWTYPE = "all"
-                            }
-
-                            1 -> {
-                                viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW&type=circle"
-                                viewModel.dataListTitle = "好友关注"
-                                PrefManager.FOLLOWTYPE = "circle"
-                            }
-
-                            2 -> {
-                                viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW&type=topic"
-                                viewModel.dataListTitle = "话题关注"
-                                PrefManager.FOLLOWTYPE = "topic"
-                            }
-
-                            3 -> {
-                                viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW&type=product"
-                                viewModel.dataListTitle = "数码关注"
-                                PrefManager.FOLLOWTYPE = "product"
-                            }
-
-                            4 -> {
-                                viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW&type=apk"
-                                viewModel.dataListTitle = "应用关注"
-                                PrefManager.FOLLOWTYPE = "apk"
-                            }
-                        }
-                        viewModel.dataList.value = emptyList()
-                        viewModel.footerState.value = FooterState.LoadingDone
-                        viewModel.loadingState.value = LoadingState.Loading
-                        dialog.dismiss()
-                    }
-                    show()
-                }
-            }
+        if (!binding.swipeRefresh.isEnabled) return
+        if (isRefresh == false) {
+            // 「关注」标签重新点击 → 选关注分组，不滚动也不刷新
+            if (viewModel.type == "follow") showFollowGroupPicker()
+            return
         }
+        if (viewModel.type == "feed" && fabViewBehavior.isScrolledDown)
+            fabViewBehavior.slideUp(fab, true)
+        returnTopOrRefresh()
     }
 
     override fun onReturnTop() {
-        onReturnTop(true)
+        onReturnTop(null)
+    }
+
+    /** 「关注」标签重新点击时的分组选择框 */
+    private fun showFollowGroupPicker() {
+        MaterialAlertDialogBuilder(requireContext()).apply {
+            setTitle("关注分组")
+            val items = arrayOf("全部关注", "好友关注", "话题关注", "数码关注", "应用关注")
+            viewModel.position = when (PrefManager.FOLLOWTYPE) {
+                "all" -> 0
+                "circle" -> 1
+                "topic" -> 2
+                "product" -> 3
+                "apk" -> 4
+                else -> 0
+            }
+            setSingleChoiceItems(
+                items,
+                viewModel.position ?: 0
+            ) { dialog: DialogInterface, position: Int ->
+                when (position) {
+                    0 -> {
+                        viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW"
+                        viewModel.dataListTitle = "全部关注"
+                        PrefManager.FOLLOWTYPE = "all"
+                    }
+
+                    1 -> {
+                        viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW&type=circle"
+                        viewModel.dataListTitle = "好友关注"
+                        PrefManager.FOLLOWTYPE = "circle"
+                    }
+
+                    2 -> {
+                        viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW&type=topic"
+                        viewModel.dataListTitle = "话题关注"
+                        PrefManager.FOLLOWTYPE = "topic"
+                    }
+
+                    3 -> {
+                        viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW&type=product"
+                        viewModel.dataListTitle = "数码关注"
+                        PrefManager.FOLLOWTYPE = "product"
+                    }
+
+                    4 -> {
+                        viewModel.dataListUrl = "/page?url=V9_HOME_TAB_FOLLOW&type=apk"
+                        viewModel.dataListTitle = "应用关注"
+                        PrefManager.FOLLOWTYPE = "apk"
+                    }
+                }
+                viewModel.dataList.value = emptyList()
+                viewModel.footerState.value = FooterState.LoadingDone
+                viewModel.loadingState.value = LoadingState.Loading
+                dialog.dismiss()
+            }
+            show()
+        }
     }
 
     override fun fetchData() {

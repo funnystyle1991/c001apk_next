@@ -813,8 +813,15 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                         viewModel.onPostCreateFeed()
                     }
                 } else if (type == "rating") {
-                    // 机型点评：rating_score_1 为 0~10 的总体分，
-                    // v4_score_item_1..n 为各子项 0~5 分（顺序按 rating_item_info 下发）
+                    // 机型点评：rating_score_1 是 0~10 的总体分（10 星控件原值提交，真机同样是原值）；
+                    // v4_score_item_1..n 同属 0~10 量纲，但只有 5 档——每颗星 2 分，即 10/8/6/4/2。
+                    // 之前把星数(1~5)直接当分值提交、没打分的项提交 0，云端会判「请正确打分」。
+                    val overallScore = binding.ratingOverall.rating.toInt()
+                    val itemScores = subRatingBars.map { it.rating.toInt() * 2 }
+                    if (overallScore <= 0 || itemScores.any { it <= 0 }) {
+                        Toast.makeText(this, "请给总体评分和每个分项都打分", Toast.LENGTH_SHORT).show()
+                        return
+                    }
                     viewModel.replyAndFeedData.apply {
                         put("id", "")
                         put("message", binding.editText.text.toString())
@@ -823,9 +830,9 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                         put("publish_status", "0")
                         targetType?.let { put("targetType", it) }
                         targetId?.let { put("targetId", it) }
-                        put("rating_score_1", binding.ratingOverall.rating.toInt().toString())
-                        subRatingBars.forEachIndexed { index, bar ->
-                            put("v4_score_item_${index + 1}", bar.rating.toInt().toString())
+                        put("rating_score_1", overallScore.toString())
+                        itemScores.forEachIndexed { index, score ->
+                            put("v4_score_item_${index + 1}", score.toString())
                         }
                         put("comment_good", binding.goodText.text.toString())
                         put("comment_general", "")

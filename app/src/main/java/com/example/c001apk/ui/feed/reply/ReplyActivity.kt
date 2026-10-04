@@ -516,8 +516,10 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                 )
                 // ratingBarStyleSmall（Widget.RatingBar.Small）的框架样式把 isIndicator 写死为 true，
                 // 那时 ProgressBar.onTouchEvent 直接 return false → 星星点不动，必须显式关掉；
-                // 再靠 padding 把只有 14dip 高的点击区撑到 ~34dp
-                isIndicator = false
+                // 再靠 padding 把只有 14dip 高的点击区撑到 ~34dp。
+                // 只能用 setIsIndicator()：框架的 getter 是 isIndicator()、setter 是 setIsIndicator()，
+                // Kotlin 合不成可写属性，写 `isIndicator = false` 会报 Val cannot be reassigned
+                setIsIndicator(false)
                 numStars = 5
                 stepSize = 1f
                 setPadding(0, 10.dp, 0, 10.dp)

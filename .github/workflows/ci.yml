@@ -226,7 +226,9 @@ jobs:
           for f in gradle-release.log gradle-debug.log; do
             if [ -f "$f" ]; then
               echo "::error::logs found: $f ($(wc -c < "$f") bytes)"
-              tail -25 "$f" | while IFS= read -r line; do echo "::error::$line"; done
+              # 只上报决定性证据：Kotlin/AAPT 报错行 + "What went wrong" 块，避免被 warning 淹没
+              { grep -E "^e: |error: " "$f" | head -6; } | while IFS= read -r line; do echo "::error::$line"; done
+              awk '/What went wrong/{flag=1} flag{print; n++} n>10{exit}' "$f" | while IFS= read -r line; do echo "::error::WWW | $line"; done
               break
             fi
           done

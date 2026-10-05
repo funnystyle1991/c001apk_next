@@ -5,8 +5,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.hardware.Sensor
-import android.hardware.SensorEvent
-import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
 import android.provider.Settings
@@ -16,52 +14,30 @@ import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import java.lang.reflect.Field
-import java.lang.reflect.Method
+import com.hihonor.smartgripkit.SmartGripEventListener
+import com.hihonor.smartgripkit.SmartGripEventManager
 import java.util.Locale
 
 /**
- * 荣耀「随心握」接口探测页（只存在于 debug 包里）。
- * 目标：确认 MagicOS 把握姿状态以什么形式暴露给三方 App ——
- * vendor sensor、还是 hwextdevice 系统服务，以及左右手对应的数值编码。
+ * 荣耀「随心握」接口验证页（只存在于 debug 包）。
+ * 直接用官方 SmartGripKit（com.hihonor.mcs:smartgripkit）跑一遍：
+ * 支持态、开关、注册是否成功、以及真实握姿回调的数值。
  */
-class GripProbeActivity : Activity(), SensorEventListener {
+class GripProbeActivity : Activity() {
 
     private val tag = "GripProbe"
     private val buf = StringBuilder()
     private lateinit var out: TextView
     private lateinit var scroller: ScrollView
-    private val sensorManager by lazy { getSystemService(Context.SENSOR_SERVICE) as SensorManager }
-    private val registered = ArrayList<Sensor>()
     private var startedAt = 0L
+    private var events = 0
 
-    private val sensorKeywords = listOf("honor", "huawei", "posture", "grip", "hold", "hand", "motion")
-    private val classCandidates = listOf(
-        "com.hihonor.android.hwextdevice.HWExtDeviceManager",
-        "com.hihonor.android.hwextdevice.HWExtDeviceEvent",
-        "com.hihonor.android.hwextdevice.HWExtDeviceEventListener",
-        "com.hihonor.android.hwextdevice.devices.HWExtMotion",
-        "com.hihonor.android.hwextdevice.devices.IHWExtDevice",
-        "com.hihonor.smartgripkit.SmartGripEventManager",
-        "com.hihonor.smartgripkit.SmartGripEventListener",
-        "com.hihonor.android.os.SystemPropertiesEx",
-        "com.hihonor.android.os.BuildEx"
-    )
-    private val sensorStringCandidates = listOf(
-        "com.hihonor.hardware.sensor.posture",
-        "com.huawei.hardware.sensor.posture",
-        "com.hihonor.hardware.sensor.grip",
-        "com.hihonor.hardware.sensor.motion"
-    )
-    private val serviceCandidates = listOf(
-        "hwextdevice", "hihonor_hwextdevice", "hwext", "motion",
-        "msc.systemserver.motion.smart_grip", "smart_grip"
-    )
-    private val settingsKeys = listOf(
-        "smart_grip", "smart_grip_switch", "smart_grip_enable", "hihonor_smart_grip",
-        "smart_grip_state", "motion_smart_grip", "grip_mode", "magic_grip",
-        "onehand_mode", "haptic.lockscreen.onehand_keyboard_switch", "posture_mode"
-    )
+    private val listener = object : SmartGripEventListener() {
+        override fun onSmartGripEventChanged(state: Int) {
+            events++
+            line("EVENT #$events t=${f(elapsed())}s state=$state (${stateName(state)})")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,13 +48,12 @@ class GripProbeActivity : Activity(), SensorEventListener {
             setPadding(24, 24, 24, 24)
         }
         root.addView(buttonRow(
-            "全部探测" to { probeAll() },
-            "传感器" to { probeSensors() },
-            "反射" to { probeClasses() },
-            "属性/设置" to { probeProperties() }
+            "支持状态" to { probeSupport() },
+            "注册监听" to { probeRegister(true) },
+            "取消注册" to { probeRegister(false) }
         ))
         root.addView(buttonRow(
-            "全部传感器清单" to { dumpAllSensors() },
+            "传感器清单" to { probeSensors() },
             "复制结果" to { copyResult() },
             "清空" to { buf.setLength(0); out.text = "" }
         ))
@@ -88,7 +63,7 @@ class GripProbeActivity : Activity(), SensorEventListener {
             typeface = android.graphics.Typeface.MONOSPACE
             setTextIsSelectable(true)
         }
-        // ScrollView 里不能用 weight（高度会算成 0），直接 wrap_content 让它撑开
+        // ScrollView 里不能用 weight（高度会算成 0）
         root.addView(out)
 
         scroller = ScrollView(this).apply {
@@ -98,10 +73,10 @@ class GripProbeActivity : Activity(), SensorEventListener {
         }
         setContentView(scroller)
 
-        log("设备 ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
-        log("Android ${android.os.Build.VERSION.RELEASE} (sdk ${android.os.Build.VERSION.SDK_INT})")
-        log("Build.DISPLAY = ${android.os.Build.DISPLAY}")
-        log("点「全部探测」开始")
+        line("设备 ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+        line("Android ${android.os.Build.VERSION.RELEASE} (sdk ${android.os.Build.VERSION.SDK_INT})")
+        line("Build.DISPLAY = ${android.os.Build.DISPLAY}")
+        line("顺序：支持状态 -> 注册监听 -> 然后换着手握（左/右/双手/平放），每种停几秒")
     }
 
     private fun buttonRow(vararg items: Pair<String, () -> Unit>) =
@@ -118,219 +93,104 @@ class GripProbeActivity : Activity(), SensorEventListener {
             addView(row)
         }
 
-    private fun probeAll() {
-        probeSensors()
-        probeClasses()
-        probeProperties()
-    }
+    // ---------- 支持状态 ----------
 
-    // ---------- 1. vendor sensor 路线（最省事：公开 API） ----------
-
-    private fun probeSensors() {
-        section("传感器枚举")
-        val all = sensorManager.getSensorList(Sensor.TYPE_ALL)
-        log("传感器总数 ${all.size}")
-        val hits = all.filter { s ->
-            val hay = "${s.name} ${s.stringType} ${s.vendor}".lowercase(Locale.US)
-            sensorKeywords.any { hay.contains(it) }
-        }
-        if (hits.isEmpty()) {
-            log("没有命中关键词的传感器")
-        } else {
-            hits.forEach { s ->
-                log("- ${s.name}")
-                log("    stringType=${s.stringType} vendor=${s.vendor} type=${s.type} " +
-                        "maxRange=${f(s.maximumRange)} delay=${s.maxDelay / 1000f}ms " +
-                        "wake=${s.isWakeUpSensor} reportingMode=${s.reportingMode}")
-                watch(s)
-            }
-        }
-        // SensorManager 只暴露了 getDefaultSensor(Int)，按 stringType 查得自己扫清单
-        sensorStringCandidates.forEach { want ->
-            val s = all.firstOrNull { it.stringType == want }
-            if (s == null) {
-                log("清单里没有 $want")
-            } else {
-                log("命中 $want = ${s.name}  -> 开始监听")
-                watch(s)
-            }
-        }
-        if (registered.isEmpty()) log("未注册任何监听器")
-    }
-
-    private fun watch(sensor: Sensor) {
-        if (registered.any { it.stringType == sensor.stringType }) return
-        val ok = sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
-        log("    registerListener($ok) ${sensor.name}")
-        if (ok) registered.add(sensor)
-    }
-
-    private fun dumpAllSensors() {
-        section("全部传感器清单")
-        sensorManager.getSensorList(Sensor.TYPE_ALL).forEach {
-            log("${it.type}\t${it.name}\t${it.stringType}\t${it.vendor}")
-        }
-    }
-
-    override fun onSensorChanged(event: SensorEvent) {
-        val dt = (System.currentTimeMillis() - startedAt) / 1000f
-        val values = event.values.joinToString(", ") { f(it) }
-        line("EVENT t=${f(dt)}s ${event.sensor.name} type=${event.sensor.type} accuracy=${event.accuracy} values=[$values]")
-    }
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
-
-    // ---------- 2. 反射路线（hwextdevice 系统服务） ----------
-
-    private fun probeClasses() {
-        section("反射探测")
-        classCandidates.forEach { dumpClass(it) }
-        probeServices()
-    }
-
-    private fun dumpClass(name: String) {
-        val clazz = try {
-            Class.forName(name)
+    private fun probeSupport() {
+        section("支持状态")
+        val switch = try {
+            Settings.Secure.getInt(contentResolver, "key_smart_grip_switch", -999)
         } catch (t: Throwable) {
-            log("[缺失] $name -> ${t.javaClass.simpleName}")
+            "读取失败 ${t.javaClass.simpleName}"
+        }
+        line("Settings.Secure[key_smart_grip_switch] = $switch  (0=关闭 1=开启)")
+        line("prop msc.systemserver.motion.smart_grip = ${readIntProp("msc.systemserver.motion.smart_grip")}")
+
+        val state = try {
+            SmartGripEventManager.getSmartGripSupportState(this)
+        } catch (t: Throwable) {
+            line("getSmartGripSupportState 抛异常: ${t.javaClass.name}: ${t.message}")
+            if (t.cause != null) line("  cause: ${t.cause}")
             return
         }
-        log("[存在] $name  super=${clazz.superclass?.name}")
-        clazz.declaredMethods.sortedBy { it.name }.forEach { m -> log("    ${describe(m)}") }
-        clazz.declaredFields.sortedBy { it.name }.forEach { fl -> log("    field ${describe(fl)}") }
+        line("getSmartGripSupportState = $state (${supportName(state)})")
     }
 
-    private fun describe(m: Method): String =
-        m.name + "(" + m.parameterTypes.joinToString(", ") { it.simpleName } + ") : " + m.returnType.simpleName
+    private fun readIntProp(key: String): String = try {
+        val sp = Class.forName("android.os.SystemProperties")
+        val m = sp.getMethod("getInt", String::class.java, Int::class.javaPrimitiveType)
+        m.invoke(null, key, -999).toString()
+    } catch (t: Throwable) {
+        "读取失败 ${t.javaClass.simpleName}"
+    }
 
-    private fun describe(f: Field): String {
-        val mods = java.lang.reflect.Modifier.toString(f.modifiers)
-        val value = if (java.lang.reflect.Modifier.isStatic(f.modifiers) &&
-            (f.type.isPrimitive || f.type == String::class.java)
-        ) {
-            try {
-                f.isAccessible = true
-                " = " + f.get(null)
-            } catch (t: Throwable) {
-                " (读取失败)"
+    // ---------- 注册 / 事件 ----------
+
+    private fun probeRegister(register: Boolean) {
+        section(if (register) "注册监听" else "取消注册")
+        val ok = try {
+            if (register) {
+                SmartGripEventManager.registerSmartGripMotionListener(this, listener)
+            } else {
+                SmartGripEventManager.unregisterSmartGripMotionListener(this, listener)
             }
-        } else ""
-        return "$mods ${f.type.simpleName} ${f.name}$value"
-    }
-
-    private fun probeServices() {
-        val names = LinkedHashSet(serviceCandidates)
-        try {
-            Class.forName("com.hihonor.android.hwextdevice.HWExtDeviceManager").declaredFields
-                .filter { it.type == String::class.java }
-                .forEach { fl ->
-                    try {
-                        fl.isAccessible = true
-                        (fl.get(null) as? String)?.let { names.add(it) }
-                    } catch (_: Throwable) {
-                    }
-                }
-        } catch (_: Throwable) {
-        }
-        names.forEach { n ->
-            val svc = try {
-                getSystemService(n)
-            } catch (t: Throwable) {
-                null
-            }
-            log("getSystemService(\"$n\") -> ${svc?.javaClass?.name ?: "null"}")
-        }
-    }
-
-    // ---------- 3. 系统属性 / Settings ----------
-
-    private fun probeProperties() {
-        section("系统属性")
-        val sp = try {
-            Class.forName("android.os.SystemProperties")
         } catch (t: Throwable) {
-            log("SystemProperties 不可用: ${t.javaClass.simpleName}")
-            null
+            line("调用抛异常: ${t.javaClass.name}: ${t.message}")
+            if (t.cause != null) line("  cause: ${t.cause}")
+            return
         }
-        val getter = sp?.declaredMethods?.firstOrNull { it.name == "get" && it.parameterTypes.size == 1 }
-        if (getter != null) {
-            getter.isAccessible = true
-            listOf(
-                "ro.build.version.magic", "ro.magic.os.version", "ro.magicos.version",
-                "ro.build.honor.smart_grip_version", "ro.honor.smart_grip",
-                "ro.config.hw_smart_grip", "persist.sys.smart_grip",
-                "ro.product.brand", "ro.product.model", "ro.build.version.emui"
-            ).forEach { key ->
-                val v = try {
-                    getter.invoke(null, key) as? String
-                } catch (t: Throwable) {
-                    "<异常 ${t.javaClass.simpleName}>"
-                }
-                if (!v.isNullOrEmpty()) log("$key = $v")
-            }
-        }
-        runGetProp()
-
-        section("Settings")
-        settingsKeys.forEach { key ->
-            val s = listOf(
-                "secure" to Settings.Secure.getString(contentResolver, key),
-                "global" to Settings.Global.getString(contentResolver, key),
-                "system" to Settings.System.getString(contentResolver, key)
-            ).filter { !it.second.isNullOrEmpty() }
-            if (s.isEmpty()) log("$key -> 无") else s.forEach { (where, value) -> log("$key [$where] = $value") }
-        }
-        try {
-            contentResolver.query(Settings.Secure.CONTENT_URI, null, null, null, null)?.use { c ->
-                log("Settings.Secure 全表可读，行数=${c.count}")
-                val idx = c.getColumnIndex("name")
-                if (idx >= 0) {
-                    while (c.moveToNext()) {
-                        val n = c.getString(idx) ?: continue
-                        if (n.lowercase(Locale.US).let { it.contains("grip") || it.contains("hand") || it.contains("posture") }) {
-                            log("  命中 key: $n = ${c.getString(c.getColumnIndex("value"))}")
-                        }
-                    }
-                }
-            } ?: log("Settings.Secure.CONTENT_URI query 返回 null")
-        } catch (t: Throwable) {
-            log("Settings.Secure 全表枚举失败: ${t.javaClass.name}: ${t.message}")
-        }
+        line("register=$register 返回 $ok")
+        if (register && ok) line("现在换着手握，观察下面的 EVENT 行")
     }
 
-    private fun runGetProp() {
-        try {
-            val p = Runtime.getRuntime().exec("getprop")
-            p.inputStream.bufferedReader().use { r ->
-                val hits = r.lineSequence().filter {
-                    val l = it.lowercase(Locale.US)
-                    l.contains("grip") || l.contains("posture") || l.contains("magic") || l.contains("hand")
-                }.take(80).toList()
-                if (hits.isEmpty()) log("getprop 可读，但没有 grip/posture/magic 相关行") else {
-                    log("getprop 命中 ${hits.size} 行：")
-                    hits.forEach { log("  $it") }
-                }
-            }
-            p.destroy()
-        } catch (t: Throwable) {
-            log("getprop 执行失败: ${t.javaClass.name}: ${t.message}")
+    // ---------- 交叉验证：厂商传感器是否也可见 ----------
+
+    private fun probeSensors() {
+        section("传感器清单（交叉验证）")
+        val sm = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        val all = sm.getSensorList(Sensor.TYPE_ALL)
+        line("共 ${all.size} 个")
+        all.filter {
+            val hay = "${it.name} ${it.stringType} ${it.vendor}".lowercase(Locale.US)
+            listOf("honor", "huawei", "posture", "grip", "hold", "hand", "motion").any { k -> hay.contains(k) }
+        }.forEach {
+            line("- ${it.name} | type=${it.stringType} | vendor=${it.vendor}")
         }
     }
 
     // ---------- 输出 ----------
 
+    private fun stateName(state: Int) = when (state) {
+        SmartGripEventManager.GRIP_STATE_NOT_HELD -> "未握持"
+        SmartGripEventManager.GRIP_STATE_LEFT_HAND -> "左手"
+        SmartGripEventManager.GRIP_STATE_RIGHT_HAND -> "右手"
+        SmartGripEventManager.GRIP_STATE_BOTH_HANDS -> "双手"
+        SmartGripEventManager.GRIP_STATE_UNKNOWN -> "未识别"
+        else -> "未知值"
+    }
+
+    private fun supportName(code: Int) = when (code) {
+        SmartGripEventManager.SMART_GRIP_SUPPORT -> "支持"
+        SmartGripEventManager.SMART_GRIP_NOT_SUPPORT -> "设备不支持"
+        SmartGripEventManager.SMART_GRIP_SETTING_OFF -> "开关已关闭"
+        SmartGripEventManager.SMART_GRIP_NO_PERMISSION -> "没有权限"
+        SmartGripEventManager.SMART_GRIP_REGISTER_FAILED_OTHER -> "其它失败"
+        else -> "未知值"
+    }
+
     private fun section(title: String) = line("\n===== $title =====")
 
     private fun line(text: String) {
-        buf.append(text).append('\n')
-        out.text = buf.toString()
-        scroller.post { scroller.fullScroll(android.view.View.FOCUS_DOWN) }
         Log.d(tag, text)
+        runOnUiThread {
+            buf.append(text).append('\n')
+            out.text = buf.toString()
+            scroller.post { scroller.fullScroll(android.view.View.FOCUS_DOWN) }
+        }
     }
 
-    private fun log(text: String) = line(text)
+    private fun elapsed() = (System.currentTimeMillis() - startedAt) / 1000f
 
-    private fun f(v: Float) = String.format(Locale.US, "%.2f", v)
+    private fun f(v: Float) = String.format(Locale.US, "%.1f", v)
 
     private fun copyResult() {
         val cm = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -340,6 +200,9 @@ class GripProbeActivity : Activity(), SensorEventListener {
 
     override fun onDestroy() {
         super.onDestroy()
-        sensorManager.unregisterListener(this)
+        try {
+            SmartGripEventManager.unregisterSmartGripMotionListener(this, listener)
+        } catch (_: Throwable) {
+        }
     }
 }

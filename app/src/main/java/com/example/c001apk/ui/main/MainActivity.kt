@@ -89,8 +89,9 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         // 滚动时玻璃罩在动、内容也在动：背景必须逐帧重采样，不然折射看到的是静止旧图
         binding.navGlass.apply {
             enableDynamicBackground = true
-            enableShadow = true
-            // 仿官方酷安底栏：clear 清水玻璃，只压一层很淡的主题色防"花"。
+            // 库的阴影会给胶囊描出一圈轮廓"矩形框"，官方没有这圈东西——关掉
+            enableShadow = false
+            // 仿官方酷安底栏：clear 清水玻璃 + 很淡的主题色染色防"花"。
             // 别开 adaptiveTint——它会按背后内容亮度压暗染色，列表一深整条就黑给你看
             setGlassTint(
                 MaterialColors.getColor(
@@ -100,7 +101,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                 ),
                 0.25f
             )
-            blurAmount = 0.1f
+            blurAmount = 0.15f
+            // 液态气泡感：库默认的尺寸自适应会把小控件的折射/斜面钳到几乎为零
+            // （参考线 110dp，我们才 56dp），手动放开再给足边缘透镜参数
+            adaptiveLensScale = false
+            bevelWidth = 64f
+            refractionHeight = 130f
+            edgeSoftness = 6f
+            dispersionStrength = 0.25f
+            aberrationIntensity = 3f
             // 横屏是 ConstraintLayout + NavigationRail，没有 CoordinatorLayout 也就无所谓滚动隐藏行为
             (layoutParams as? CoordinatorLayout.LayoutParams)?.behavior = navViewBehavior
         }

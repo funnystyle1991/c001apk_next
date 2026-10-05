@@ -89,6 +89,7 @@ class MineFragment : BaseFragment<FragmentMineBinding>() {
 
     private fun initLogin() {
         binding.isLogin = isLogin
+        messageFirstAdapter.isLogin = isLogin
         // 工具栏（含设置图标）不管登没登录都要显示，只有「退出登录」跟着登录状态走
         initMenu()
         if (isLogin) {

@@ -453,6 +453,10 @@
         <activity
             android:name=".ui.settings.SettingsActivity"
             android:exported="false" />
+        <!-- 设置二级页独立成 Activity：与关于页一样走系统预测性返回，右滑可跟手预览 -->
+        <activity
+            android:name=".ui.settings.SettingsDetailActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.app.AppActivity"
             android:exported="false" />

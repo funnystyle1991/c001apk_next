@@ -16,15 +16,18 @@
         android:layout_height="wrap_content"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:clickable="true"
+        android:clipChildren="false"
         android:focusable="true"
         android:gravity="center"
         android:orientation="vertical"
         android:paddingTop="10dp"
         android:paddingBottom="10dp">
 
+        <!-- clipChildren=false：红点压在图标右上角、要往外溢出 4/8dp，默认裁剪会把它切得只剩一角 -->
         <FrameLayout
             android:layout_width="42dp"
-            android:layout_height="42dp">
+            android:layout_height="42dp"
+            android:clipChildren="false">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/logoCover"

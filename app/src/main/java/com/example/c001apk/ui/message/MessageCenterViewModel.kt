@@ -12,6 +12,7 @@ import com.example.c001apk.logic.repository.HistoryFavoriteRepo
 import com.example.c001apk.logic.repository.NetworkRepo
 import com.example.c001apk.util.CookieUtil
 import com.example.c001apk.util.Event
+import com.example.c001apk.util.MessageKit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.onStart
@@ -60,7 +61,11 @@ class MessageCenterViewModel @Inject constructor(
                                 messageList.clear()
                             if (isRefreshing || isLoadMore) {
                                 feed.data.forEach {
-                                    if (it.entityType == "notification")
+                                    // 小秘书（notify_xms / uid 10086）已经在宫格里有独立入口，
+                                    // 这里再列一遍就是同一批消息出现两次
+                                    if (it.entityType == "notification"
+                                        && !MessageKit.isSecretaryNotify(it)
+                                    )
                                         if (!blackListRepo.checkUid(it.fromuid))
                                             messageList.add(it)
                                 }

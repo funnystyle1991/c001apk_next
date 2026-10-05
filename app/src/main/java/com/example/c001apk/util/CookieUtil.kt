@@ -8,6 +8,11 @@ object CookieUtil {
     var atcommentme: Int? = null
     var feedlike: Int? = null
     var contacts_follow: Int? = null
+    /**
+     * 服务端未读总数（checkCount 的 badge_v18）。目前只做缓存、没有消费方：
+     * 底部导航的角标已移除（那个位置现在叫「我的」，不再是消息页），
+     * 未读提示统一走消息中心宫格，由「服务端分类未读 − 本机已读账本」算出。
+     */
     var badge: Int = 0
     var notification: Int = 0
 

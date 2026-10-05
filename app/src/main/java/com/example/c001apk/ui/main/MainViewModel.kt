@@ -1,6 +1,5 @@
 package com.example.c001apk.ui.main
 
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.c001apk.constant.Constants
@@ -8,7 +7,6 @@ import com.example.c001apk.logic.repository.BlackListRepo
 import com.example.c001apk.logic.repository.NetworkRepo
 import com.example.c001apk.logic.repository.SpamConfigRepo
 import com.example.c001apk.util.CookieUtil
-import com.example.c001apk.util.Event
 import com.example.c001apk.util.PrefManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +24,6 @@ class MainViewModel @Inject constructor(
 
     var lastCheck = System.currentTimeMillis()
     var isInit: Boolean = true
-    val setBadge = MutableLiveData<Event<Boolean>>()
 
     fun fetchAppInfo(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -96,9 +93,6 @@ class MainViewModel @Inject constructor(
                                 e.printStackTrace()
                             }
 
-                            if (CookieUtil.badge != 0)
-                                setBadge.postValue(Event(true))
-
                             syncBlackList()
                         }
                     }
@@ -131,8 +125,6 @@ class MainViewModel @Inject constructor(
                         CookieUtil.notification = it.unreadNotification
                         CookieUtil.message = it.message
                         CookieUtil.commentme = it.commentme
-                        if (CookieUtil.badge != 0)
-                            setBadge.postValue(Event(true))
                     }
                 }
         }

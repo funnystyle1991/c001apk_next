@@ -52,7 +52,7 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * 刷新未读数缓存（CookieUtil）：底部导航的角标、消息中心宫格的红点都读这份缓存。
+     * 刷新未读数缓存（CookieUtil）：消息中心的宫格红点读这份缓存。
      * 未登录直接返回，不发请求。
      */
     fun refreshUnreadCount() {

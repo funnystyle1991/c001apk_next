@@ -18,13 +18,10 @@ import com.example.c001apk.ui.home.HomeFragment
 import com.example.c001apk.ui.message.MineFragment
 import com.example.c001apk.ui.settings.SettingsActivity
 import com.example.c001apk.util.ActivityCollector
-import com.example.c001apk.util.CookieUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.UpdateChecker
-import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.behavior.HideBottomViewOnScrollBehavior
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.android.material.color.MaterialColors
 import com.google.android.material.navigation.NavigationBarView
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -52,12 +49,11 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             checkSelfUpdate()
         }
 
+        // 底部导航不再挂未读角标：那个位置的历史语义是「消息」，现在消息已独立成
+        // MessageCenterActivity，未读提示统一走消息中心宫格（见 MessageThirdAdapter）。
         if (viewModel.isInit) {
             viewModel.isInit = false
             genData()
-            initObserve()
-        } else if (CookieUtil.badge != 0) {
-            setBadge()
         }
 
         binding.viewPager.apply {
@@ -101,9 +97,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
 
                     R.id.navigation_mine -> {
                         binding.viewPager.setCurrentItem(1, true)
-                        if (CookieUtil.badge != 0) {
-                            navView.removeBadge(R.id.navigation_mine)
-                        }
                     }
                 }
                 true
@@ -114,15 +107,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             }
         }
 
-    }
-
-    private fun initObserve() {
-        viewModel.setBadge.observe(this) { event ->
-            event.getContentIfNotHandledOrReturnNull()?.let {
-                if (it)
-                    setBadge()
-            }
-        }
     }
 
     /**
@@ -152,26 +136,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
 
     private fun genData() {
         viewModel.fetchAppInfo("com.coolapk.market")
-    }
-
-    private fun setBadge() {
-        val badge = navView.getOrCreateBadge(R.id.navigation_mine)
-        badge.number = CookieUtil.badge
-        badge.backgroundColor =
-            MaterialColors.getColor(
-                this,
-                com.google.android.material.R.attr.colorPrimary,
-                0
-            )
-        badge.badgeTextColor =
-            MaterialColors.getColor(
-                this,
-                com.google.android.material.R.attr.colorOnPrimary,
-                0
-            )
-        badge.badgeGravity = BadgeDrawable.TOP_END
-        badge.verticalOffset = 5
-        badge.horizontalOffset = 5
     }
 
     private val onBackPressedCallback = object : OnBackPressedCallback(false) {

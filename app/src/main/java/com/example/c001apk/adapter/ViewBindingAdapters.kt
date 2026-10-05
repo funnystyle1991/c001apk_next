@@ -266,3 +266,16 @@ fun setCover(imageView: ImageView, imageUrl: String?) {
         ImageUtil.showIMG(imageView, it, true)
     }
 }
+
+/**
+ * 聊天气泡头像：只负责加载图片，**不碰 visibility**。
+ * 用 setImage 的话它会按「url 是否为空」改可见性，和布局里的
+ * `android:visibility="@{isMe ? GONE : VISIBLE}"` 抢同一个属性。
+ */
+@BindingAdapter("avatarImage")
+fun avatarImage(imageView: ImageView, imageUrl: String?) {
+    if (imageUrl.isNullOrEmpty())
+        imageView.setImageDrawable(null)
+    else
+        ImageUtil.showIMG(imageView, imageUrl)
+}

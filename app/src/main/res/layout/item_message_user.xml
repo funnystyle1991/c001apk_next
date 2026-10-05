@@ -8,6 +8,8 @@
 
         <import type="com.example.c001apk.util.DateUtils" />
 
+        <import type="com.example.c001apk.util.MessageKit" />
+
         <variable
             name="type"
             type="String" />
@@ -27,7 +29,7 @@
         android:layout_height="wrap_content"
         android:clickable="true"
         android:focusable="true"
-        android:onClick="@{(view) -> listener.onViewUser(view, data.uid)}"
+        android:onClick="@{(view) -> listener.onViewUser(view, MessageKit.partnerUid(data))}"
         app:cardBackgroundColor="@color/home_card_background_color"
         app:cardElevation="0dp"
         app:strokeWidth="0dp">
@@ -46,12 +48,12 @@
                 app:layout_constraintDimensionRatio="H, 1"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:setImage="@{type == `list` ? data.userAvatar : data.fromUserAvatar}"
+                app:setImage="@{type == `list` ? MessageKit.partnerAvatar(data) : data.fromUserAvatar}"
                 app:shapeAppearance="@style/circleImageStyle" />
 
             <!--
-                私信会话（type=list）要展示的是**对方**（username / userAvatar）；
-                fromusername / fromUserAvatar 是「谁关注了你」，即自己，用在这里会显示成自己的名字和头像。
+                私信会话（type=list）要展示的是**对方**：messageUsername / messageUserAvatar。
+                直接拿 username / userAvatar 可能显示成我自己（最后一条消息是我发的时）。
             -->
             <TextView
                 android:id="@+id/uname"
@@ -60,7 +62,7 @@
                 android:layout_marginStart="10dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="@{type == `list` ? data.username : data.fromusername}"
+                android:text="@{type == `list` ? MessageKit.partnerName(data) : data.fromusername}"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/avatar"
                 app:layout_constraintTop_toTopOf="parent" />
@@ -102,7 +104,7 @@
                 android:layout_marginTop="5dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="@{type == `list` ? data.message : ``}"
+                android:text="@{type == `list` ? MessageKit.preview(data) : ``}"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="13sp"
                 app:layout_constraintEnd_toEndOf="parent"

@@ -430,6 +430,11 @@
         <activity
             android:name=".ui.messagedetail.MessageActivity"
             android:exported="false" />
+        <!-- 私信聊天页：独立 Activity，保证右滑返回能跟手预览 -->
+        <activity
+            android:name=".ui.messagedetail.MessageDetailActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
         <activity
             android:name=".ui.message.MessageCenterActivity"
             android:exported="false" />

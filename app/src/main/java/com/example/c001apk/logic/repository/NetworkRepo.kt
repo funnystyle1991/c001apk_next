@@ -7,7 +7,9 @@ import com.example.c001apk.logic.network.ApiService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -284,6 +286,23 @@ class NetworkRepo @Inject constructor(
 
     suspend fun getMessage(url: String, page: Int, lastItem: String?) = fire {
         Result.success(apiService.getMessage(url, page, lastItem).await())
+    }
+
+    suspend fun getChatHistory(ukey: String, page: Int) = fire {
+        Result.success(apiService.getChatHistory(ukey, page).await())
+    }
+
+    /** 发私信（multipart）。文本 part 必须用 RequestBody，String 会被 Gson 加上引号 */
+    suspend fun sendMessage(uid: String, message: String) = fire {
+        val text = "text/plain; charset=utf-8".toMediaTypeOrNull()
+        val empty = "".toRequestBody(text)
+        Result.success(
+            apiService.sendMessage(uid, "1", message.toRequestBody(text), empty, empty).await()
+        )
+    }
+
+    suspend fun readMessage(ukey: String) = fire {
+        Result.success(apiService.readMessage(ukey).await())
     }
 
     suspend fun postFollowUnFollow(url: String, uid: String) = fire {

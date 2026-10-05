@@ -15,6 +15,7 @@ import androidx.fragment.app.viewModels
 import com.example.c001apk.R
 import com.example.c001apk.databinding.BaseViewUserBinding
 import com.example.c001apk.ui.base.BasePagerFragment
+import com.example.c001apk.ui.messagedetail.MessageDetailActivity
 import com.example.c001apk.ui.others.WebViewActivity
 import com.example.c001apk.ui.search.SearchActivity
 import com.example.c001apk.util.DateUtils
@@ -83,6 +84,16 @@ class UserPagerFragment : BasePagerFragment() {
             }
         }
 
+        bindMailBtn()
+        userBinding.mailBtn.setOnClickListener {
+            // 只有 uid 也要能进：没聊过的话，发出第一条消息时由服务端隐式建会话
+            IntentUtil.startActivity<MessageDetailActivity>(requireContext()) {
+                putExtra("uid", viewModel.userData?.uid ?: viewModel.uid)
+                putExtra("uname", viewModel.userData?.username.orEmpty())
+                putExtra("avatar", viewModel.userData?.userAvatar.orEmpty())
+            }
+        }
+
         userBinding.equipLayout.setOnClickListener {
             IntentUtil.startActivity<WebViewActivity>(requireContext()) {
                 putExtra("url", "https://m.coolapk.com/myDevice/${viewModel.uid}")
@@ -115,6 +126,9 @@ class UserPagerFragment : BasePagerFragment() {
                 userBinding.userData = viewModel.userData
                 userBinding.isSelf = isSelf
                 userBinding.executePendingBindings()
+                // userData 是拉完资料才有的，isSelf / 关注态此时才最终确定
+                userBinding.followBtn.isVisible = isSelf || PrefManager.isLogin
+                bindMailBtn()
             }
         }
 
@@ -123,6 +137,11 @@ class UserPagerFragment : BasePagerFragment() {
                 Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    /** 私信圆钮：自己的主页不显示，未登录也没法发私信 */
+    private fun bindMailBtn() {
+        userBinding.mailBtn.isVisible = !isSelf && PrefManager.isLogin
     }
 
     override fun onResume() {

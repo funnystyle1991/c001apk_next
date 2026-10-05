@@ -12,6 +12,7 @@ import com.example.c001apk.databinding.ItemMessageUserBinding
 import com.example.c001apk.logic.model.MessageResponse
 import com.example.c001apk.ui.feed.FeedActivity
 import com.example.c001apk.util.IntentUtil
+import com.example.c001apk.util.MessageKit
 
 
 class MessageContentAdapter(
@@ -30,6 +31,18 @@ class MessageContentAdapter(
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.listener, listener)
             binding.executePendingBindings()
+
+            if (type == "list") {
+                // 私信会话项：点进去开聊天页（ukey 是会话标识，uid/uname/avatar 都是对方）
+                itemView.setOnClickListener {
+                    IntentUtil.startActivity<MessageDetailActivity>(itemView.context) {
+                        putExtra("ukey", data.ukey.orEmpty())
+                        putExtra("uid", MessageKit.partnerUid(data))
+                        putExtra("uname", MessageKit.partnerName(data))
+                        putExtra("avatar", MessageKit.partnerAvatar(data))
+                    }
+                }
+            }
         }
 
     }

@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    一条私信消息。isMe 由 adapter 按 fromuid 判断后传进来：
+    自己发的靠右（主题色气泡），对方发的靠左（浅色气泡），系统提示居中。
+-->
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <import type="android.view.View" />
+
+        <import type="com.example.c001apk.util.MessageKit" />
+
+        <variable
+            name="data"
+            type="com.example.c001apk.logic.model.MessageResponse.Data" />
+
+        <variable
+            name="isMe"
+            type="Boolean" />
+
+        <!-- 对方头像 / 我的头像，由 adapter 用会话信息传入（聊天记录里没有可靠的头像字段） -->
+        <variable
+            name="partnerAvatar"
+            type="String" />
+
+        <variable
+            name="myAvatar"
+            type="String" />
+
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="12dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="6dp">
+
+        <!-- 系统提示（messageExtra）居中一行灰字 -->
+        <TextView
+            android:id="@+id/systemText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@{MessageKit.extraText(data)}"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp"
+            android:visibility="@{MessageKit.isExtra(data) ? View.VISIBLE : View.GONE}"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="你们已经是好友了"
+            tools:visibility="gone" />
+
+        <!-- 对方：头像靠左 -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/avatarLeft"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@color/cover"
+            android:contentDescription="@null"
+            android:visibility="@{isMe || MessageKit.isExtra(data) ? View.GONE : View.VISIBLE}"
+            app:avatarImage="@{partnerAvatar}"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:shapeAppearance="@style/circleImageStyle"
+            tools:visibility="visible" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/bubbleLeft"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="48dp"
+            android:visibility="@{isMe || MessageKit.isExtra(data) ? View.GONE : View.VISIBLE}"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0"
+            app:layout_constraintStart_toEndOf="@id/avatarLeft"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="8dp"
+                android:text="@{data.message}"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textIsSelectable="true"
+                android:textSize="15sp"
+                tools:text="在吗" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 自己：气泡靠右 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/bubbleRight"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="48dp"
+            android:layout_marginEnd="8dp"
+            android:visibility="@{isMe && !MessageKit.isExtra(data) ? View.VISIBLE : View.GONE}"
+            app:cardBackgroundColor="?attr/colorPrimaryContainer"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:layout_constrainedWidth="true"
+            app:layout_constraintEnd_toStartOf="@id/avatarRight"
+            app:layout_constraintHorizontal_bias="1"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="8dp"
+                android:text="@{data.message}"
+                android:textColor="?attr/colorOnPrimaryContainer"
+                android:textIsSelectable="true"
+                android:textSize="15sp"
+                tools:text="在的" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/avatarRight"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@color/cover"
+            android:contentDescription="@null"
+            android:visibility="@{isMe && !MessageKit.isExtra(data) ? View.VISIBLE : View.GONE}"
+            app:avatarImage="@{myAvatar}"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:shapeAppearance="@style/circleImageStyle"
+            tools:visibility="visible" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</layout>

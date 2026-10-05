@@ -60,6 +60,11 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
         binding.entryList.apply {
             layoutManager = GridLayoutManager(this@MessageCenterActivity, 4)
             adapter = entryAdapter
+            // 未读红点由 decoration 画在顶层 overdraw 层：宫格紧挨着，红点留在 item 里
+            // 会被右边那格盖掉（详见 MessageBadgeDecoration）
+            addItemDecoration(MessageBadgeDecoration(this@MessageCenterActivity) {
+                entryAdapter.unreadCount(it)
+            })
         }
 
         mAdapter = MessageCenterAdapter(ItemClickListener())

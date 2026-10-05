@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    消息入口格子（4 列宫格用）：圆形彩色底 + 白色图标 + 下方文字，
-    未读数红点压在图标右上角（原来贴在卡片右侧，跟「未读」的直觉不符）。
+    消息入口格子（4 列宫格用）：圆形彩色底 + 白色图标 + 下方文字。
+    未读红点**不在这里**：4 列宫格紧挨着没有间距，红点留在 item 里往外探，会被
+    右边那格盖掉（RecyclerView 按顺序绘制 child，后来的压在先画的上面），
+    所以改由 MessageBadgeDecoration 在 RecyclerView 顶层绘制。
 -->
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -16,18 +18,15 @@
         android:layout_height="wrap_content"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:clickable="true"
-        android:clipChildren="false"
         android:focusable="true"
         android:gravity="center"
         android:orientation="vertical"
         android:paddingTop="10dp"
         android:paddingBottom="10dp">
 
-        <!-- clipChildren=false：红点压在图标右上角、要往外溢出 4/8dp，默认裁剪会把它切得只剩一角 -->
         <FrameLayout
             android:layout_width="42dp"
-            android:layout_height="42dp"
-            android:clipChildren="false">
+            android:layout_height="42dp">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/logoCover"
@@ -42,23 +41,6 @@
                 android:layout_height="24dp"
                 android:layout_gravity="center"
                 tools:background="#FFFFFF" />
-
-            <TextView
-                android:id="@+id/badge"
-                android:layout_width="wrap_content"
-                android:layout_height="15dp"
-                android:layout_gravity="top|end"
-                android:layout_marginTop="-4dp"
-                android:layout_marginEnd="-8dp"
-                android:background="@drawable/badge_red"
-                android:gravity="center"
-                android:minWidth="15dp"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp"
-                android:textColor="@android:color/white"
-                android:textSize="9sp"
-                android:visibility="gone"
-                tools:text="9" />
 
         </FrameLayout>
 

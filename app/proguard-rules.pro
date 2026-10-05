@@ -211,3 +211,7 @@
 -keep class com.alibaba.sdk.android.oss.** { *; }
 -dontwarn okio.**
 -dontwarn org.apache.commons.codec.binary.**
+
+# 液态玻璃底栏：NativeGauss 的 JNI 方法是 Java_ 名字直连注册，R8 改名会 UnsatisfiedLinkError
+-keep class com.example.liquidglass.** { *; }
+-keep class com.example.blur.** { *; }

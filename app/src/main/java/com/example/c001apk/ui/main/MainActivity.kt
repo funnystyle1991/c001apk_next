@@ -21,6 +21,7 @@ import com.example.c001apk.util.ActivityCollector
 import com.example.c001apk.util.CookieUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.UpdateChecker
+import com.example.liquidglass.LiquidGlassView
 import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.behavior.HideBottomViewOnScrollBehavior
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -33,7 +34,7 @@ import kotlinx.coroutines.launch
 class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContainer {
 
     private val viewModel by viewModels<MainViewModel>()
-    private val navViewBehavior by lazy { HideBottomViewOnScrollBehavior<BottomNavigationView>() }
+    private val navViewBehavior by lazy { HideBottomViewOnScrollBehavior<LiquidGlassView>() }
     override var controller: IOnBottomClickListener? = null
     private lateinit var navView: NavigationBarView
     private val isLogin by lazy { PrefManager.isLogin }
@@ -85,11 +86,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             fixViewPager2Insets(this)
         }
 
-        navView.apply {
-            if (this is BottomNavigationView) {
-                (layoutParams as CoordinatorLayout.LayoutParams).behavior = navViewBehavior
-            }
+        // 滚动时玻璃罩在动、内容也在动：背景必须逐帧重采样，不然折射看到的是静止旧图
+        binding.navGlass.apply {
+            enableDynamicBackground = true
+            enableShadow = true
+            // 横屏是 ConstraintLayout + NavigationRail，没有 CoordinatorLayout 也就无所谓滚动隐藏行为
+            (layoutParams as? CoordinatorLayout.LayoutParams)?.behavior = navViewBehavior
+        }
 
+        navView.apply {
             setOnItemSelectedListener {
                 when (it.itemId) {
                     R.id.navigation_home -> {
@@ -185,17 +190,13 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
     }
 
     fun showNavigationView() {
-        if (binding.bottomNav is BottomNavigationView) {
-            if (navViewBehavior.isScrolledDown)
-                navViewBehavior.slideUp(binding.bottomNav as BottomNavigationView, true)
-        }
+        if (navViewBehavior.isScrolledDown)
+            navViewBehavior.slideUp(binding.navGlass, true)
     }
 
     fun hideNavigationView() {
-        if (binding.bottomNav is BottomNavigationView) {
-            if (navViewBehavior.isScrolledUp)
-                navViewBehavior.slideDown(binding.bottomNav as BottomNavigationView, true)
-        }
+        if (navViewBehavior.isScrolledUp)
+            navViewBehavior.slideDown(binding.navGlass, true)
     }
 
     // from LibChecker

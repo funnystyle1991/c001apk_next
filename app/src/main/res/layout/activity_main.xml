@@ -10,13 +10,27 @@
         android:layout_height="match_parent"
         android:orientation="horizontal" />
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNav"
+    <com.example.liquidglass.LiquidGlassView
+        android:id="@+id/navGlass"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:labelVisibilityMode="selected"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginBottom="8dp"
+        app:adaptiveTint="true"
+        app:backdropSourceId="@id/viewPager"
+        app:cornerRadius="28dp"
+        app:glassMaterial="regular"
         app:layout_anchor="@id/viewPager"
-        app:layout_anchorGravity="bottom"
-        app:menu="@menu/nav_menu" />
+        app:layout_anchorGravity="bottom">
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottomNav"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            app:labelVisibilityMode="selected"
+            app:menu="@menu/nav_menu" />
+
+    </com.example.liquidglass.LiquidGlassView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

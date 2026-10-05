@@ -198,6 +198,7 @@ dependencies {
     ksp(libs.glide.ksp)
     implementation(libs.glide.okhttp3.integration)
     implementation(libs.glide.transformations)
+    implementation("com.github.QWEA0:liquidglass:v2.0.11")
     implementation(project(":mojito"))
     implementation(project(":SketchImageViewLoader"))
     implementation(project(":GlideImageLoader"))

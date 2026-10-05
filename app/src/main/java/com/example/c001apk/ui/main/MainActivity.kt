@@ -1,7 +1,6 @@
 package com.example.c001apk.ui.main
 
 import android.os.Bundle
-import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -102,7 +101,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                 0.25f
             )
             blurAmount = 0.1f
-            fixNavGlassInsets(this)
             // 横屏是 ConstraintLayout + NavigationRail，没有 CoordinatorLayout 也就无所谓滚动隐藏行为
             (layoutParams as? CoordinatorLayout.LayoutParams)?.behavior = navViewBehavior
         }
@@ -220,23 +218,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
     private fun fixBottomNavigationViewInsets(view: BottomNavigationView) {
         ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
             view.updatePadding(bottom = 0)
-            windowInsets
-        }
-    }
-
-    private fun fixNavGlassInsets(view: LiquidGlassView) {
-        val baseMargin = (10 * resources.displayMetrics.density).toInt()
-        ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
-            val systemBars =
-                ViewCompat.getRootWindowInsets(view)
-                    ?.getInsets(WindowInsetsCompat.Type.systemBars())
-            (view.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
-                val bottom = (systemBars?.bottom ?: 0) + baseMargin
-                if (lp.bottomMargin != bottom) {
-                    lp.bottomMargin = bottom
-                    view.layoutParams = lp
-                }
-            }
             windowInsets
         }
     }

@@ -16,7 +16,7 @@
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="?attr/colorSurfaceVariant"
+        android:background="@null"
         android:fitsSystemWindows="false"
         app:consumeSystemWindowsInsets="end"
         app:edgeToEdge="true"

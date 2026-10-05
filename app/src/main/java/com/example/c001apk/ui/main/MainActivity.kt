@@ -104,13 +104,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             )
             blurAmount = 0.15f
             // 液态气泡感：库默认的尺寸自适应会把小控件的折射/斜面钳到几乎为零
-            // （参考线 110dp，我们才 56dp），手动放开再给足边缘透镜参数
+            // （参考线 110dp，我们才 56dp），所以关掉它手动给值——但值必须按 56dp 短边来定：
+            // 斜面 ≤ 短边×0.3（≈17dp）、折射 ≤ 短边×0.7（≈39dp），给大了整条玻璃
+            // 都变成边缘透镜，背后的内容会被像放大镜一样拉伸变形（上一版 64/130 就翻车了）
             adaptiveLensScale = false
-            bevelWidth = 64f
-            refractionHeight = 130f
-            edgeSoftness = 6f
+            bevelWidth = 14f
+            refractionHeight = 28f
+            edgeSoftness = 4f
             dispersionStrength = 0.25f
-            aberrationIntensity = 3f
+            aberrationIntensity = 2f
             // 横屏是 ConstraintLayout + NavigationRail，没有 CoordinatorLayout 也就无所谓滚动隐藏行为
             (layoutParams as? CoordinatorLayout.LayoutParams)?.behavior = navViewBehavior
         }

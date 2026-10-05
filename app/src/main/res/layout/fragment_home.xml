@@ -64,7 +64,7 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:padding="10dp"
-                android:tooltipText="@string/messages"
+                android:tooltipText="@string/message_center"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="parent">
@@ -72,7 +72,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="@string/messages"
+                    android:contentDescription="@string/message_center"
                     android:src="@drawable/ic_message_outline" />
 
                 <TextView

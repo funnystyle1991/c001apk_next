@@ -48,12 +48,14 @@
                 app:layout_constraintDimensionRatio="H, 1"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:setImage="@{type == `list` ? MessageKit.partnerAvatar(data) : data.fromUserAvatar}"
+                app:setImage="@{MessageKit.partnerAvatar(data)}"
                 app:shapeAppearance="@style/circleImageStyle" />
 
             <!--
-                私信会话（type=list）要展示的是**对方**：messageUsername / messageUserAvatar。
-                直接拿 username / userAvatar 可能显示成我自己（最后一条消息是我发的时）。
+                要展示的是**对方**：私信会话认 messageUsername / messageUserAvatar，
+                通知条目（好友关注）认 fromusername / fromUserAvatar——
+                partnerName / partnerAvatar 内部已经按这个顺序兜底了。
+                直接拿 username / userAvatar 会显示成我自己（最后一条消息是我发的时）。
             -->
             <TextView
                 android:id="@+id/uname"
@@ -62,7 +64,7 @@
                 android:layout_marginStart="10dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="@{type == `list` ? MessageKit.partnerName(data) : data.fromusername}"
+                android:text="@{MessageKit.partnerName(data)}"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/avatar"
                 app:layout_constraintTop_toTopOf="parent" />
@@ -85,10 +87,10 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
                 android:layout_marginTop="5dp"
-                android:text="@{type == `contactsFollow` ? `关注了你` : ``}"
+                android:text="@{MessageKit.isContactsFollow(type) ? `关注了你` : ``}"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="13sp"
-                android:visibility="@{type == `contactsFollow` ? View.VISIBLE : View.GONE}"
+                android:visibility="@{MessageKit.isContactsFollow(type) ? View.VISIBLE : View.GONE}"
                 app:layout_constraintStart_toEndOf="@id/follow"
                 app:layout_constraintTop_toBottomOf="@id/uname" />
 
@@ -104,7 +106,7 @@
                 android:layout_marginTop="5dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="@{type == `list` ? MessageKit.preview(data) : ``}"
+                android:text="@{MessageKit.isList(type) ? MessageKit.preview(data) : ``}"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="13sp"
                 app:layout_constraintEnd_toEndOf="parent"

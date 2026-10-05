@@ -12,6 +12,20 @@ import com.example.c001apk.logic.model.MessageResponse
  */
 object MessageKit {
 
+    /**
+     * 列表类型判断。⚠️ 布局里**不能**写 `type == \`list\``：
+     * databinding 生成的代码对 String 的 `==` 是引用比较（不是 equals），
+     * 传进来的 "list" 和字面量不是同一个对象，恒为 false——
+     * 实测私信列表会因此走 else 分支，把「对方」显示成我自己（最后一条是我发的那些会话）。
+     * 所有类型判断统一走这里（Kotlin 的 == 是真 equals）。
+     */
+    @JvmStatic
+    fun isList(type: String?): Boolean = type == "list"
+
+    /** 好友关注列表（第二行显示「关注了你」） */
+    @JvmStatic
+    fun isContactsFollow(type: String?): Boolean = type == "contactsFollow"
+
     /** 对方的 uid */
     @JvmStatic
     fun partnerUid(data: MessageResponse.Data?): String {
@@ -56,14 +70,21 @@ object MessageKit {
     }
 
     /**
-     * 是不是「酷安小秘书」——官方机器人，只会推送登录提醒和站内信，不是私信对象。
-     * 它照样出现在 `/v6/message/list` 里，所以列表仍然要显示，但进去只能看，不能回复。
+     * 是不是「酷安小秘书」——官方机器人（uid 10086），只推送登录提醒和站内信，不是私信对象。
      *
-     * 接口没给官方账号标记位（它的主页是 `/mp/user/xms`，也没有可用的数字 uid），
-     * 只能按昵称认。用 contains 是为了兜住「酷安小秘书」「小秘书」这类写法。
+     * 实测（2026-10-05）：`GET /v6/message/list` 的 18 条会话里**没有**小秘书，
+     * 它的消息全在 `GET /v6/notification/list` 里（`type=notify_xms`、`fromuid=10086`）。
+     * 服务端不认 `type` / `fromuid` 过滤参数（照旧返回全部 20 条），只能本地筛。
+     *
+     * 昵称必须全等——用 contains 会让名字里带「小秘书」的普通用户被误判成机器人。
      */
     @JvmStatic
-    fun isSecretaryName(name: String?): Boolean = name?.contains("小秘书") == true
+    fun isSecretaryName(name: String?): Boolean = name == "酷安小秘书"
+
+    /** 通知条目是不是小秘书发的 */
+    @JvmStatic
+    fun isSecretaryNotify(data: MessageResponse.Data?): Boolean =
+        data?.type == "notify_xms" || data?.fromuid == "10086"
 
     /** 会话项是不是小秘书 */
     @JvmStatic

@@ -46,6 +46,15 @@ data class MessageResponse(
         val fromusername: String,
         val fromuid: String,
         val note: String,
+        /**
+         * 通知条目的细分类型：`notify_xms`（酷安小秘书）/ `feed_reply` / `rating_reply` …
+         * 只有 `/v6/notification/*` 返回，私信会话不返回。
+         */
+        val type: String? = null,
+        /** 通知条目的唯一标识，删除通知时用它 */
+        val slug: String? = null,
+        /** 通知里挂的跳转地址，如 `/u/10086` */
+        val url: String? = null,
         /** 私信会话标识，聊天页靠它拉历史记录 */
         val ukey: String? = null,
         /** 私信会话未读数（只有 /v6/message/list 返回） */

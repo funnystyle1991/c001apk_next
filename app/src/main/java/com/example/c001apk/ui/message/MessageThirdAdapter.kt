@@ -14,21 +14,28 @@ import com.example.c001apk.util.CookieUtil.atme
 import com.example.c001apk.util.CookieUtil.contacts_follow
 import com.example.c001apk.util.CookieUtil.feedlike
 import com.example.c001apk.util.CookieUtil.message
+import com.example.c001apk.util.CookieUtil.notification
 import com.example.c001apk.util.IntentUtil
 import com.example.c001apk.util.PrefManager
 
 
 /**
- * 消息中心的入口宫格：@我的动态 / @我的评论 / 我收到的赞 / 好友关注 / 私信。
+ * 消息中心的入口宫格：@我的动态 / @我的评论 / 我收到的赞 / 好友关注 / 私信 / 酷安小秘书。
+ *
+ * 小秘书单独开一个入口是因为它**不是私信对象**：登录提醒和站内信都走通知接口
+ * （`/v6/notification/list` 里 type=notify_xms），`/v6/message/list` 里根本没有它。
+ *
  * 未读数直接读 CookieUtil（进页面时 /v6/notification/checkCount 刷过一遍）。
  */
 class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHolder>() {
 
-    private val messTitle = listOf("@我的动态", "@我的评论", "我收到的赞", "好友关注", "私信")
-    private val logoColorList = listOf("#2196f3", "#00bcd4", "#4caf50", "#f44336", "#ff9800")
+    private val messTitle =
+        listOf("@我的动态", "@我的评论", "我收到的赞", "好友关注", "私信", "酷安小秘书")
+    private val logoColorList =
+        listOf("#2196f3", "#00bcd4", "#4caf50", "#f44336", "#ff9800", "#9c27b0")
     private val logoList = listOf(
         R.drawable.ic_at, R.drawable.ic_comment, R.drawable.ic_thumb,
-        R.drawable.ic_add, R.drawable.ic_message1
+        R.drawable.ic_add, R.drawable.ic_message1, R.drawable.ic_notification_bell
     )
 
     @SuppressLint("NotifyDataSetChanged")
@@ -66,6 +73,11 @@ class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHo
                             }
 
                             "私信" -> putExtra("type", "list")
+
+                            "酷安小秘书" -> {
+                                notification = 0
+                                putExtra("type", "secretary")
+                            }
                         }
                     }
                 }
@@ -78,7 +90,9 @@ class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHo
                 1 -> atcommentme ?: 0
                 2 -> feedlike ?: 0
                 3 -> contacts_follow ?: 0
-                else -> message ?: 0
+                4 -> message ?: 0
+                // 小秘书的红点只能借用「通知未读」：接口没有按 notify_xms 单独给计数
+                else -> notification
             }
             binding.badge.text = if (count > 99) "99+" else count.toString()
             binding.badge.isVisible = count > 0

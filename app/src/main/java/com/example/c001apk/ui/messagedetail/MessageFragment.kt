@@ -48,6 +48,8 @@ class MessageFragment : BasePagerFragment() {
 
             "list" -> "私信"
 
+            "secretary" -> "酷安小秘书"
+
             else -> ""
         }
     }

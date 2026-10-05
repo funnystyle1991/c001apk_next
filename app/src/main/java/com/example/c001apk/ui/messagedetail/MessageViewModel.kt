@@ -13,6 +13,7 @@ import com.example.c001apk.logic.model.MessageResponse
 import com.example.c001apk.logic.repository.BlackListRepo
 import com.example.c001apk.logic.repository.NetworkRepo
 import com.example.c001apk.ui.base.BaseViewModel
+import com.example.c001apk.util.MessageKit
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -55,6 +56,9 @@ class MessageViewModel @AssistedInject constructor(
                 "feedLike" -> url = "/v6/notification/feedLikeList"
                 "contactsFollow" -> url = "/v6/notification/contactsFollowList"
                 "list" -> url = "/v6/message/list"
+                // 小秘书不是私信对象：它的登录提醒 / 站内信都在通知列表里（type=notify_xms），
+                // /v6/message/list 里根本没有它，见 MessageKit.isSecretaryNotify
+                "secretary" -> url = "/v6/notification/list"
 
             }
         viewModelScope.launch(Dispatchers.IO) {
@@ -84,12 +88,16 @@ class MessageViewModel @AssistedInject constructor(
                                 feed.data.forEach {
                                     // "message" 是私信会话（/v6/message/list）的 entityType，
                                     // 漏掉它会让私信列表整个空白
-                                    if (it.entityType in listOf(
+                                    if (it.entityType !in listOf(
                                             "feed", "feed_reply", "notification", "message"
                                         )
-                                    )
-                                        if (!blackListRepo.checkUid(it.uid))
-                                            messageList.add(it)
+                                    ) return@forEach
+                                    // 小秘书列表只要它自己的通知：服务端不认 type / fromuid 过滤参数
+                                    // （实测照旧返回全部 20 条），只能在这儿本地筛
+                                    if (type == "secretary" && !MessageKit.isSecretaryNotify(it))
+                                        return@forEach
+                                    if (!blackListRepo.checkUid(it.uid))
+                                        messageList.add(it)
                                 }
                             }
                             page++

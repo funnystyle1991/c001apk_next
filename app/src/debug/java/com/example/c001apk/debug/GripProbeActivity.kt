@@ -145,12 +145,13 @@ class GripProbeActivity : Activity(), SensorEventListener {
                 watch(s)
             }
         }
-        sensorStringCandidates.forEach { name ->
-            val s = sensorManager.getDefaultSensor(name)
+        // SensorManager 只暴露了 getDefaultSensor(Int)，按 stringType 查得自己扫清单
+        sensorStringCandidates.forEach { want ->
+            val s = all.firstOrNull { it.stringType == want }
             if (s == null) {
-                log("getDefaultSensor($name) = null")
+                log("清单里没有 $want")
             } else {
-                log("getDefaultSensor($name) = ${s.name}  -> 开始监听")
+                log("命中 $want = ${s.name}  -> 开始监听")
                 watch(s)
             }
         }

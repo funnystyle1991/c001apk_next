@@ -40,6 +40,8 @@ class MessageContentAdapter(
                         putExtra("uid", MessageKit.partnerUid(data))
                         putExtra("uname", MessageKit.partnerName(data))
                         putExtra("avatar", MessageKit.partnerAvatar(data))
+                        // 小秘书是官方机器人（登录提醒 / 站内信），只能看不能回
+                        putExtra("readOnly", MessageKit.isSecretary(data))
                     }
                 }
             }

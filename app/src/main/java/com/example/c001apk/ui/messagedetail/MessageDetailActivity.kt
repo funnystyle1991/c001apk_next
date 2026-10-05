@@ -5,10 +5,12 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.c001apk.databinding.ActivityMessageDetailBinding
 import com.example.c001apk.ui.base.BaseActivity
+import com.example.c001apk.util.MessageKit
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.dp
 import dagger.hilt.android.AndroidEntryPoint
@@ -33,6 +35,9 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
         )
     }
 
+    /** 只读会话（酷安小秘书）：能看登录提醒 / 站内信，但不给输入框 */
+    private var readOnly = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -47,7 +52,8 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
     }
 
     private fun initView() {
-        binding.uname = intent.getStringExtra("uname").orEmpty()
+        // 标题直接在代码里给，跟项目里其它 Toolbar 页保持一致（别走 app:title 的 databinding）
+        binding.toolBar.title = intent.getStringExtra("uname").orEmpty()
         binding.toolBar.setNavigationOnClickListener { finish() }
 
         binding.recyclerView.apply {
@@ -56,7 +62,21 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
         }
 
         binding.sendBtn.setOnClickListener { send() }
+        applyReadOnly()
         applyInputBarInsets()
+    }
+
+    /**
+     * 会话列表进来会带 readOnly；主页那类只有 uid 的入口则按对方昵称兜底判断，
+     * 保证不管从哪条路进小秘书的会话，都发不出消息。
+     */
+    private fun applyReadOnly() {
+        readOnly = intent.getBooleanExtra("readOnly", false) ||
+                MessageKit.isSecretaryName(intent.getStringExtra("uname"))
+        if (!readOnly) return
+        binding.editText.isVisible = false
+        binding.sendBtn.isVisible = false
+        binding.readOnlyTip.isVisible = true
     }
 
     /**
@@ -91,6 +111,7 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
     }
 
     private fun send() {
+        if (readOnly) return
         val text = binding.editText.text?.toString().orEmpty()
         if (text.isBlank()) return
         binding.editText.setText("")

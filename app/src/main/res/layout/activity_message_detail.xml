@@ -7,14 +7,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <data>
-
-        <variable
-            name="uname"
-            type="String" />
-
-    </data>
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -33,7 +25,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:navigationIcon="@drawable/ic_back"
-            app:title="@{uname}"
             tools:title="对方昵称" />
 
         <View
@@ -94,6 +85,24 @@
                 android:contentDescription="发送"
                 app:icon="@drawable/ic_send"
                 tools:ignore="HardcodedText" />
+
+            <!--
+                只读会话（酷安小秘书）用它顶掉输入框：对方是官方机器人，发消息没有意义。
+            -->
+            <TextView
+                android:id="@+id/readOnlyTip"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:text="酷安小秘书只会推送登录提醒和站内信，无法回复"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="13sp"
+                android:visibility="gone"
+                tools:ignore="HardcodedText"
+                tools:visibility="visible" />
 
         </LinearLayout>
 

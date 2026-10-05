@@ -221,14 +221,19 @@ jobs:
       - name: Report Gradle failure
         # 只在 Gradle 构建本身失败时 tail 日志；上传/签名等步骤失败不再刷一堆假 error
         if: failure() && (steps.buildRelease.outcome == 'failure' || steps.buildDebug.outcome == 'failure')
+        env:
+          REL_OUTCOME: ${{ steps.buildRelease.outcome }}
+          DBG_OUTCOME: ${{ steps.buildDebug.outcome }}
         run: |
-          echo "::error::REPORT-STEP | pwd=$(pwd) | logs=$(ls -1 gradle-*.log 2>/dev/null | tr '\n' ' ')"
-          for f in gradle-release.log gradle-debug.log; do
-            if [ -f "$f" ]; then
-              echo "::error::logs found: $f ($(wc -c < "$f") bytes)"
-              # 只上报决定性证据：Kotlin/AAPT 报错行 + "What went wrong" 块，避免被 warning 淹没
-              { grep -E "^e: |error: " "$f" | head -6; } | while IFS= read -r line; do echo "::error::$line"; done
-              awk '/What went wrong/{flag=1} flag{print; n++} n>10{exit}' "$f" | while IFS= read -r line; do echo "::error::WWW | $line"; done
-              break
-            fi
-          done
+          echo "::error::REPORT-STEP | pwd=$(pwd) | logs=$(ls -1 gradle-*.log 2>/dev/null | tr '\n' ' ') | release=$REL_OUTCOME debug=$DBG_OUTCOME"
+          # 两个变体分开报：release 过了而 debug 挂了时，只看第一个存在的日志会完全看不到真错误
+          report() {
+            log="$1"; outcome="$2"; label="$3"
+            if [ "$outcome" != "failure" ]; then return; fi
+            if [ ! -f "$log" ]; then echo "::error::$label 失败但没有 $log（Gradle 之前就挂了？）"; return; fi
+            echo "::error::$label FAILED, $log $(wc -c < "$log") bytes"
+            grep -E "^e: |^error: |error: " "$log" | head -8 | while IFS= read -r line; do echo "::error::$label | $line"; done
+            awk '/What went wrong/{flag=1} flag{print; n++} n>12{exit}' "$log" | while IFS= read -r line; do echo "::error::$label WWW | $line"; done
+          }
+          report gradle-release.log "$REL_OUTCOME" release
+          report gradle-debug.log "$DBG_OUTCOME" debug

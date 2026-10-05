@@ -82,8 +82,10 @@ class MessageViewModel @AssistedInject constructor(
                             if (isRefreshing) messageList.clear()
                             if (isRefreshing || isLoadMore) {
                                 feed.data.forEach {
+                                    // "message" 是私信会话（/v6/message/list）的 entityType，
+                                    // 漏掉它会让私信列表整个空白
                                     if (it.entityType in listOf(
-                                            "feed", "feed_reply", "notification"
+                                            "feed", "feed_reply", "notification", "message"
                                         )
                                     )
                                         if (!blackListRepo.checkUid(it.uid))

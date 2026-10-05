@@ -90,7 +90,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         binding.navGlass.apply {
             enableDynamicBackground = true
             enableShadow = true
-            // 仿官方酷安底栏：胶囊药丸形 + 半透明主题 surface 色磨砂（自动跟暗黑模式）。
+            // 仿官方酷安底栏：clear 清水玻璃，只压一层很淡的主题色防"花"。
             // 别开 adaptiveTint——它会按背后内容亮度压暗染色，列表一深整条就黑给你看
             setGlassTint(
                 MaterialColors.getColor(
@@ -98,7 +98,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                     com.google.android.material.R.attr.colorSurface,
                     0
                 ),
-                0.6f
+                0.25f
             )
             blurAmount = 0.1f
             // 横屏是 ConstraintLayout + NavigationRail，没有 CoordinatorLayout 也就无所谓滚动隐藏行为

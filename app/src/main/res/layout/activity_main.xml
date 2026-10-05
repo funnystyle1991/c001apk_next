@@ -18,7 +18,7 @@
         android:layout_marginBottom="10dp"
         app:backdropSourceId="@id/viewPager"
         app:cornerRadius="999dp"
-        app:glassMaterial="regular"
+        app:glassMaterial="clear"
         app:layout_anchor="@id/viewPager"
         app:layout_anchorGravity="bottom">
 

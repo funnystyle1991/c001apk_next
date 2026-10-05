@@ -252,10 +252,11 @@
 
     <!-- 底栏默认选中指示器缩成 0，选中态改由 LiquidIndicatorView 画液态气泡 -->
     <!-- 隐藏 Material 默认的活动指示块（液态气泡指示器由 LiquidIndicatorView 自己画）。
-         width/height 是 ActiveIndicator 父样式的属性，必须继承否则 AAPT 报 attr/width not found -->
+         Material 1.10.0 这里用的是框架属性 android:width/android:height（API 28+），
+         不是自有的 attr/width——写无前缀的 width 会 AAPT 报 attr/width not found -->
     <style name="NavNoActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
-        <item name="width">0dp</item>
-        <item name="height">0dp</item>
+        <item name="android:width">0dp</item>
+        <item name="android:height">0dp</item>
     </style>
 
 </resources>

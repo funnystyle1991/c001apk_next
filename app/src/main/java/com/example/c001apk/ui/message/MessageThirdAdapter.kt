@@ -16,6 +16,7 @@ import com.example.c001apk.util.CookieUtil.feedlike
 import com.example.c001apk.util.CookieUtil.message
 import com.example.c001apk.util.CookieUtil.notification
 import com.example.c001apk.util.IntentUtil
+import com.example.c001apk.util.MessageCenterSeenStore
 import com.example.c001apk.util.PrefManager
 
 
@@ -50,34 +51,17 @@ class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHo
             if (PrefManager.isLogin) {
                 itemView.setOnClickListener {
                     binding.badge.isVisible = false
+                    // 这里不再把 CookieUtil 的未读数本地清零：红点统一由
+                    // 「服务端未读数 − 本机已读账本」算出来，点进分类页看过的那些
+                    // 会在分类页里记账（MessageViewModel.markSeen），返回后红点自然消掉
                     IntentUtil.startActivity<MessageActivity>(itemView.context) {
                         when (binding.title.text) {
-                            "@我的动态" -> {
-                                atme = null
-                                putExtra("type", "atMe")
-                            }
-
-                            "@我的评论" -> {
-                                atcommentme = null
-                                putExtra("type", "atCommentMe")
-                            }
-
-                            "我收到的赞" -> {
-                                feedlike = null
-                                putExtra("type", "feedLike")
-                            }
-
-                            "好友关注" -> {
-                                contacts_follow = null
-                                putExtra("type", "contactsFollow")
-                            }
-
+                            "@我的动态" -> putExtra("type", "atMe")
+                            "@我的评论" -> putExtra("type", "atCommentMe")
+                            "我收到的赞" -> putExtra("type", "feedLike")
+                            "好友关注" -> putExtra("type", "contactsFollow")
                             "私信" -> putExtra("type", "list")
-
-                            "酷安小秘书" -> {
-                                notification = 0
-                                putExtra("type", "secretary")
-                            }
+                            "酷安小秘书" -> putExtra("type", "secretary")
                         }
                     }
                 }
@@ -85,7 +69,7 @@ class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHo
         }
 
         fun bind() {
-            val count = when (bindingAdapterPosition) {
+            val server = when (bindingAdapterPosition) {
                 0 -> atme ?: 0
                 1 -> atcommentme ?: 0
                 2 -> feedlike ?: 0
@@ -94,6 +78,21 @@ class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHo
                 // 小秘书的红点只能借用「通知未读」：接口没有按 notify_xms 单独给计数
                 else -> notification
             }
+
+            // 下方未读列表里展示过的条目在本机已算已读，红点要跟着抵消，
+            // 否则看完了红点还挂着（服务端没有逐条已读接口，只能本机记账）
+            val category = when (bindingAdapterPosition) {
+                0 -> "atMe"
+                1 -> "atCommentMe"
+                2 -> "feedLike"
+                3 -> "contactsFollow"
+                // 私信（4）的未读是会话级的，不在这里抵消
+                5 -> "secretary"
+                else -> null
+            }
+            val count =
+                if (category == null) server else MessageCenterSeenStore.unreadOf(category, server)
+
             binding.badge.text = if (count > 99) "99+" else count.toString()
             binding.badge.isVisible = count > 0
             binding.executePendingBindings()

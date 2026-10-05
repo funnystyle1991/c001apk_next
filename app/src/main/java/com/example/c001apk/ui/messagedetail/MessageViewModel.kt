@@ -13,6 +13,8 @@ import com.example.c001apk.logic.model.MessageResponse
 import com.example.c001apk.logic.repository.BlackListRepo
 import com.example.c001apk.logic.repository.NetworkRepo
 import com.example.c001apk.ui.base.BaseViewModel
+import com.example.c001apk.util.CookieUtil
+import com.example.c001apk.util.MessageCenterSeenStore
 import com.example.c001apk.util.MessageKit
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -47,6 +49,38 @@ class MessageViewModel @AssistedInject constructor(
     var url: String? = null
     val footerState = MutableLiveData<FooterState>()
     val messageListData = MutableLiveData<List<MessageResponse.Data>>()
+
+    /**
+     * 本机账本里的分类名（null = 不参与「看过即已读」）。
+     * 私信（list）的未读是会话级的、分类页自己有已读逻辑，不算进来。
+     */
+    private val seenCategory: String? = when (type) {
+        "atMe", "atCommentMe", "feedLike", "contactsFollow", "secretary" -> type
+        else -> null
+    }
+
+    /** 该分类服务端未读数：服务端未读 = 这个分类最新的 N 条 */
+    private val seenTarget: Int
+        get() = when (type) {
+            "atMe" -> CookieUtil.atme ?: 0
+            "atCommentMe" -> CookieUtil.atcommentme ?: 0
+            "feedLike" -> CookieUtil.feedlike ?: 0
+            "contactsFollow" -> CookieUtil.contacts_follow ?: 0
+            "secretary" -> CookieUtil.notification
+            else -> 0
+        }
+
+    /**
+     * 分类页看过的未读也算已读：第一页开头的 N 条（N = 服务端该分类未读数）就是未读，
+     * 记进本机账本后，消息中心的宫格红点回来时才会消掉。
+     */
+    private fun markSeen(data: List<MessageResponse.Data>) {
+        val category = seenCategory ?: return
+        val target = seenTarget
+        if (target <= 0) return
+        val added = MessageCenterSeenStore.markSeen(category, data.take(target).map { it.id })
+        MessageCenterSeenStore.addSeenCount(category, added)
+    }
 
     override fun fetchData() {
         if (url.isNullOrEmpty())
@@ -83,6 +117,8 @@ class MessageViewModel @AssistedInject constructor(
                             return@collect
                         } else if (!feed.data.isNullOrEmpty()) {
                             lastItem = feed.data.last().id
+                            // 只有第一页开头才是未读区间，翻页的不算
+                            if (page == 1) markSeen(feed.data)
                             if (isRefreshing) messageList.clear()
                             if (isRefreshing || isLoadMore) {
                                 feed.data.forEach {

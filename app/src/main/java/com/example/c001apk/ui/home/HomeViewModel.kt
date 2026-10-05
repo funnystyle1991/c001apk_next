@@ -70,6 +70,7 @@ class HomeViewModel @Inject constructor(
                         CookieUtil.badge = it.unreadBadge
                         CookieUtil.notification = it.unreadNotification
                         CookieUtil.message = it.message
+                        CookieUtil.commentme = it.commentme
                     }
                 }
         }

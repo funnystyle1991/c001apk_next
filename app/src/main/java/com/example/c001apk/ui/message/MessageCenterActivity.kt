@@ -17,7 +17,6 @@ import com.example.c001apk.adapter.ItemListener
 import com.example.c001apk.databinding.ActivityMessageCenterBinding
 import com.example.c001apk.ui.base.BaseActivity
 import com.example.c001apk.ui.login.WebLoginActivity
-import com.example.c001apk.util.CookieUtil
 import com.example.c001apk.util.IntentUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.dp
@@ -37,7 +36,7 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
 
     private val viewModel by viewModels<MessageCenterViewModel>()
     private val entryAdapter by lazy { MessageThirdAdapter() }
-    private lateinit var mAdapter: MessageAdapter
+    private lateinit var mAdapter: MessageCenterAdapter
     private lateinit var footerAdapter: FooterAdapter
     private lateinit var mLayoutManager: LinearLayoutManager
     private val isLogin by lazy { PrefManager.isLogin }
@@ -63,7 +62,7 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
             adapter = entryAdapter
         }
 
-        mAdapter = MessageAdapter(ItemClickListener())
+        mAdapter = MessageCenterAdapter(ItemClickListener())
         footerAdapter = FooterAdapter(ReloadListener())
         mLayoutManager = LinearLayoutManager(this)
         binding.recyclerView.apply {
@@ -146,30 +145,20 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
     }
 
     private fun loadMore() {
-        viewModel.isLoadMore = true
-        viewModel.fetchMessage()
+        viewModel.loadMore()
     }
 
     private fun getData() {
-        viewModel.lastItem = null
-        viewModel.page = 1
-        viewModel.isEnd = false
-        viewModel.isRefreshing = true
-        viewModel.isLoadMore = false
-        viewModel.onCheckCount()
-        viewModel.fetchMessage()
+        viewModel.refresh()
     }
 
     override fun onResume() {
         super.onResume()
-        // 从分类页（@我 / 评论 / 赞 / 关注）返回时，未读已经被清掉，这里同步红点与列表
-        if (isLogin && CookieUtil.badge != 0) {
-            CookieUtil.badge = 0
+        // 从分类页（@我 / 评论 / 赞 / 关注）回来时，那边已经把看过的条目记成已读，
+        // 这里重算一遍：宫格红点按本机账本抵消，下面的未读列表同步
+        if (isLogin) {
             viewModel.messCountList.value = true
-            if (CookieUtil.notification != 0) {
-                CookieUtil.notification = 0
-                viewModel.refreshMessage()
-            }
+            viewModel.refresh()
         }
     }
 

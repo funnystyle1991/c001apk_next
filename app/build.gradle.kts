@@ -198,8 +198,9 @@ dependencies {
     implementation(libs.glide.okhttp3.integration)
     implementation(libs.glide.transformations)
     implementation("com.github.QWEA0:liquidglass:v2.0.11")
-    // 荣耀随心握官方 SDK：只进 debug 包，用来在真机上验证接口是否可用
-    debugImplementation("com.hihonor.mcs:smartgripkit:1.0.0.300")
+    // 荣耀随心握官方 SDK：底栏跟随握持手。非荣耀机型上它初始化会失败，
+    // 调用处一律 catch Throwable 后让底栏保持居中
+    implementation("com.hihonor.mcs:smartgripkit:1.0.0.300")
     implementation(project(":mojito"))
     implementation(project(":SketchImageViewLoader"))
     implementation(project(":GlideImageLoader"))

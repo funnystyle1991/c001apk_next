@@ -219,3 +219,8 @@
 # 本项目 compileSdk 34 里 android.jar 没有它们；库内部有版本判断，低版本不会走到
 -dontwarn android.graphics.RuntimeXfermode
 -dontwarn android.graphics.RuntimeColorFilter
+
+# 荣耀随心握 SDK 引用的 HWExtDeviceManager / SystemPropertiesEx / HwFoldScreenManagerEx
+# 都是荣耀框架里的隐藏类，compileSdk 34 的 android.jar 没有，R8 会报 Missing class；
+# 真机上由系统提供，非荣耀机型走不到那条分支
+-dontwarn com.hihonor.android.**

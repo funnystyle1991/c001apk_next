@@ -1,7 +1,10 @@
 package com.example.c001apk.ui.main
 
 import android.os.Bundle
+import android.util.Log
+import android.view.View
 import android.view.ViewGroup
+import android.view.animation.DecelerateInterpolator
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -28,6 +31,8 @@ import com.google.android.material.behavior.HideBottomViewOnScrollBehavior
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.navigation.NavigationBarView
+import com.hihonor.smartgripkit.SmartGripEventListener
+import com.hihonor.smartgripkit.SmartGripEventManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -39,6 +44,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
     override var controller: IOnBottomClickListener? = null
     private lateinit var navView: NavigationBarView
     private val isLogin by lazy { PrefManager.isLogin }
+    private var gripListener: SmartGripEventListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -154,6 +160,60 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             navItemCenter(0)?.let { (x, y) -> binding.navIndicator.placeAt(x, y) }
         }
 
+        registerGripFollow()
+    }
+
+    /**
+     * 荣耀随心握：单手握持时把底栏整条靠向那只手，双手/平放回到正中。
+     *
+     * SDK 内部要碰荣耀框架的隐藏类，非荣耀机型连静态初始化都过不去，
+     * 所以每个入口都按 Throwable 兜住——兜住就是底栏一直居中，不影响任何人。
+     */
+    private fun registerGripFollow() {
+        // 横屏是竖排 NavigationRail，往左右靠没有意义
+        if (navView !is BottomNavigationView) return
+        val support = try {
+            SmartGripEventManager.getSmartGripSupportState(this)
+        } catch (t: Throwable) {
+            Log.i("MainActivity", "grip follow unavailable: ${t.javaClass.simpleName}")
+            return
+        }
+        if (support != SmartGripEventManager.SMART_GRIP_SUPPORT) {
+            Log.i("MainActivity", "grip follow off, supportState=$support")
+            return
+        }
+        val listener = object : SmartGripEventListener() {
+            override fun onSmartGripEventChanged(state: Int) {
+                // 回调来自 binder 线程，改 View 得回主线程
+                runOnUiThread { shiftBarToGrip(state) }
+            }
+        }
+        val ok = try {
+            gripListener = listener
+            SmartGripEventManager.registerSmartGripMotionListener(this, listener)
+        } catch (t: Throwable) {
+            Log.e("MainActivity", "registerSmartGripMotionListener failed", t)
+            gripListener = null
+            false
+        }
+        Log.i("MainActivity", "grip follow registered=$ok")
+    }
+
+    private fun shiftBarToGrip(state: Int) {
+        val bar = binding.navGlass
+        val screenWidth = (bar.parent as? View)?.width ?: return
+        val marginStart = (bar.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart?.toFloat() ?: return
+        if (bar.width == 0 || screenWidth == 0) return
+        // 居中时左右留白相等，靠到某一侧就是把外侧那份留白让出来
+        val max = (screenWidth - bar.width) / 2f - marginStart
+        val target = when (state) {
+            SmartGripEventManager.GRIP_STATE_LEFT_HAND -> -max
+            SmartGripEventManager.GRIP_STATE_RIGHT_HAND -> max
+            else -> 0f
+        }
+        if (bar.translationX == target) return
+        bar.animate().translationX(target).setDuration(300)
+            .setInterpolator(DecelerateInterpolator(1.6f)).start()
     }
 
     private fun initObserve() {
@@ -269,6 +329,14 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
 
     override fun onDestroy() {
         super.onDestroy()
+        gripListener?.let { listener ->
+            try {
+                SmartGripEventManager.unregisterSmartGripMotionListener(this, listener)
+            } catch (t: Throwable) {
+                Log.e("MainActivity", "unregisterSmartGripMotionListener failed", t)
+            }
+        }
+        gripListener = null
         ActivityCollector.removeActivity(this)
     }
 

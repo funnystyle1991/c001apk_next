@@ -2,6 +2,7 @@ package com.example.c001apk.util
 
 import android.text.TextUtils
 import com.example.c001apk.logic.model.MessageResponse
+import com.google.gson.Gson
 
 /**
  * `/v6/notificationV18/list` 的适配层。
@@ -42,6 +43,9 @@ object NotificationV18Kit {
     fun isReplyType(noteType: String?): Boolean =
         noteType == "feed_reply" || noteType == "feed_reply_reply"
 
+    /** 只用于 [toMessage] 的补字段往返，线程安全，共用一个实例 */
+    private val gson = Gson()
+
     /**
      * 把 V18 条目归一化成老接口那套渲染模型（[MessageResponse.Data]），
      * 这样通知卡片、未读账本、点击跳转全都不用改。
@@ -56,6 +60,13 @@ object NotificationV18Kit {
      *
      * 正文先 [TextUtils.htmlEncode] 再放进锚点：回复内容里的 `<` / `&` 否则会把 HTML 搅坏
      * （渲染侧 `SpannableStringBuilderUtil` 走的是 `Html.fromHtml`，转义过的实体会正常还原）。
+     *
+     * **补字段走 Gson 往返而不是 `data.copy()`**：Gson 反射填值不走 Kotlin 构造器，
+     * V18 没下发的那些键（`message` / `fromuid` / `title` / `likenum` …）在这份模型里是
+     * 非空类型却留着 null，`copy()` 生成的 null 校验会当场抛
+     * `NullPointerException: Parameter specified as non-null is null（parameter message）`
+     * ——2026-10-06 在 emulator-5554 上实测整页「加载失败」就是这个。JSON 往返对 null
+     * 是无感的：写出去时 null 原样保留，读回来还是 null，不会触发任何校验。
      */
     fun toMessage(data: MessageResponse.Data): MessageResponse.Data {
         val text = data.note.orEmpty()
@@ -69,10 +80,10 @@ object NotificationV18Kit {
                 if (title.isEmpty()) link else "${TextUtils.htmlEncode(title)}：$link"
             }
         }
-        return data.copy(
-            fromuid = data.fromUid.orEmpty(),
-            type = data.noteType,
-            note = note
-        )
+        val json = gson.toJsonTree(data).asJsonObject
+        json.addProperty("fromuid", data.fromUid.orEmpty())
+        json.addProperty("type", data.noteType)
+        json.addProperty("note", note)
+        return gson.fromJson(json, MessageResponse.Data::class.java)
     }
 }

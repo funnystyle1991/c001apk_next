@@ -170,7 +170,6 @@ configurations.configureEach {
 dependencies {
     androidTestImplementation(libs.androidx.ext.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    debugImplementation(libs.leakcanary.android)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.fragment.ktx)

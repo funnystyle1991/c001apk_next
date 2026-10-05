@@ -215,3 +215,7 @@
 # 液态玻璃底栏：NativeGauss 的 JNI 方法是 Java_ 名字直连注册，R8 改名会 UnsatisfiedLinkError
 -keep class com.example.liquidglass.** { *; }
 -keep class com.example.blur.** { *; }
+# RuntimeXfermode / RuntimeColorFilter 是 API 36 框架类，库按 compileSdk 36 编译，
+# 本项目 compileSdk 34 里 android.jar 没有它们；库内部有版本判断，低版本不会走到
+-dontwarn android.graphics.RuntimeXfermode
+-dontwarn android.graphics.RuntimeColorFilter

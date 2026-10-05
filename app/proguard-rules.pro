@@ -211,3 +211,16 @@
 -keep class com.alibaba.sdk.android.oss.** { *; }
 -dontwarn okio.**
 -dontwarn org.apache.commons.codec.binary.**
+
+# 液态玻璃底栏：NativeGauss 的 JNI 方法是 Java_ 名字直连注册，R8 改名会 UnsatisfiedLinkError
+-keep class com.example.liquidglass.** { *; }
+-keep class com.example.blur.** { *; }
+# RuntimeXfermode / RuntimeColorFilter 是 API 36 框架类，库按 compileSdk 36 编译，
+# 本项目 compileSdk 34 里 android.jar 没有它们；库内部有版本判断，低版本不会走到
+-dontwarn android.graphics.RuntimeXfermode
+-dontwarn android.graphics.RuntimeColorFilter
+
+# 荣耀随心握 SDK 引用的 HWExtDeviceManager / SystemPropertiesEx / HwFoldScreenManagerEx
+# 都是荣耀框架里的隐藏类，compileSdk 34 的 android.jar 没有，R8 会报 Missing class；
+# 真机上由系统提供，非荣耀机型走不到那条分支
+-dontwarn com.hihonor.android.**

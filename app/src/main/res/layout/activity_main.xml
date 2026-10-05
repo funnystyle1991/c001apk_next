@@ -8,15 +8,38 @@
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
         android:orientation="horizontal" />
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNav"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:labelVisibilityMode="selected"
+    <!-- 190dp 而不是满宽：单手握持时整条要能靠到那一侧，满宽条往一边挪就会被屏幕切掉圆头 -->
+    <com.example.liquidglass.LiquidGlassView
+        android:id="@+id/navGlass"
+        android:layout_width="190dp"
+        android:layout_height="56dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="16dp"
+        app:backdropSourceId="@id/viewPager"
+        app:cornerRadius="999dp"
+        app:glassMaterial="clear"
         app:layout_anchor="@id/viewPager"
-        app:layout_anchorGravity="bottom"
-        app:menu="@menu/nav_menu" />
+        app:layout_anchorGravity="bottom|center_horizontal">
+
+        <!-- 高度固定 56dp 与导航同高、垂直居中：之前 0dp 导致气泡画不出可见区域 -->
+        <com.example.c001apk.view.LiquidIndicatorView
+            android:id="@+id/navIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_gravity="center_vertical" />
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottomNav"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@android:color/transparent"
+            app:itemActiveIndicatorStyle="@style/NavNoActiveIndicator"
+            app:labelVisibilityMode="unlabeled"
+            app:menu="@menu/nav_menu" />
+
+    </com.example.liquidglass.LiquidGlassView>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

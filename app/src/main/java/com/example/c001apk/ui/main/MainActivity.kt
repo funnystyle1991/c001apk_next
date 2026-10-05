@@ -118,6 +118,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             setOnItemSelectedListener {
                 when (it.itemId) {
                     R.id.navigation_home -> {
+                        slideIndicator(0)
                         if (binding.viewPager.currentItem == 0)
                             controller?.onReturnTop()
                         else
@@ -125,6 +126,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                     }
 
                     R.id.navigation_mine -> {
+                        slideIndicator(1)
                         binding.viewPager.setCurrentItem(1, true)
                         if (CookieUtil.badge != 0) {
                             navView.removeBadge(R.id.navigation_mine)
@@ -137,6 +139,16 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             if (this is BottomNavigationView) {
                 fixBottomNavigationViewInsets(this)
             }
+        }
+
+        // 液态选中气泡：颜色跟 Material  SecondaryContainer 走，初始放在首页图标下
+        binding.navIndicator.gooColor = MaterialColors.getColor(
+            this,
+            com.google.android.material.R.attr.colorSecondaryContainer,
+            0xFFE0E0E0.toInt()
+        )
+        binding.navGlass.post {
+            navItemCenter(0)?.let { (x, y) -> binding.navIndicator.placeAt(x, y) }
         }
 
     }
@@ -229,6 +241,19 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             view.updatePadding(bottom = 0)
             windowInsets
         }
+    }
+
+    private fun navItemCenter(index: Int): Pair<Float, Float>? {
+        // 横屏是竖排 NavigationRail，水平气泡不适用
+        val nav = navView as? BottomNavigationView ?: return null
+        val menu = nav.getChildAt(0) ?: return null
+        val item = menu.getChildAt(index) ?: return null
+        return (nav.x + menu.x + item.x + item.width / 2f) to
+                (nav.y + menu.y + item.y + item.height / 2f)
+    }
+
+    private fun slideIndicator(index: Int) {
+        navItemCenter(index)?.let { (x, y) -> binding.navIndicator.slideTo(x, y) }
     }
 
     private fun fixViewPager2Insets(view: ViewPager2) {

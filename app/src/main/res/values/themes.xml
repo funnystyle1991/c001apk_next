@@ -250,4 +250,10 @@
         <item name="android:windowContentOverlay">@null</item>
     </style>
 
+    <!-- 底栏默认选中指示器缩成 0，选中态改由 LiquidIndicatorView 画液态气泡 -->
+    <style name="NavNoActiveIndicator">
+        <item name="width">0dp</item>
+        <item name="height">0dp</item>
+    </style>
+
 </resources>

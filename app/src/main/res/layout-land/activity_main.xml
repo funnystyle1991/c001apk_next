@@ -28,6 +28,11 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
+        <com.example.c001apk.view.LiquidIndicatorView
+            android:id="@+id/navIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
         <com.google.android.material.navigationrail.NavigationRailView
             android:id="@+id/bottomNav"
             android:layout_width="wrap_content"

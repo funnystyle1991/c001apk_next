@@ -23,11 +23,12 @@
         app:layout_anchor="@id/viewPager"
         app:layout_anchorGravity="bottom">
 
-        <!-- 高度必须 0dp：在 wrap_content 父容器里 match_parent 会参与测量把玻璃罩撑满全屏 -->
+        <!-- 高度固定 56dp 与导航同高、垂直居中：之前 0dp 导致气泡画不出可见区域 -->
         <com.example.c001apk.view.LiquidIndicatorView
             android:id="@+id/navIndicator"
             android:layout_width="match_parent"
-            android:layout_height="0dp" />
+            android:layout_height="56dp"
+            android:layout_gravity="center_vertical" />
 
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNav"

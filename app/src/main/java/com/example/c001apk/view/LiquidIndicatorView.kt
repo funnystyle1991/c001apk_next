@@ -51,7 +51,7 @@ class LiquidIndicatorView @JvmOverloads constructor(
     fun placeAt(x: Float, y: Float) {
         headX = x
         tailX = x
-        centerY = y
+        centerY = if (height > 0) height / 2f else y
         placed = true
         invalidate()
     }
@@ -61,7 +61,7 @@ class LiquidIndicatorView @JvmOverloads constructor(
             placeAt(x, y)
             return
         }
-        centerY = y
+        centerY = if (height > 0) height / 2f else y
         animator?.cancel()
         animator = ValueAnimator.ofFloat(headX, x).apply {
             duration = 450

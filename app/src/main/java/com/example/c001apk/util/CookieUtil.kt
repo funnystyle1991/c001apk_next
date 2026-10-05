@@ -20,8 +20,8 @@ object CookieUtil {
     var message: Int? = null
 
     /**
-     * 评论回复未读数（checkCount 的 commentme）：动态 / 点评被评论。
-     * 宫格里没有单独入口，它对应消息中心下方列表的数据源 `/v6/notification/list`。
+     * 评论回复未读数（checkCount 的 commentme）：动态 / 点评被评论，以及「回复了你的评论」。
+     * 消息中心宫格「我的回复」和下方汇总列表的 commentMe 分类读的都是它。
      */
     var commentme: Int? = null
 

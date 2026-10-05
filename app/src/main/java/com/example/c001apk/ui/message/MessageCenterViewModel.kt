@@ -15,6 +15,7 @@ import com.example.c001apk.util.CookieUtil
 import com.example.c001apk.util.Event
 import com.example.c001apk.util.MessageCenterSeenStore
 import com.example.c001apk.util.MessageKit
+import com.example.c001apk.util.NotificationV18Kit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -24,10 +25,11 @@ import javax.inject.Inject
 /**
  * 消息中心（独立页面）：顶部宫格 + 下方「所有未读消息」汇总列表。
  *
- * 服务端只在 checkCount 里给**分类未读数**、不给逐条已读标记（实测 2026-10-05：
- * `/v6/notification/list` 一页 20 条 `isnew` 全是 0），所以这里的「未读」口径是
- * **该分类最新的 N 条、去掉本机已经看过的**，N 就是服务端该分类未读数——
- * 与 coolapk-desktop 的 `notificationSeen.ts` 完全一致。
+ * 服务端只在 checkCount 里给**分类未读数**、不给逐条已读标记（实测 2026-10-05
+ * `/v6/notification/list` 一页 20 条 `isnew` 全是 0；2026-10-06 换源时又量了一次
+ * `notificationV18/list` 全量 53 条，`isnew` / `unread_count` **同样全是 0**），
+ * 所以这里的「未读」口径是**该分类最新的 N 条、去掉本机已经看过的**，
+ * N 就是服务端该分类未读数——与 coolapk-desktop 的 `notificationSeen.ts` 完全一致。
  *
  * 展示过的条目当场记进本机账本（[MessageCenterSeenStore]）：既不会再出现在列表里，
  * 也会把宫格红点抵掉（看过就消，而不是等 16 天前的旧通知一直挂在下面）。
@@ -44,13 +46,19 @@ class MessageCenterViewModel @Inject constructor(
 
     /**
      * 未读汇总的数据来源：分类 → 接口。
-     * 「评论回复」（commentMe）在宫格里没有单独入口，但它是消息中心原先就在展示的那类，
-     * 一并收进来，不然这类未读在外面完全看不到。
+     *
+     * 「评论回复」（commentMe）走官方现在在用的 V18 统一通知流，不再用老
+     * `/v6/notification/list`：后者一页 20 条里 15 条是酷安小秘书刷屏、正文还是 HTML，
+     * 而且**一条「回复了你的评论」都没有**，这类未读在 app 里完全看不到。
+     * 归一化和类型过滤都在 NetworkRepo 里做（见 [NotificationV18Kit]），这里只认端点。
+     *
+     * 它现在在宫格里也有独立入口了（「我的回复」），但汇总列表照旧一并收着——
+     * 跟 @我 / 赞 / 关注那几类一样，宫格有入口不代表下面不列。
      */
     private val sources = linkedMapOf(
         "atMe" to "/v6/notification/atMeList",
         "atCommentMe" to "/v6/notification/atCommentMeList",
-        "commentMe" to "/v6/notification/list",
+        "commentMe" to NotificationV18Kit.URL,
         "feedLike" to "/v6/notification/feedLikeList",
         "contactsFollow" to "/v6/notification/contactsFollowList",
     )

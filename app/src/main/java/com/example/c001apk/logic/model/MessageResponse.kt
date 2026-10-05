@@ -47,6 +47,20 @@ data class MessageResponse(
         val fromuid: String,
         val note: String,
         /**
+         * 下面三个只有 `/v6/notificationV18/list` 会下发，而且是下划线命名（老接口没有）。
+         *
+         * V18 是官方消息中心现在在用的统一通知流。它跟老 `/v6/notification/list` 的差别只有三处：
+         * 分类叫 `note_type`（不是 `type`）、发送者叫 `from_uid`（不是 `fromuid`）、
+         * 正文 `note` 是**纯文本**（老接口是带 `<a>` 的 HTML）。
+         * 其余键名（id / entityType / dateline / note / url / slug / fromUserAvatar /
+         * fromusername / uid）两边一模一样，所以能直接反序列化进这个模型；
+         * 不一致的那几处由 [com.example.c001apk.util.NotificationV18Kit.toMessage] 归一化。
+         */
+        @SerializedName("note_type") val noteType: String? = null,
+        /** 服务端给的中文分类标题，如「评论了你的动态」（系统 / 活动消息为空） */
+        @SerializedName("noteTypeTitle") val noteTypeTitle: String? = null,
+        @SerializedName("from_uid") val fromUid: String? = null,
+        /**
          * 通知条目的细分类型：`notify_xms`（酷安小秘书）/ `feed_reply` / `rating_reply` …
          * 只有 `/v6/notification/` 下的接口会下发，私信会话不返回。
          */

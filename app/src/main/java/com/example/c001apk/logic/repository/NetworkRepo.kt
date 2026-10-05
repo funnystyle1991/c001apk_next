@@ -4,6 +4,7 @@ import com.example.c001apk.di.Api1Service
 import com.example.c001apk.di.Api1ServiceNoRedirect
 import com.example.c001apk.di.Api2Service
 import com.example.c001apk.logic.network.ApiService
+import com.example.c001apk.util.NotificationV18Kit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -284,8 +285,25 @@ class NetworkRepo @Inject constructor(
             Result.success(apiService.getDyhDetail(dyhId, type, page, lastItem).await())
         }
 
+    /**
+     * 一页通知。
+     *
+     * `url` 是 V18 通知流时多走一道归一化：它跟老接口的键名和正文形状不同，而且是混排流
+     * （夹带 @我 / 系统 / 活动消息），这里只留「回复我的」两类（见 [NotificationV18Kit]）。
+     * 两个调用方（消息中心的汇总列表、「我的回复」分类页）都从这儿过，免得各自判一遍。
+     */
     suspend fun getMessage(url: String, page: Int, lastItem: String?) = fire {
-        Result.success(apiService.getMessage(url, page, lastItem).await())
+        val response = apiService.getMessage(url, page, lastItem).await()
+        val data = if (url == NotificationV18Kit.URL)
+            response.data
+                ?.filter { NotificationV18Kit.isReplyType(it.noteType) }
+                ?.map { NotificationV18Kit.toMessage(it) }
+                // V18 的成功响应只有 data、没有 status / message。真把 null 透上去，
+                // 调用方会落在「既不 LoadingDone 也不 Failed」的空档里（老接口靠 message 兜底），
+                // 所以这里统一按「本页没有内容」处理，让它正常走到翻页结束。
+                ?: emptyList()
+        else response.data
+        Result.success(response.copy(data = data))
     }
 
     suspend fun getChatHistory(ukey: String, page: Int) = fire {

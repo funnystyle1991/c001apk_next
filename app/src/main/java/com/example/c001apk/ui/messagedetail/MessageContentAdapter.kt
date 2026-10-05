@@ -55,7 +55,7 @@ class MessageContentAdapter(
     }
 
     /**
-     * 小秘书的通知条目：复用消息中心那套渲染
+     * 通知条目（小秘书 / 我的回复）：复用消息中心那套渲染
      * （头像 + 昵称 + note 富文本 + 时间，点击开 note 里的链接）。
      */
     class NotifyViewHolder(
@@ -144,7 +144,9 @@ class MessageContentAdapter(
             "feedLike" -> 0
             "contactsFollow" -> 1
             "list" -> 1
+            // 小秘书 / 我的回复都是通知条目，走同一套卡片
             "secretary" -> 2
+            "commentMe" -> 2
             else -> throw IllegalArgumentException("invalid type")
         }
     }

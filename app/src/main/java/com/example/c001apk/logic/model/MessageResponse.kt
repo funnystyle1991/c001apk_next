@@ -48,7 +48,7 @@ data class MessageResponse(
         val note: String,
         /**
          * 通知条目的细分类型：`notify_xms`（酷安小秘书）/ `feed_reply` / `rating_reply` …
-         * 只有 `/v6/notification/*` 返回，私信会话不返回。
+         * 只有 `/v6/notification/` 下的接口会下发，私信会话不返回。
          */
         val type: String? = null,
         /** 通知条目的唯一标识，删除通知时用它 */

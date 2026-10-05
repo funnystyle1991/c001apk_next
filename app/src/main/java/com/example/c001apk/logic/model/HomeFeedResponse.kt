@@ -162,6 +162,18 @@ data class HomeFeedResponse(
         @SerializedName("comment_general") val commentGeneral: String? = null,
         @SerializedName("device_info") val ratingDeviceInfo: String? = null,
         @SerializedName("buy_status") val buyStatus: Int? = null,
+
+        // ---- 应用版本历史（/v6/apk/downloadVersionList）----
+        // 这个接口的条目没有 entityType / entityId / id，只有下面这几个 version* 字段，
+        // 所以 entityType 运行时是 null（非空声明挡不住 Gson），列表分类只能靠 versionId 判断。
+        val versionId: Long? = null,
+        val versionName: String? = null,
+        val versionCode: Long? = null,
+        val versionSize: String? = null,
+        val versionLength: Long? = null,
+        val versionDate: String? = null,
+        val downloadFrom: String? = null,
+        val packageName: String? = null,
     ) : Parcelable
 
     /** 话题页头部「最近关注的人」（只要 uid + 头像） */

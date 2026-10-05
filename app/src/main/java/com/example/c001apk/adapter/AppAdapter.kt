@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.c001apk.BR
 import com.example.c001apk.R
+import com.example.c001apk.databinding.ItemAppVersionBinding
 import com.example.c001apk.databinding.ItemCollectionListItemBinding
 import com.example.c001apk.databinding.ItemFeedReplyBinding
 import com.example.c001apk.databinding.ItemHomeFeedBinding
@@ -593,6 +594,20 @@ class AppAdapter(
         }
     }
 
+    // 版本历史条目（/v6/apk/downloadVersionList）：接口只下发 versionName / versionSize / versionDate，
+    // versionName 缺失时退回同一接口里的 version 字段
+    class AppVersionViewHolder(
+        val binding: ItemAppVersionBinding
+    ) : BaseViewHolder<ViewDataBinding>(binding) {
+        override fun bind(data: HomeFeedResponse.Data) {
+            binding.versionName.text = data.versionName ?: data.version.orEmpty()
+            binding.versionInfo.text = listOfNotNull(
+                data.versionSize,
+                data.versionDate
+            ).joinToString(" · ")
+        }
+    }
+
     override fun onCreateViewHolder(
         parent: ViewGroup,
         viewType: Int
@@ -785,6 +800,15 @@ class AppAdapter(
                 )
             }
 
+            22 -> {
+                AppVersionViewHolder(
+                    ItemAppVersionBinding.inflate(
+                        LayoutInflater.from(parent.context), parent,
+                        false
+                    )
+                )
+            }
+
             else -> {
                 UnsupportedViewHolder(
                     ItemHomeUnsupportedBinding.inflate(
@@ -854,7 +878,12 @@ class AppAdapter(
     }
 
     override fun getItemViewType(position: Int): Int {
-        return when (currentList[position].entityType) {
+        val item = currentList[position]
+        // 版本历史（/v6/apk/downloadVersionList）的条目没有 entityType / entityId，只有 version* 字段。
+        // entityType 虽然声明为非空 String，但 Gson 遇到缺失字段会塞 null，
+        // 直接交给下面的 when 取 hashCode 会 NPE，所以先单独认出来（顺便兜住其它 null 情况）
+        if (item.entityType.isNullOrEmpty() && item.versionId != null) return 22
+        return when (item.entityType.orEmpty()) {
             "card" -> {
                 when (currentList[position].entityTemplate) {
                     "imageCarouselCard_1" -> 0

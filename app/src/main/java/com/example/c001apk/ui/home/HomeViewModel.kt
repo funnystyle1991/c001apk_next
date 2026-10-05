@@ -26,9 +26,6 @@ class HomeViewModel @Inject constructor(
     val tabListLiveData: LiveData<List<HomeMenu>> = homeMenuRepo.loadAllListLive()
     val restart = MutableLiveData<Boolean>()
 
-    /** 首页右上角消息入口的红点数字 */
-    val unreadCount = MutableLiveData<Int>()
-
     val defaultList by lazy {
         listOf(
             HomeMenu(0, "关注", true),
@@ -55,12 +52,11 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * 拉一次未读数喂给首页红点，顺带把 CookieUtil 里的缓存刷成最新
-     * （底部导航的角标也读这份缓存）。未登录直接清零，不发请求。
+     * 刷新未读数缓存（CookieUtil）：底部导航的角标、消息中心宫格的红点都读这份缓存。
+     * 未登录直接返回，不发请求。
      */
-    fun fetchUnreadCount() {
+    fun refreshUnreadCount() {
         if (!PrefManager.isLogin) {
-            unreadCount.postValue(0)
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -73,7 +69,7 @@ class HomeViewModel @Inject constructor(
                         CookieUtil.contacts_follow = it.contactsFollow
                         CookieUtil.badge = it.unreadBadge
                         CookieUtil.notification = it.unreadNotification
-                        unreadCount.postValue(CookieUtil.unreadTotal)
+                        CookieUtil.message = it.message
                     }
                 }
         }

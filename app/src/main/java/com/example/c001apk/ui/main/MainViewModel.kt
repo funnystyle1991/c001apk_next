@@ -67,6 +67,7 @@ class MainViewModel @Inject constructor(
                                     CookieUtil.atcommentme = login.notifyCount.atcommentme
                                     CookieUtil.feedlike = login.notifyCount.feedlike
                                     CookieUtil.contacts_follow = login.notifyCount.contactsFollow
+                                    CookieUtil.message = login.notifyCount.message
                                     PrefManager.isLogin = true
                                     PrefManager.uid = login.uid
                                     PrefManager.username =
@@ -127,6 +128,7 @@ class MainViewModel @Inject constructor(
                         CookieUtil.contacts_follow = it.contactsFollow
                         CookieUtil.badge = it.unreadBadge
                         CookieUtil.notification = it.unreadNotification
+                        CookieUtil.message = it.message
                         if (CookieUtil.badge != 0)
                             setBadge.postValue(Event(true))
                     }

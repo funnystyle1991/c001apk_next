@@ -145,6 +145,7 @@ class MessageCenterViewModel @Inject constructor(
                         CookieUtil.contacts_follow = it.contactsFollow
                         CookieUtil.badge = it.unreadBadge
                         CookieUtil.notification = it.unreadNotification
+                        CookieUtil.message = it.message
                         messCountList.postValue(true)
                     }
                 }

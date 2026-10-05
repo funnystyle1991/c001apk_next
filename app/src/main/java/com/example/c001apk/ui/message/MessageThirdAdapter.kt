@@ -13,6 +13,7 @@ import com.example.c001apk.util.CookieUtil.atcommentme
 import com.example.c001apk.util.CookieUtil.atme
 import com.example.c001apk.util.CookieUtil.contacts_follow
 import com.example.c001apk.util.CookieUtil.feedlike
+import com.example.c001apk.util.CookieUtil.message
 import com.example.c001apk.util.IntentUtil
 import com.example.c001apk.util.PrefManager
 
@@ -77,7 +78,7 @@ class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHo
                 1 -> atcommentme ?: 0
                 2 -> feedlike ?: 0
                 3 -> contacts_follow ?: 0
-                else -> 0
+                else -> message ?: 0
             }
             binding.badge.text = if (count > 99) "99+" else count.toString()
             binding.badge.isVisible = count > 0

@@ -46,9 +46,13 @@
                 app:layout_constraintDimensionRatio="H, 1"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:setImage="@{data.fromUserAvatar}"
+                app:setImage="@{type == `list` ? data.userAvatar : data.fromUserAvatar}"
                 app:shapeAppearance="@style/circleImageStyle" />
 
+            <!--
+                私信会话（type=list）要展示的是**对方**（username / userAvatar）；
+                fromusername / fromUserAvatar 是「谁关注了你」，即自己，用在这里会显示成自己的名字和头像。
+            -->
             <TextView
                 android:id="@+id/uname"
                 android:layout_width="0dp"
@@ -56,7 +60,7 @@
                 android:layout_marginStart="10dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="@{data.fromusername}"
+                android:text="@{type == `list` ? data.username : data.fromusername}"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/avatar"
                 app:layout_constraintTop_toTopOf="parent" />
@@ -82,17 +86,26 @@
                 android:text="@{type == `contactsFollow` ? `关注了你` : ``}"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="13sp"
+                android:visibility="@{type == `contactsFollow` ? View.VISIBLE : View.GONE}"
                 app:layout_constraintStart_toEndOf="@id/follow"
                 app:layout_constraintTop_toBottomOf="@id/uname" />
 
+            <!--
+                第二行：私信会话显示「最后一条消息」预览。
+                fans 在 list 下是 GONE，所以这一条会紧贴在时间右侧，占满剩余宽度。
+            -->
             <TextView
                 android:id="@+id/act"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
                 android:layout_marginTop="5dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@{type == `list` ? data.message : ``}"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="13sp"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/fans"
                 app:layout_constraintTop_toBottomOf="@id/uname" />
 

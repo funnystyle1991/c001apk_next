@@ -2,7 +2,6 @@ package com.example.c001apk.ui.home
 
 import android.os.Bundle
 import android.view.View
-import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.viewpager2.adapter.FragmentStateAdapter
@@ -31,11 +30,6 @@ class HomeFragment : BaseFragment<FragmentHomeBinding>(), IOnTabClickContainer {
         super.onViewCreated(view, savedInstanceState)
 
         initButton()
-
-        viewModel.unreadCount.observe(viewLifecycleOwner) { count ->
-            binding.messageBadge.isVisible = count > 0
-            binding.messageBadge.text = if (count > 99) "99+" else count.toString()
-        }
 
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: Tab) {
@@ -76,8 +70,8 @@ class HomeFragment : BaseFragment<FragmentHomeBinding>(), IOnTabClickContainer {
 
     override fun onResume() {
         super.onResume()
-        // 回到首页就刷新一次消息红点（未登录时内部直接置 0）
-        viewModel.fetchUnreadCount()
+        // 回到首页刷新一次未读数缓存（底部导航角标、消息中心宫格的红点都读它）
+        viewModel.refreshUnreadCount()
     }
 
     private fun initButton() {

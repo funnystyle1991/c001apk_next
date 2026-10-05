@@ -8,6 +8,7 @@
         android:id="@+id/viewPager"
         android:layout_width="0dp"
         android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

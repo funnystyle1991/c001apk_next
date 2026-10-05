@@ -8,6 +8,7 @@
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
         android:orientation="horizontal" />
 
     <com.example.liquidglass.LiquidGlassView
@@ -25,7 +26,7 @@
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNav"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="64dp"
             android:background="@android:color/transparent"
             app:labelVisibilityMode="selected"
             app:menu="@menu/nav_menu" />

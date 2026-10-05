@@ -1,6 +1,7 @@
 package com.example.c001apk.ui.main
 
 import android.os.Bundle
+import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -101,6 +102,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                 0.25f
             )
             blurAmount = 0.1f
+            fixNavGlassInsets(this)
             // 横屏是 ConstraintLayout + NavigationRail，没有 CoordinatorLayout 也就无所谓滚动隐藏行为
             (layoutParams as? CoordinatorLayout.LayoutParams)?.behavior = navViewBehavior
         }
@@ -212,17 +214,29 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
 
     // from LibChecker
     /**
-     * 覆盖掉 BottomNavigationView 内部的 OnApplyWindowInsetsListener 并避免其被软键盘顶起来
-     * @see BottomNavigationView.applyWindowInsets
+     * 覆盖掉 BottomNavigationView 内部的 OnApplyWindowInsetsListener 并避免其被软键盘顶起来。
+     * inset 不再垫进底栏内部（那会把胶囊撑成一条黑板），改由玻璃容器的 margin 悬浮让位。
      */
     private fun fixBottomNavigationViewInsets(view: BottomNavigationView) {
         ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
-            // 这里不直接使用 windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            // 因为它的结果可能受到 insets 传播链上层某环节的影响，出现了错误的 navigationBarsInsets
-            val navigationBarsInsets =
+            view.updatePadding(bottom = 0)
+            windowInsets
+        }
+    }
+
+    private fun fixNavGlassInsets(view: LiquidGlassView) {
+        val baseMargin = (10 * resources.displayMetrics.density).toInt()
+        ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
+            val systemBars =
                 ViewCompat.getRootWindowInsets(view)
                     ?.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.updatePadding(bottom = navigationBarsInsets?.bottom ?: 0)
+            (view.layoutParams as? ViewGroup.MarginLayoutParams)?.let { lp ->
+                val bottom = (systemBars?.bottom ?: 0) + baseMargin
+                if (lp.bottomMargin != bottom) {
+                    lp.bottomMargin = bottom
+                    view.layoutParams = lp
+                }
+            }
             windowInsets
         }
     }

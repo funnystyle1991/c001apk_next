@@ -91,8 +91,11 @@ class MessageBadgeDecoration(
         var offset = if (horizontal) view.left else view.top
         var parent: ViewParent? = view.parent
         while (parent is View && parent !== ancestor) {
-            offset += if (horizontal) parent.left else parent.top
-            parent = parent.parent
+            // 先转成 View 再取属性：ViewParent 和 View 上都有 getParent()，
+            // 直接访问交集类型会报 Overload resolution ambiguity
+            val p = parent as View
+            offset += if (horizontal) p.left else p.top
+            parent = p.parent
         }
         return offset
     }

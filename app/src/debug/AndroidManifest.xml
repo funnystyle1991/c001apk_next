@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!-- 只存在于 debug 包：桌面多一个「握姿探测」图标，正式版构建不会带上 -->
+        <activity
+            android:name="com.example.c001apk.debug.GripProbeActivity"
+            android:exported="true"
+            android:label="握姿探测"
+            android:theme="@android:style/Theme.Material.Light">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

@@ -9,6 +9,7 @@ import com.example.c001apk.logic.repository.HomeMenuRepo
 import com.example.c001apk.logic.repository.NetworkRepo
 import com.example.c001apk.util.CookieUtil
 import com.example.c001apk.util.PrefManager
+import com.example.c001apk.util.UnreadCounter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,6 +26,9 @@ class HomeViewModel @Inject constructor(
 
     val tabListLiveData: LiveData<List<HomeMenu>> = homeMenuRepo.loadAllListLive()
     val restart = MutableLiveData<Boolean>()
+
+    /** 首页工具栏消息入口的未读角标数字，0 表示不显示 */
+    val unreadCount = MutableLiveData<Int>()
 
     val defaultList by lazy {
         listOf(
@@ -52,11 +56,15 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * 刷新未读数缓存（CookieUtil）：消息中心的宫格红点读这份缓存。
-     * 未登录直接返回，不发请求。
+     * 刷新未读数缓存（CookieUtil）并喂给首页角标。
+     *
+     * 消息中心的宫格红点读同一份缓存，两边都由 [UnreadCounter] 算，
+     * 所以「在消息中心里看过的」会同时从宫格和首页角标上消失。
+     * 未登录直接清零，不发请求。
      */
     fun refreshUnreadCount() {
         if (!PrefManager.isLogin) {
+            unreadCount.postValue(0)
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -71,6 +79,7 @@ class HomeViewModel @Inject constructor(
                         CookieUtil.notification = it.unreadNotification
                         CookieUtil.message = it.message
                         CookieUtil.commentme = it.commentme
+                        unreadCount.postValue(UnreadCounter.total)
                     }
                 }
         }

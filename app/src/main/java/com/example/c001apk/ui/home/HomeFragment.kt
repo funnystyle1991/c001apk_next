@@ -2,6 +2,7 @@ package com.example.c001apk.ui.home
 
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.viewpager2.adapter.FragmentStateAdapter
@@ -30,6 +31,12 @@ class HomeFragment : BaseFragment<FragmentHomeBinding>(), IOnTabClickContainer {
         super.onViewCreated(view, savedInstanceState)
 
         initButton()
+
+        // 消息入口的未读角标：数字与消息中心宫格同源（UnreadCounter），0 时不显示
+        viewModel.unreadCount.observe(viewLifecycleOwner) { count ->
+            binding.messageBadge.isVisible = count > 0
+            binding.messageBadge.text = if (count > 99) "99+" else count.toString()
+        }
 
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: Tab) {
@@ -70,7 +77,8 @@ class HomeFragment : BaseFragment<FragmentHomeBinding>(), IOnTabClickContainer {
 
     override fun onResume() {
         super.onResume()
-        // 回到首页刷新一次未读数缓存（底部导航角标、消息中心宫格的红点都读它）
+        // 回到首页刷新一次未读数：消息中心宫格的红点和这里的消息入口角标都读这份缓存。
+        // 从消息中心返回时也会走到这里，刚看过的通知会同步从角标上掉下来。
         viewModel.refreshUnreadCount()
     }
 

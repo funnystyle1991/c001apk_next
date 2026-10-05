@@ -143,8 +143,8 @@ class MessageCenterViewModel @Inject constructor(
                         CookieUtil.atcommentme = it.atcommentme
                         CookieUtil.feedlike = it.feedlike
                         CookieUtil.contacts_follow = it.contactsFollow
-                        CookieUtil.badge = it.badge
-                        CookieUtil.notification = it.notification
+                        CookieUtil.badge = it.unreadBadge
+                        CookieUtil.notification = it.unreadNotification
                         messCountList.postValue(true)
                     }
                 }

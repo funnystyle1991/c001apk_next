@@ -62,7 +62,7 @@ class MainViewModel @Inject constructor(
                         response.body()?.let {
                             if (response.body()?.data?.token != null) {
                                 response.body()?.data?.let { login ->
-                                    CookieUtil.badge = login.notifyCount.badge
+                                    CookieUtil.badge = login.notifyCount.unreadBadge
                                     CookieUtil.atme = login.notifyCount.atme
                                     CookieUtil.atcommentme = login.notifyCount.atcommentme
                                     CookieUtil.feedlike = login.notifyCount.feedlike
@@ -125,8 +125,8 @@ class MainViewModel @Inject constructor(
                         CookieUtil.atcommentme = it.atcommentme
                         CookieUtil.feedlike = it.feedlike
                         CookieUtil.contacts_follow = it.contactsFollow
-                        CookieUtil.badge = it.badge
-                        CookieUtil.notification = it.notification
+                        CookieUtil.badge = it.unreadBadge
+                        CookieUtil.notification = it.unreadNotification
                         if (CookieUtil.badge != 0)
                             setBadge.postValue(Event(true))
                     }

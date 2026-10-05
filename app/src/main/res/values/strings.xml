@@ -207,4 +207,19 @@
     <string name="ssl_error_disabled_toast">已关闭 SSL 证书校验，重启应用后生效</string>
     <string name="followSystemAccent">系统主题色</string>
     <string name="themeColor">主题颜色</string>
-</resources>
+
+    <!-- APK 下载对话框 -->
+    <string name="download_confirm_title">确认下载吗？</string>
+    <string name="download_size">大小：%1$s</string>
+    <string name="download_start">下载</string>
+    <string name="download_downloading">正在下载…</string>
+    <string name="download_percent">%1$d%%</string>
+    <string name="download_remain">剩余 %1$s</string>
+    <string name="download_done">下载完成</string>
+    <string name="download_open">打开</string>
+    <string name="download_install">安装</string>
+    <string name="download_open_with">用其它应用打开</string>
+    <string name="download_no_app">没有可用的应用</string>
+    <string name="download_no_installer">没有找到安装程序</string>
+    <string name="download_failed">下载失败：%1$s</string>
+    </resources>

@@ -1,6 +1,7 @@
 package com.example.c001apk.ui.main
 
 import android.os.Bundle
+import android.view.ViewGroup
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -246,7 +247,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
     private fun navItemCenter(index: Int): Pair<Float, Float>? {
         // 横屏是竖排 NavigationRail，水平气泡不适用
         val nav = navView as? BottomNavigationView ?: return null
-        val menu = nav.getChildAt(0) ?: return null
+        // nav 的第一个子 View 是菜单容器（NavigationBarMenuView，继承 ViewGroup）
+        val menu = nav.getChildAt(0) as? ViewGroup ?: return null
         val item = menu.getChildAt(index) ?: return null
         return (nav.x + menu.x + item.x + item.width / 2f) to
                 (nav.y + menu.y + item.y + item.height / 2f)

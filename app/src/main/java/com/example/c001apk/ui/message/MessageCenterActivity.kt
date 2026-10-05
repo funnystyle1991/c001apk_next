@@ -1,0 +1,240 @@
+package com.example.c001apk.ui.message
+
+import android.annotation.SuppressLint
+import android.os.Bundle
+import android.view.View
+import android.widget.Toast
+import androidx.activity.viewModels
+import androidx.recyclerview.widget.ConcatAdapter
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.c001apk.R
+import com.example.c001apk.adapter.FooterAdapter
+import com.example.c001apk.adapter.FooterState
+import com.example.c001apk.adapter.HeaderAdapter
+import com.example.c001apk.adapter.ItemListener
+import com.example.c001apk.databinding.ActivityMessageCenterBinding
+import com.example.c001apk.ui.base.BaseActivity
+import com.example.c001apk.ui.login.WebLoginActivity
+import com.example.c001apk.util.CookieUtil
+import com.example.c001apk.util.IntentUtil
+import com.example.c001apk.util.PrefManager
+import com.example.c001apk.util.dp
+import com.example.c001apk.view.LinearItemDecoration
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import dagger.hilt.android.AndroidEntryPoint
+
+/**
+ * 消息中心（独立二级页）：顶部是消息分类宫格，下面是通知列表。
+ *
+ * 原来这块混在「我的」里，跟个人资料、功能入口挤在一个 RecyclerView 上；
+ * 独立成 Activity 后右滑返回能跟手预览（Fragment 返回栈拿不到预测性返回预览）。
+ */
+@AndroidEntryPoint
+class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
+
+    private val viewModel by viewModels<MessageCenterViewModel>()
+    private val entryAdapter by lazy { MessageThirdAdapter() }
+    private lateinit var mAdapter: MessageAdapter
+    private lateinit var footerAdapter: FooterAdapter
+    private lateinit var mLayoutManager: LinearLayoutManager
+    private val isLogin by lazy { PrefManager.isLogin }
+    private var lastVisibleItemPosition = 0
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        initView()
+        initLogin()
+        initObserve()
+        initRefresh()
+        initScroll()
+
+        if (isLogin) getData()
+    }
+
+    private fun initView() {
+        binding.toolBar.setNavigationOnClickListener { finish() }
+
+        binding.entryList.apply {
+            layoutManager = GridLayoutManager(this@MessageCenterActivity, 4)
+            adapter = entryAdapter
+        }
+
+        mAdapter = MessageAdapter(ItemClickListener())
+        footerAdapter = FooterAdapter(ReloadListener())
+        mLayoutManager = LinearLayoutManager(this)
+        binding.recyclerView.apply {
+            adapter = ConcatAdapter(HeaderAdapter(), mAdapter, footerAdapter)
+            layoutManager = mLayoutManager
+            addItemDecoration(LinearItemDecoration(10.dp))
+        }
+    }
+
+    private fun initLogin() {
+        binding.isLogin = isLogin
+        if (isLogin) {
+            viewModel.messCountList.value = true
+        } else {
+            binding.clickToLogin.setOnClickListener {
+                IntentUtil.startActivity<WebLoginActivity>(this) {}
+            }
+        }
+    }
+
+    private fun initObserve() {
+        viewModel.messCountList.observe(this) {
+            entryAdapter.updateBadge()
+        }
+
+        viewModel.toastText.observe(this) { event ->
+            event.getContentIfNotHandledOrReturnNull()?.let {
+                Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        viewModel.footerState.observe(this) {
+            footerAdapter.setLoadState(it)
+            if (it !is FooterState.Loading) {
+                binding.swipeRefresh.isRefreshing = false
+            }
+        }
+
+        viewModel.messageData.observe(this) {
+            mAdapter.submitList(it)
+        }
+    }
+
+    private fun initRefresh() {
+        binding.swipeRefresh.apply {
+            setColorSchemeColors(
+                MaterialColors.getColor(
+                    this@MessageCenterActivity,
+                    com.google.android.material.R.attr.colorPrimary,
+                    0
+                )
+            )
+            setOnRefreshListener {
+                if (isLogin) {
+                    if (!viewModel.isLoadMore) {
+                        binding.swipeRefresh.isRefreshing = true
+                        getData()
+                    }
+                } else
+                    binding.swipeRefresh.isRefreshing = false
+            }
+        }
+    }
+
+    private fun initScroll() {
+        binding.recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    lastVisibleItemPosition = mLayoutManager.findLastVisibleItemPosition()
+                    if (lastVisibleItemPosition + 1 == binding.recyclerView.adapter?.itemCount
+                        && !viewModel.isEnd && !viewModel.isRefreshing && !viewModel.isLoadMore
+                        && !binding.swipeRefresh.isRefreshing && isLogin
+                    ) {
+                        loadMore()
+                    }
+                }
+            }
+        })
+    }
+
+    private fun loadMore() {
+        viewModel.isLoadMore = true
+        viewModel.fetchMessage()
+    }
+
+    private fun getData() {
+        viewModel.lastItem = null
+        viewModel.page = 1
+        viewModel.isEnd = false
+        viewModel.isRefreshing = true
+        viewModel.isLoadMore = false
+        viewModel.onCheckCount()
+        viewModel.fetchMessage()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 从分类页（@我 / 评论 / 赞 / 关注）返回时，未读已经被清掉，这里同步红点与列表
+        if (isLogin && CookieUtil.badge != 0) {
+            CookieUtil.badge = 0
+            viewModel.messCountList.value = true
+            if (CookieUtil.notification != 0) {
+                CookieUtil.notification = 0
+                viewModel.refreshMessage()
+            }
+        }
+    }
+
+    inner class ReloadListener : FooterAdapter.FooterListener {
+        override fun onReLoad() {
+            viewModel.isEnd = false
+            loadMore()
+        }
+    }
+
+    inner class ItemClickListener : ItemListener {
+        override fun onViewFeed(
+            view: View,
+            id: String?,
+            uid: String?,
+            username: String?,
+            userAvatar: String?,
+            deviceTitle: String?,
+            message: String?,
+            dateline: String?,
+            rid: Any?,
+            isViewReply: Any?
+        ) {
+            super.onViewFeed(
+                view,
+                id,
+                uid,
+                username,
+                userAvatar,
+                deviceTitle,
+                message,
+                dateline,
+                rid,
+                isViewReply
+            )
+            if (!uid.isNullOrEmpty() && PrefManager.isRecordHistory)
+                viewModel.saveHistory(
+                    id.toString(),
+                    uid.toString(),
+                    username.toString(),
+                    userAvatar.toString(),
+                    deviceTitle.toString(),
+                    message.toString(),
+                    dateline.toString()
+                )
+        }
+
+        override fun onBlockUser(id: String, uid: String, position: Int) {
+            viewModel.saveUid(uid)
+            val currentList = viewModel.messageData.value?.toMutableList() ?: ArrayList()
+            currentList.removeAt(position)
+            viewModel.messageData.postValue(currentList)
+        }
+
+        override fun onMessLongClicked(uname: String, id: String, position: Int): Boolean {
+            MaterialAlertDialogBuilder(this@MessageCenterActivity).apply {
+                setTitle("删除来自 $uname 的通知？")
+                setNegativeButton(android.R.string.cancel, null)
+                setPositiveButton(android.R.string.ok) { _, _ ->
+                    viewModel.onPostDelete(position, id)
+                }
+                show()
+            }
+            return true
+        }
+    }
+
+}

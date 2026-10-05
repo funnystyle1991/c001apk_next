@@ -16,6 +16,7 @@
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="?attr/colorSurfaceVariant"
         android:fitsSystemWindows="false"
         app:consumeSystemWindowsInsets="end"
         app:edgeToEdge="true"
@@ -63,14 +64,13 @@
 
                     <com.google.android.material.imageview.ShapeableImageView
                         android:id="@+id/avatar"
-                        android:layout_width="0dp"
-                        android:layout_height="0dp"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
                         android:layout_marginStart="20dp"
                         android:background="@color/cover"
                         android:foreground="@drawable/selector_bg_avatar"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
                         app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintDimensionRatio="1"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
                         app:shapeAppearance="@style/circleImageStyle"
@@ -80,12 +80,12 @@
                         android:id="@+id/name"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
+                        android:layout_marginStart="14dp"
                         android:ellipsize="end"
                         android:lines="1"
                         android:maxLines="1"
                         android:singleLine="true"
-                        android:textSize="16sp"
+                        android:textSize="18sp"
                         android:textStyle="bold"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
                         app:layout_constraintEnd_toEndOf="@id/guideline"
@@ -104,8 +104,11 @@
                         android:id="@+id/level"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:layout_marginTop="5dp"
+                        android:layout_marginStart="14dp"
+                        android:layout_marginTop="6dp"
+                        android:textColor="?android:textColorSecondary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
                         app:layout_constraintStart_toEndOf="@+id/avatar"
                         app:layout_constraintTop_toBottomOf="@id/name"
@@ -115,6 +118,8 @@
                         android:id="@+id/exp"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textColor="?android:textColorSecondary"
+                        android:textSize="10sp"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
                         app:layout_constraintEnd_toEndOf="@id/guideline"
                         app:layout_constraintTop_toTopOf="@id/level"
@@ -125,13 +130,14 @@
                         android:id="@+id/progress"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:layout_marginTop="5dp"
+                        android:layout_marginStart="14dp"
+                        android:layout_marginTop="6dp"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
                         app:layout_constraintEnd_toEndOf="@id/guideline"
                         app:layout_constraintStart_toEndOf="@id/avatar"
                         app:layout_constraintTop_toBottomOf="@id/level"
                         app:trackCornerRadius="20dp"
+                        app:trackThickness="5dp"
                         tools:max="1000"
                         tools:progress="500" />
 
@@ -140,9 +146,9 @@
             </com.google.android.material.appbar.MaterialToolbar>
 
             <!--
-                2026-09-18 二次修正：这里曾经额外塞了一个「九宫格」GridLayout，
-                与下方 RecyclerView 里原有的 item_message_mine 卡片重复，导致「我的」页出现两套入口。
-                现在统一只保留原有卡片（MessageSecondAdapter + item_message_mine.xml）。
+                2026-10-05：页面按桌面版重排——消息入口搬去首页工具栏、
+                通知列表独立成 MessageCenterActivity，这里只剩个人中心
+                （头部用户卡 + 统计卡 + 功能宫格）。宫格见 item_mine_menu.xml。
             -->
             <View
                 android:layout_width="match_parent"

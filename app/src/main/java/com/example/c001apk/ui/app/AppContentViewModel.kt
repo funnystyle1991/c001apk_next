@@ -62,6 +62,10 @@ class AppContentViewModel @AssistedInject constructor(
     // 详情接口偶尔不下发 apkname，这时退回数字 ID，避免整块列表空白
     private val pkg: String = packageName.ifEmpty { appId }
 
+    // 版本历史条目点击下载要用：数字 ID + 包名
+    override val appIdForDownload: String get() = appId
+    override val packageNameForDownload: String get() = pkg
+
     private val isCommentTab: Boolean =
         type !in listOf("version", "discoverer", "gift", "related")
 

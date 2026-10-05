@@ -4,7 +4,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.c001apk.adapter.FooterState
-import com.example.c001apk.adapter.LoadingState
 import com.example.c001apk.constant.Constants.LOADING_END
 import com.example.c001apk.constant.Constants.LOADING_FAILED
 import com.example.c001apk.logic.model.MessageResponse
@@ -13,72 +12,33 @@ import com.example.c001apk.logic.repository.HistoryFavoriteRepo
 import com.example.c001apk.logic.repository.NetworkRepo
 import com.example.c001apk.util.CookieUtil
 import com.example.c001apk.util.Event
-import com.example.c001apk.util.PrefManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.URLEncoder
 import javax.inject.Inject
 
+/**
+ * 消息中心（独立页面）：通知列表 + 各类未读数。
+ * 从原来的 MineFragment / MessageViewModel 里拆出来，个人中心不再背消息逻辑。
+ */
 @HiltViewModel
-class MessageViewModel @Inject constructor(
+class MessageCenterViewModel @Inject constructor(
     private val blackListRepo: BlackListRepo,
     private val historyRepo: HistoryFavoriteRepo,
     private val networkRepo: NetworkRepo
 ) : ViewModel() {
 
-    var initLogin: Boolean = true
-    var isInit: Boolean = true
-    var listSize: Int = -1
-    var page = 1
-    var lastItem: String? = null
     var isRefreshing: Boolean = false
     var isLoadMore: Boolean = false
     var isEnd: Boolean = false
+    var page = 1
+    var lastItem: String? = null
 
-    var countList = MutableLiveData<List<String>>()
     var messCountList = MutableLiveData<Boolean>()
     val footerState = MutableLiveData<FooterState>()
     val messageData = MutableLiveData<List<MessageResponse.Data>>()
     val toastText = MutableLiveData<Event<String>>()
-    val loadingState = MutableLiveData<LoadingState>()
-
-    fun fetchProfile() {
-        viewModelScope.launch(Dispatchers.IO) {
-            networkRepo.getProfile(PrefManager.uid)
-                .collect { result ->
-                    val data = result.getOrNull()
-                    if (data?.data != null) {
-                        countList.postValue(
-                            listOf(
-                                data.data.feed,
-                                data.data.follow,
-                                data.data.fans
-                            )
-                        )
-                        PrefManager.username =
-                            withContext(Dispatchers.IO) {
-                                URLEncoder.encode(data.data.username, "UTF-8")
-                            }
-                        PrefManager.userAvatar = data.data.userAvatar
-                        PrefManager.level = data.data.level
-                        PrefManager.experience = data.data.experience.toString()
-                        PrefManager.nextLevelExperience = data.data.nextLevelExperience.toString()
-                        loadingState.postValue(LoadingState.LoadingDone)
-
-                        fetchMessage()
-                    } else {
-                        isEnd = true
-                        isRefreshing = false
-                        isLoadMore = false
-                        loadingState.postValue(LoadingState.LoadingFailed(""))
-                        result.exceptionOrNull()?.printStackTrace()
-                    }
-                }
-        }
-    }
 
     fun fetchMessage(url: String = "/v6/notification/list") {
         viewModelScope.launch(Dispatchers.IO) {
@@ -178,12 +138,13 @@ class MessageViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             networkRepo.checkCount()
                 .collect { result ->
-                    val response = result.getOrNull()
-                    response?.data?.let {
+                    result.getOrNull()?.data?.let {
                         CookieUtil.atme = it.atme
                         CookieUtil.atcommentme = it.atcommentme
                         CookieUtil.feedlike = it.feedlike
                         CookieUtil.contacts_follow = it.contactsFollow
+                        CookieUtil.badge = it.badge
+                        CookieUtil.notification = it.notification
                         messCountList.postValue(true)
                     }
                 }

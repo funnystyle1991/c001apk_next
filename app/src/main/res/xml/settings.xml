@@ -53,6 +53,12 @@
             android:icon="@drawable/ic_emoji"
             android:key="showEmoji"
             android:title="@string/show_emoji" />
+        <!-- 2026-10-05：首页工具栏那个位置让给了消息入口，编辑 Tab 挪到这儿 -->
+        <Preference
+            android:icon="@drawable/ic_menu"
+            android:key="editTab"
+            android:summary="@string/edit_tab_summary"
+            android:title="@string/edit_tab" />
 
     </PreferenceScreen>
 

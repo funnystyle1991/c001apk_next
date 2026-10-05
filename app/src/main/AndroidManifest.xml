@@ -431,6 +431,9 @@
             android:name=".ui.messagedetail.MessageActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.message.MessageCenterActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.dyh.DyhActivity"
             android:exported="false" />
         <activity

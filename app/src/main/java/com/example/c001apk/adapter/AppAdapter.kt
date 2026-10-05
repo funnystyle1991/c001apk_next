@@ -597,10 +597,33 @@ class AppAdapter(
     // 版本历史条目（/v6/apk/downloadVersionList）：接口只下发 versionName / versionSize / versionDate，
     // versionName 缺失时退回同一接口里的 version 字段
     class AppVersionViewHolder(
-        val binding: ItemAppVersionBinding
+        val binding: ItemAppVersionBinding,
+        private val listener: ItemListener,
     ) : BaseViewHolder<ViewDataBinding>(binding) {
+
+        private var packageName: String? = null
+        private var versionCode: Long? = null
+        private var versionName: String? = null
+        private var versionSize: String? = null
+
+        init {
+            binding.root.setOnClickListener {
+                listener.onDownloadVersion(
+                    it,
+                    packageName,
+                    versionCode,
+                    versionName,
+                    versionSize
+                )
+            }
+        }
+
         override fun bind(data: HomeFeedResponse.Data) {
-            binding.versionName.text = data.versionName ?: data.version.orEmpty()
+            versionName = data.versionName ?: data.version.orEmpty()
+            versionCode = data.versionCode
+            packageName = data.packageName
+            versionSize = data.versionSize
+            binding.versionName.text = versionName
             binding.versionInfo.text = listOfNotNull(
                 data.versionSize,
                 data.versionDate
@@ -805,7 +828,7 @@ class AppAdapter(
                     ItemAppVersionBinding.inflate(
                         LayoutInflater.from(parent.context), parent,
                         false
-                    )
+                    ), listener
                 )
             }
 

@@ -17,6 +17,10 @@ import com.example.c001apk.util.IntentUtil
 import com.example.c001apk.util.PrefManager
 
 
+/**
+ * 消息中心的入口宫格：@我的动态 / @我的评论 / 我收到的赞 / 好友关注 / 私信。
+ * 未读数直接读 CookieUtil（进页面时 /v6/notification/checkCount 刷过一遍）。
+ */
 class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHolder>() {
 
     private val messTitle = listOf("@我的动态", "@我的评论", "我收到的赞", "好友关注", "私信")
@@ -68,18 +72,16 @@ class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHo
         }
 
         fun bind() {
-            binding.apply {
-                val count = when (bindingAdapterPosition) {
-                    0 -> atme ?: 0
-                    1 -> atcommentme ?: 0
-                    2 -> feedlike ?: 0
-                    3 -> contacts_follow ?: 0
-                    else -> 0
-                }
-                binding.badge.text = count.toString()
-                binding.badge.isVisible = count > 0
-                binding.executePendingBindings()
+            val count = when (bindingAdapterPosition) {
+                0 -> atme ?: 0
+                1 -> atcommentme ?: 0
+                2 -> feedlike ?: 0
+                3 -> contacts_follow ?: 0
+                else -> 0
             }
+            binding.badge.text = if (count > 99) "99+" else count.toString()
+            binding.badge.isVisible = count > 0
+            binding.executePendingBindings()
         }
     }
 
@@ -94,7 +96,7 @@ class MessageThirdAdapter : RecyclerView.Adapter<MessageThirdAdapter.ThirdViewHo
         return ThirdViewHolder(binding)
     }
 
-    override fun getItemCount() = 4
+    override fun getItemCount() = messTitle.size
 
     override fun onBindViewHolder(holder: ThirdViewHolder, position: Int) {
         holder.bind()

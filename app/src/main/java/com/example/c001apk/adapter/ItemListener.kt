@@ -25,6 +25,20 @@ interface ItemListener {
 
     fun onShowCollection(id: String, title: String) {}
 
+    /**
+     * 版本历史条目点击：拉该版本的下载直链，拿到后由 BaseAppFragment 弹下载框。
+     * 参数都来自列表条目自身（/v6/apk/downloadVersionList 只下发这些字段，
+     * 条目没有 id / entityId，所以不能走 onViewApk）。
+     */
+    fun onDownloadVersion(
+        view: View,
+        packageName: String?,
+        versionCode: Long?,
+        versionName: String?,
+        size: String?,
+    ) {
+    }
+
     fun onViewApk(view: View, id: String?) {
         id?.let {
             IntentUtil.startActivity<AppActivity>(view.context) {

@@ -15,6 +15,14 @@ import com.example.c001apk.util.PrefManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
+/** 版本历史条目下载：直链取回后由 [BaseAppFragment] 统一弹下载框 */
+data class ApkDownloadInfo(
+    val url: String,
+    val fileName: String,
+    val title: String,
+    val size: String,
+)
+
 abstract class BaseAppViewModel(
     val blackListRepo: BlackListRepo,
     val historyRepo: HistoryFavoriteRepo,
@@ -22,6 +30,15 @@ abstract class BaseAppViewModel(
 ) : BaseViewModel() {
 
     val dataList = MutableLiveData<List<HomeFeedResponse.Data>>()
+
+    /**
+     * 下载接口 /v6/apk/download 需要「数字 ID + 包名 + 版本号」三件套。
+     * 版本历史条目自带包名与版本号，数字 ID 只能由子类按区块提供。
+     */
+    protected open val appIdForDownload: String? get() = null
+    protected open val packageNameForDownload: String? get() = null
+
+    val apkDownload = MutableLiveData<Event<ApkDownloadInfo>>()
 
     val footerState = MutableLiveData<FooterState>()
     val toastText = MutableLiveData<Event<String?>>()
@@ -34,6 +51,16 @@ abstract class BaseAppViewModel(
     inner class ItemClickListener : ItemListener {
         override fun onShowCollection(id: String, title: String) {
             showCollection(id, title)
+        }
+
+        override fun onDownloadVersion(
+            view: View,
+            packageName: String?,
+            versionCode: Long?,
+            versionName: String?,
+            size: String?
+        ) {
+            onGetVersionDownloadLink(packageName, versionCode, versionName, size)
         }
 
         override fun onViewFeed(
@@ -106,6 +133,47 @@ abstract class BaseAppViewModel(
 
         override fun onChangeStickTop(id: String, isStickTop: Boolean, position: Int) {
             onPostStickTop(id, isStickTop)
+        }
+    }
+
+    /**
+     * 版本历史条目下载：拿该版本的直链，成功后抛 [apkDownload] 事件让界面弹下载框。
+     *
+     * 条目自带 packageName，个别情况下为空则退回子类给的包名；
+     * 数字 ID 只有子类知道（版本历史用的是应用数字 ID）。
+     */
+    fun onGetVersionDownloadLink(
+        packageName: String?,
+        versionCode: Long?,
+        versionName: String?,
+        size: String?,
+    ) {
+        val pn = packageName?.takeIf { it.isNotEmpty() } ?: packageNameForDownload
+        val aid = appIdForDownload
+        if (pn.isNullOrEmpty() || aid.isNullOrEmpty() || versionCode == null) {
+            toastText.postValue(Event("该版本没有可下载的安装包"))
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            networkRepo.getAppDownloadLink(pn, aid, versionCode.toString())
+                .collect { result ->
+                    val link = result.getOrNull()
+                    if (!link.isNullOrEmpty()) {
+                        apkDownload.postValue(
+                            Event(
+                                ApkDownloadInfo(
+                                    url = link,
+                                    fileName = "${versionName.orEmpty()}.apk".replace('/', '_'),
+                                    title = versionName.orEmpty(),
+                                    size = size.orEmpty(),
+                                )
+                            )
+                        )
+                    } else {
+                        toastText.postValue(Event("下载链接获取失败"))
+                        result.exceptionOrNull()?.printStackTrace()
+                    }
+                }
         }
     }
 

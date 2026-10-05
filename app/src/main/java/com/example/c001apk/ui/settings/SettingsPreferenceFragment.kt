@@ -29,6 +29,7 @@ import com.example.c001apk.R
 import com.example.c001apk.ui.blacklist.BlackListActivity
 import com.example.c001apk.ui.main.MainActivity
 import com.example.c001apk.ui.others.AboutActivity
+import com.example.c001apk.ui.others.CopyActivity
 import com.example.c001apk.ui.settings.params.ParamsActivity
 import com.example.c001apk.util.CacheDataManager
 import com.example.c001apk.util.IntentUtil
@@ -285,6 +286,14 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+
+        // 首页工具栏原来那个「编辑Tab」按钮，位置让给消息入口后挪到了这里
+        findPreference<Preference>("editTab")?.setOnPreferenceClickListener {
+            IntentUtil.startActivity<CopyActivity>(requireContext()) {
+                putExtra("type", "homeMenu")
+            }
+            true
+        }
 
         findPreference<Preference>("clearCache")?.apply {
             summary = CacheDataManager.getTotalCacheSize(requireContext())

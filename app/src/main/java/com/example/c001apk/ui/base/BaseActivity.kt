@@ -28,7 +28,7 @@ abstract class BaseActivity<VB : ViewBinding> : MaterialActivity() {
         setContentView(binding.root)
         applyPageBackground()
         // 转场：动画由内容视图播，window 不参与（见 TransitionAnim 顶部注释）
-        TransitionAnim.register(this)
+        TransitionAnim.register(this, pageBackground)
         if (TransitionAnim.consumeEnter()) TransitionAnim.playEnter(this)
     }
 

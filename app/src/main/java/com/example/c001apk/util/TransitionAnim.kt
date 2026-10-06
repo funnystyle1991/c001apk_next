@@ -4,11 +4,13 @@ import android.app.Activity
 import android.app.ActivityOptions
 import android.content.Context
 import android.graphics.Outline
+import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import androidx.core.app.ActivityOptionsCompat
+import com.google.android.material.color.MaterialColors
 import java.lang.ref.WeakReference
 import java.util.WeakHashMap
 import java.util.concurrent.CopyOnWriteArrayList
@@ -57,8 +59,8 @@ object TransitionAnim {
 
     /**
      * 类型：视差滑动（rikkahub 同款）。新页整屏滑入，被压住的旧页同时左移半屏、
-     * 缩到 0.7 并淡出；返回时反向归位。注意旧页的缩放作用在整个 window 上，
-     * 四周会露出窗口下层（壁纸）——这是单 Activity Compose 里没有的代价。
+     * 缩到 0.7 并淡出；返回时反向归位。旧页缩掉、淡掉的那一圈由 [refreshBackdrops]
+     * 垫上的页面底色兜住，不会透出桌面。
      */
     const val TYPE_PARALLAX = "parallax"
 
@@ -123,24 +125,57 @@ object TransitionAnim {
     // 所以由基类在 onCreate / onDestroy 登记，这里按进入顺序找回相邻的那一页。
     // ------------------------------------------------------------------
 
-    private val stack = CopyOnWriteArrayList<WeakReference<Activity>>()
+    /** 登记项：页面 + 它是否自带不透明底色（半透明浮层页为 false，不给它垫背景板） */
+    private class Page(val ref: WeakReference<Activity>, val hasBackground: Boolean)
+
+    private val stack = CopyOnWriteArrayList<Page>()
 
     /** 由 BaseActivity / BaseViewActivity 在 onCreate 调用 */
-    fun register(activity: Activity) {
-        if (stack.none { it.get() === activity }) stack.add(WeakReference(activity))
+    fun register(activity: Activity, hasPageBackground: Boolean = true) {
+        if (stack.none { it.ref.get() === activity })
+            stack.add(Page(WeakReference(activity), hasPageBackground))
     }
 
     /** 由 BaseActivity / BaseViewActivity 在 onDestroy 调用；顺带清掉已回收的僵尸引用 */
     fun unregister(activity: Activity) {
-        stack.removeAll { it.get() == null || it.get() === activity }
+        stack.removeAll { it.ref.get() == null || it.ref.get() === activity }
     }
 
     /** [activity] 下面那一页（返回时要归位的那层）；找不到或已销毁就返回 null */
     private fun lowerOf(activity: Activity): Activity? {
-        val index = stack.indexOfFirst { it.get() === activity }
+        val index = stack.indexOfFirst { it.ref.get() === activity }
         if (index <= 0) return null
-        val lower = stack[index - 1].get() ?: return null
+        val lower = stack[index - 1].ref.get() ?: return null
         return lower.takeIf { !it.isFinishing && !it.isDestroyed }
+    }
+
+    /**
+     * 给「被压住的那几页」垫一块不透明底色。
+     *
+     * 窗口是透明的（不然看不见下层页在动），动画又只播在 `android.R.id.content` 上：
+     * 内容块一旦缩小 / 左移 / 淡出，露出来的就是**本窗口之外**的东西——更早的页面，
+     * 最底下直接是桌面。实测退出时能看见壁纸上的小组件。
+     *
+     * 垫在 DecorView 上（它不参与内容动画），透出来的就变成应用背景色，与页面底色同色。
+     * 只垫非栈顶页：栈顶那页必须保持透明，否则会把下层页整个盖死，两层同框就没了。
+     *
+     * 半透明浮层页（回复页）不垫——它下面那层不透明页已经垫过了，链路不会断。
+     */
+    private fun refreshBackdrops() {
+        val alive = stack.mapNotNull { page ->
+            page.ref.get()?.takeIf { !it.isFinishing && !it.isDestroyed }?.let { page to it }
+        }
+        val top = alive.lastOrNull()?.second ?: return
+        alive.forEach { (page, activity) ->
+            if (activity === top || !page.hasBackground) return@forEach
+            val decor = activity.window?.decorView ?: return@forEach
+            val color = MaterialColors.getColor(
+                decor, com.google.android.material.R.attr.colorSurface
+            )
+            if ((decor.background as? ColorDrawable)?.color != color) {
+                decor.setBackgroundColor(color)
+            }
+        }
     }
 
     /**
@@ -166,12 +201,14 @@ object TransitionAnim {
      * 缩没、屏幕空一段，新页才慢慢进来。等新页真正开始播进入动画时再驱动旧页，两层才同时动。
      */
     fun playEnter(activity: Activity) {
+        refreshBackdrops()
         lowerOf(activity)?.let { animateContent(it, res("lout")) }
         animateContent(activity, res("rin"))
     }
 
     /** 返回时下层页从 0.7 / 半屏外归位（对应 rikkahub 的 pop 动画） */
     fun playReenter(activity: Activity) {
+        refreshBackdrops()
         animateContent(activity, res("lin"))
     }
 
@@ -195,6 +232,7 @@ object TransitionAnim {
 
         exiting[activity] = true      // 留在表里直到 Activity 被回收：finish() 重入时直接放行
         applyRoundClip(activity, view)
+        refreshBackdrops()
         // 上层滑出的同一帧就把下层从「半屏外 + 0.7」拉回来。走 onResume 那条路会晚半拍
         // ——下层要等上层动画播完、finish() 生效才 onResume，中间能看到一段静止。
         val lower = lowerOf(activity)

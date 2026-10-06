@@ -7,6 +7,7 @@ import android.graphics.Outline
 import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.ViewOutlineProvider
+import android.view.ViewTreeObserver
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import androidx.core.app.ActivityOptionsCompat
@@ -202,8 +203,13 @@ object TransitionAnim {
      */
     fun playEnter(activity: Activity) {
         refreshBackdrops()
-        lowerOf(activity)?.let { animateContent(it, res("lout")) }
-        animateContent(activity, res("rin"))
+        // 旧页的退场挂在「新页首帧」回调里，两层才咬在同一帧。放在这里直接调用的话，
+        // 旧页已经布局完会立刻开跑，而新页还在等自己的首帧，中间那几十毫秒屏幕上是
+        // 旧页滑走后的底色，看着像「先空一下，内容才进来」。
+        val lower = lowerOf(activity)
+        animateContent(activity, res("rin")) {
+            lower?.let { animateContent(it, res("lout")) }
+        }
     }
 
     /** 返回时下层页从 0.7 / 半屏外归位（对应 rikkahub 的 pop 动画） */
@@ -261,14 +267,16 @@ object TransitionAnim {
     private fun contentView(activity: Activity): View? =
         activity.window?.decorView?.findViewById(android.R.id.content)
 
-    private fun animateContent(activity: Activity, resId: Int) {
-        if (resId == 0) return
-        val view = contentView(activity) ?: return
-        val anim = AnimationUtils.loadAnimation(activity, resId) ?: return
+    private fun animateContent(activity: Activity, resId: Int, onStarted: (() -> Unit)? = null) {
+        val view = if (resId == 0) null else contentView(activity)
+        val anim = if (view == null) null else AnimationUtils.loadAnimation(activity, resId)
+        if (view == null || anim == null) {
+            onStarted?.invoke()
+            return
+        }
         // 各槽位的终点都是原位（rin 到 0、lin 回到 1.0），fillAfter 只为了避免收尾那帧
         // 属性复位造成的闪动；旧页 lout 的终点是「半屏外 + 0.7 + 全透明」，返回时由 lin 接着走
         anim.fillAfter = true
-        applyRoundClip(activity, view)
         anim.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationStart(animation: Animation?) = Unit
 
@@ -278,8 +286,37 @@ object TransitionAnim {
                 clearRoundClip(view)
             }
         })
-        // 等一帧，确保 content 已经布局完（outline 要用到宽高）
-        view.post { view.startAnimation(anim) }
+        runOnFirstFrame(view) {
+            // 圆角 outline 要用到宽高，必须在 layout 之后才算得对
+            applyRoundClip(activity, view)
+            view.startAnimation(anim)
+            onStarted?.invoke()
+        }
+    }
+
+    /**
+     * 在 [view] 的「下一帧绘制之前」执行 [action]；已经布局完成的页（退场 / 归位）直接同步执行。
+     *
+     * 别用 `view.post {}`：那是主线程上的普通消息，会被 traversal 的同步屏障挡在**首次绘制
+     * 之后**。新页于是先按「终点位置」整屏画了一帧（详情页这一帧只有页面底色和骨架），之后
+     * 才从右边重新滑一遍——观感就是「先闪一屏空白，内容再滑进来」，还会卡一下。
+     *
+     * 而百分比位移又要求 view 已经 layout 过（宽高为 0 时 `100%` 解析成 0，动画干脆不动），
+     * 同时满足「已布局」和「尚未绘制」的时机只有 onPreDraw。
+     */
+    private fun runOnFirstFrame(view: View, action: () -> Unit) {
+        if (view.isLaidOut) {
+            action()
+            return
+        }
+        val observer = view.viewTreeObserver
+        observer.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (observer.isAlive) observer.removeOnPreDrawListener(this)
+                action()
+                return true
+            }
+        })
     }
 
     /**

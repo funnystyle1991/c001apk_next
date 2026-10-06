@@ -82,7 +82,7 @@
     <string-array name="anim_type_texts" translatable="false">
         <item>水平滑动</item>
         <item>淡入淡出</item>
-        <item>视差滑动（旧页退半屏并缩小）</item>
+        <item>视差滑动（旧页退半屏）</item>
         <item>无动画</item>
     </string-array>
 

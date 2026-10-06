@@ -23,6 +23,21 @@
         <item name="preferenceTheme">@style/PreferenceThemeOverlay.Rikka.Material3.Mod</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="bottomSheetDialogTheme">@style/CustomBottomSheetDialog.Md3</item>
+        <!--
+          顶栏用 colorSurfaceContainer：与页面底（colorSurface）拉开一档。
+          目的：页面里出现可见的色块边界，转场滑动/缩放时才能看出内容在移动
+          （rikkahub 同款角色分配：页面底 = surface，顶栏 / 卡片 = surfaceContainer）。
+          只改 Background，形态仍继承各 API 链上原有的工具栏样式，
+          API≥29 的变体见 values-v29/themes.xml（那里 Platform.Theme.C001apk 不走 M3E 层）。
+          注意：AppBarLayout 的背景不动 —— 有些页面的 AppBar 没写 @null
+          （base_tablayout_viewpager 等），一起换会波及首页 tab 容器。
+        -->
+        <item name="toolbarStyle">@style/Widget.C001apk.Toolbar</item>
+    </style>
+
+    <!-- API<29：形态继承 M3E 工具栏，只改背景色 -->
+    <style name="Widget.C001apk.Toolbar" parent="Widget.Material3Expressive.Toolbar">
+        <item name="android:background">?attr/colorSurfaceContainer</item>
     </style>
 
     <style name="PreferenceThemeOverlay.Rikka.Material3.Mod" parent="@style/PreferenceThemeOverlay">

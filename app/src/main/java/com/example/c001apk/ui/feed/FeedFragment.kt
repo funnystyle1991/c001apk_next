@@ -10,7 +10,6 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
-import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
@@ -289,14 +288,14 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
 
     @SuppressLint("SetTextI18n")
     private fun initView(height: Int) {
-        // 作者行滑进顶栏之前，有半截还在顶栏下边；CoordinatorLayout 里 contentLayout 是后添加的、
-        // 默认画在 appBar 之上，不把 appBar 提到最前，那半截就被上面的列表盖住了
-        // （binding.root 的静态类型是 ViewBinding.root: View，够不着 bringChildToFront，得先落到 ViewGroup）
-        val root = binding.root as ViewGroup
-        root.bringChildToFront(binding.appBar)
-        // 顶栏不裁子 View 之后，标题滑出顶栏的那一截得靠 topMask 压住，所以它要画在 appBar 之上；
+        // 作者行滑进顶栏之前有半截还在顶栏下边（顶栏不裁子 View），那半截必须画在列表之上，
+        // 否则会被列表整个盖掉。XML 里已经把 appBar 挪到 contentLayout 后面，这里再按 z 钉一道：
+        // 只要有一个子 View 的 z 不为 0，ViewGroup 就改成按 z 排序绘制，顺序怎么变都不会被打回原样
+        // （bringChildToFront 是改顺序，容易被后续 addView 顶回去）
+        ViewCompat.setTranslationZ(binding.appBar, 1f)
+        // 顶栏不裁子 View 之后，标题滑出顶栏的那一截得靠 topMask 压住，所以它要压在 appBar 之上。
         // 它多高（= 顶栏上方那段空白）要等排布完才知道，在 applyTitleSwitch 里按帧对
-        root.bringChildToFront(binding.topMask)
+        ViewCompat.setTranslationZ(binding.topMask, 2f)
         feedDataAdapter = FeedDataAdapter(
             ItemClickListener(),
             viewModel.feedDataList,

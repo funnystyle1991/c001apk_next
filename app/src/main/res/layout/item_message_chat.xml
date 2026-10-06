@@ -87,16 +87,23 @@
             app:layout_constraintTop_toTopOf="parent"
             tools:visibility="visible">
 
-            <TextView
+            <!--
+                正文必须用 LinkTextView：服务端把消息当 HTML 下发，
+                纯文本消息里带链接时是 <a class="feed-link-url" href="...">查看链接</a>，
+                普通 TextView 会把标签原样显示出来。LinkTextView 内部统一走
+                SpannableStringBuilderUtil（HTML / Markdown / [表情] / 链接可点）。
+            -->
+            <com.example.c001apk.view.LinkTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
                 android:paddingStart="12dp"
                 android:paddingTop="8dp"
                 android:paddingEnd="12dp"
                 android:paddingBottom="8dp"
                 android:text="@{data.message}"
                 android:textColor="?attr/colorOnSurfaceVariant"
-                android:textIsSelectable="true"
                 android:textSize="15sp"
                 tools:text="在吗" />
 
@@ -120,16 +127,17 @@
             app:layout_constraintTop_toTopOf="parent"
             tools:visibility="visible">
 
-            <TextView
+            <com.example.c001apk.view.LinkTextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
                 android:paddingStart="12dp"
                 android:paddingTop="8dp"
                 android:paddingEnd="12dp"
                 android:paddingBottom="8dp"
                 android:text="@{data.message}"
                 android:textColor="?attr/colorOnPrimaryContainer"
-                android:textIsSelectable="true"
                 android:textSize="15sp"
                 tools:text="在的" />
 

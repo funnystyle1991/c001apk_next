@@ -1,5 +1,6 @@
 package com.example.c001apk.util
 
+import android.text.Html
 import com.example.c001apk.logic.model.MessageResponse
 
 /**
@@ -90,12 +91,29 @@ object MessageKit {
     @JvmStatic
     fun isSecretary(data: MessageResponse.Data?): Boolean = isSecretaryName(partnerName(data))
 
-    /** 会话列表里的最后一条消息预览：只发图片时 message 是空的，得显示 [图片] */
+    /**
+     * 会话列表里的最后一条消息预览：只发图片时 message 是空的，得显示 [图片]。
+     *
+     * 正文要先降级成纯文本：服务端把消息当 HTML 下发，带链接的消息是
+     * `<a class="feed-link-url" href="…">查看链接</a>`，直接显示会在列表里
+     * 露出一整串标签。聊天页那侧不用处理——气泡走 LinkTextView，本来就渲染 HTML。
+     */
     @JvmStatic
     fun preview(data: MessageResponse.Data?): String {
         if (data == null) return ""
-        if (!data.message.isNullOrBlank()) return data.message
+        if (!data.message.isNullOrBlank()) return plainText(data.message)
         if (!data.messagePic.isNullOrBlank()) return "[图片]"
         return ""
+    }
+
+    /**
+     * HTML → 单行纯文本。没有 `<` 时只还原实体，避免把正文里正常的
+     * `<` / `&` 当成标签吃掉。布局里这个 TextView 是 maxLines=1，换行压成空格。
+     */
+    private fun plainText(html: String): String {
+        val text =
+            if (html.indexOf('<') < 0) MarkdownUtils.decodeEntities(html)
+            else Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT).toString()
+        return text.replace('\n', ' ').trim()
     }
 }

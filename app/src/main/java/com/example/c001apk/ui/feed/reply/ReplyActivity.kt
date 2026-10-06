@@ -94,6 +94,9 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
     View.OnClickListener, OnTouchListener, SmoothInputLayout.OnVisibilityChangeListener,
     SmoothInputLayout.OnKeyboardChangeListener {
 
+    /** 回复页是半透明浮层（AppThemeTranslucent），底色由布局自己定，别盖页面底色 */
+    override val pageBackground = false
+
     private val viewModel by viewModels<ReplyViewModel>()
     private val type: String? by lazy { intent.getStringExtra("type") }
     private val rid: String? by lazy { intent.getStringExtra("rid") }

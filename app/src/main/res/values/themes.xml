@@ -33,6 +33,14 @@
           （base_tablayout_viewpager 等），一起换会波及首页 tab 容器。
         -->
         <item name="toolbarStyle">@style/Widget.C001apk.Toolbar</item>
+        <!--
+          转场要「两层同框」：push 时旧页退半屏 + 缩到 0.7，pop 时上层滑走露出下层，
+          都要求窗口本身透明，否则上层窗口把下层挡死，内容级动画只能在自家背景上动。
+          窗口透明之后页面底色由 android.R.id.content 自带
+          （BaseActivity / BaseViewActivity 的 applyPageBackground），不会再透出桌面。
+        -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
     </style>
 
     <!-- API<29：形态继承 M3E 工具栏，只改背景色 -->

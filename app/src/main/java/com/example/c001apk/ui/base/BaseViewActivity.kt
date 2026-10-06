@@ -4,8 +4,10 @@ import android.content.Context
 import android.content.res.Resources
 import android.graphics.Color
 import android.os.Bundle
+import android.view.View
 import androidx.core.view.isVisible
 import com.example.c001apk.R
+import com.google.android.material.color.MaterialColors
 import com.example.c001apk.adapter.LoadingState
 import com.example.c001apk.constant.Constants
 import com.example.c001apk.databinding.BaseFragmentContainerBinding
@@ -24,7 +26,9 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         binding = BaseFragmentContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        applyPageBackground()
         // 转场：动画由内容视图播，window 不参与（见 TransitionAnim 顶部注释）
+        TransitionAnim.register(this)
         if (TransitionAnim.consumeEnter()) TransitionAnim.playEnter(this)
 
         getSavedData(savedInstanceState)
@@ -32,6 +36,26 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         initData()
         initObserve()
         initError()
+    }
+
+    override fun onDestroy() {
+        TransitionAnim.unregister(this)
+        super.onDestroy()
+    }
+
+    /** 是否由内容视图自带页面底色；本身就是半透明浮层的页面置 false */
+    protected open val pageBackground: Boolean = true
+
+    /**
+     * 窗口在 theme 里是透明的（转场缩放 / 滑动时要能看见下层页），所以页面底色得由内容
+     * 视图自己带；否则四周透出的是下层窗口甚至桌面。
+     */
+    private fun applyPageBackground() {
+        if (!pageBackground) return
+        val content = window.findViewById<View>(android.R.id.content) ?: return
+        content.setBackgroundColor(
+            MaterialColors.getColor(content, com.google.android.material.R.attr.colorSurface)
+        )
     }
 
     open fun getSavedData(savedInstanceState: Bundle?) {}

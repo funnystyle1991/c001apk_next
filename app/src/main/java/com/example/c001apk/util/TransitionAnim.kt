@@ -9,7 +9,9 @@ import android.view.ViewOutlineProvider
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import androidx.core.app.ActivityOptionsCompat
+import java.lang.ref.WeakReference
 import java.util.WeakHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * 水平转场动画的统一入口：把「设置 - 外观」里的曲线 / 类型 / 速度翻译成具体动画资源。
@@ -116,6 +118,31 @@ object TransitionAnim {
         return pending
     }
 
+    // ------------------------------------------------------------------
+    // 页面栈：转场要「两层同时动」，而两层分属两个 window，谁也看不见谁。
+    // 所以由基类在 onCreate / onDestroy 登记，这里按进入顺序找回相邻的那一页。
+    // ------------------------------------------------------------------
+
+    private val stack = CopyOnWriteArrayList<WeakReference<Activity>>()
+
+    /** 由 BaseActivity / BaseViewActivity 在 onCreate 调用 */
+    fun register(activity: Activity) {
+        if (stack.none { it.get() === activity }) stack.add(WeakReference(activity))
+    }
+
+    /** 由 BaseActivity / BaseViewActivity 在 onDestroy 调用；顺带清掉已回收的僵尸引用 */
+    fun unregister(activity: Activity) {
+        stack.removeAll { it.get() == null || it.get() === activity }
+    }
+
+    /** [activity] 下面那一页（返回时要归位的那层）；找不到或已销毁就返回 null */
+    private fun lowerOf(activity: Activity): Activity? {
+        val index = stack.indexOfFirst { it.get() === activity }
+        if (index <= 0) return null
+        val lower = stack[index - 1].get() ?: return null
+        return lower.takeIf { !it.isFinishing && !it.isDestroyed }
+    }
+
     /**
      * 打开新页面：**window 不做任何动画**（传 0 而不是 res("rin")），
      * 新页改在 [BaseActivity]/[BaseViewActivity] 的 onCreate 里播内容进入动画。
@@ -132,8 +159,14 @@ object TransitionAnim {
         return ActivityOptionsCompat.makeCustomAnimation(context, 0, 0)
     }
 
-    /** 新页内容从右滑入（进入动画） */
+    /**
+     * 新页内容从右滑入（进入动画），**同一帧**让旧页退场（左移半屏 + 缩到 0.7 + 淡出）。
+     *
+     * 旧页的退场不能放在点击点播：那时新窗口还没创建（模拟器上要等一秒多），旧页会先
+     * 缩没、屏幕空一段，新页才慢慢进来。等新页真正开始播进入动画时再驱动旧页，两层才同时动。
+     */
     fun playEnter(activity: Activity) {
+        lowerOf(activity)?.let { animateContent(it, res("lout")) }
         animateContent(activity, res("rin"))
     }
 
@@ -161,19 +194,25 @@ object TransitionAnim {
         val anim = AnimationUtils.loadAnimation(activity, resId) ?: return false
 
         exiting[activity] = true      // 留在表里直到 Activity 被回收：finish() 重入时直接放行
-        reenterPending = true
         applyRoundClip(activity, view)
+        // 上层滑出的同一帧就把下层从「半屏外 + 0.7」拉回来。走 onResume 那条路会晚半拍
+        // ——下层要等上层动画播完、finish() 生效才 onResume，中间能看到一段静止。
+        val lower = lowerOf(activity)
+        if (lower != null) animateContent(lower, res("lin")) else reenterPending = true
+        // fillAfter：默认动画播完 View 属性会复位，页面会「滑走 → 闪回原位 → 再消失」
+        anim.fillAfter = true
         anim.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationStart(animation: Animation?) = Unit
 
             override fun onAnimationRepeat(animation: Animation?) = Unit
 
             override fun onAnimationEnd(animation: Animation?) {
-                clearRoundClip(view)
                 // 基类的 finish() 会再问一次 startExit()，有标记挡着，走正常 finish；
                 // 再补一次 overridePendingTransition(0, 0) 挡掉系统默认动画。
+                // 先 finish 再清裁剪：反过来的话窗口销毁前会闪一帧没圆角的画面。
                 activity.finish()
                 activity.overridePendingTransition(0, 0)
+                clearRoundClip(view)
             }
         })
         view.startAnimation(anim)
@@ -188,6 +227,9 @@ object TransitionAnim {
         if (resId == 0) return
         val view = contentView(activity) ?: return
         val anim = AnimationUtils.loadAnimation(activity, resId) ?: return
+        // 各槽位的终点都是原位（rin 到 0、lin 回到 1.0），fillAfter 只为了避免收尾那帧
+        // 属性复位造成的闪动；旧页 lout 的终点是「半屏外 + 0.7 + 全透明」，返回时由 lin 接着走
+        anim.fillAfter = true
         applyRoundClip(activity, view)
         anim.setAnimationListener(object : Animation.AnimationListener {
             override fun onAnimationStart(animation: Animation?) = Unit

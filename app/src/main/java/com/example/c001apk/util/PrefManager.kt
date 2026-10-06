@@ -237,25 +237,29 @@ object PrefManager {
         set(value) = pref.edit().putBoolean("isCheckUpdateStable", value).apply()
 
     /**
-     * 自更新接口的匿名统计 ID（`X-Union-Id` 请求头）。
+     * 用户随机 ID（`useradomid`）：本应用自己造的匿名标识，首次启动随机生成一份
+     * 32 位 hex 落盘（[com.example.c001apk.MyApplication] 启动时初始化），
+     * 之后只要不清应用数据就一直是这个值。
      *
-     * 安装后首次读取时随机生成 32 位 hex 并落盘，之后不再变化；
-     * 只用于服务端统计「多少台设备在查更新」，不含任何用户/设备信息，
-     * 与设备串（xAppDevice / szlmId）完全无关。
+     * 为什么不拿数字联盟 ID（DUID）去统计：DUID 是设备级实名标识，签发方（数字联盟）
+     * 能把它反查回具体设备，上报它等于把用户的真实设备交给统计接口。换成本机自造的
+     * 随机串后，上报走自更新接口的 `X-App-userradomid` 请求头（见 [UpdateChecker]），
+     * 服务端拿到的只是一个跟账号、跟设备都无关的随机值：
+     * 换机 / 重装会变成新号，够用来数活跃设备与留存，但追不到人。
      */
-    var updateUnionId: String
+    var userRandomId: String
         get() {
-            pref.getString("updateUnionId", null)?.takeIf { it.isNotEmpty() }?.let { return it }
+            pref.getString("useradomid", null)?.takeIf { it.isNotEmpty() }?.let { return it }
+            // 老版本把这个值存在 updateUnionId 下，沿用一次，免得已统计过的用户被算成新用户
+            pref.getString("updateUnionId", null)?.takeIf { it.isNotEmpty() }?.let {
+                pref.edit().putString("useradomid", it).apply()
+                return it
+            }
             val id = java.util.UUID.randomUUID().toString().replace("-", "")
-            pref.edit().putString("updateUnionId", id).apply()
+            pref.edit().putString("useradomid", id).apply()
             return id
         }
-        set(value) = pref.edit().putString("updateUnionId", value).apply()
-
-    /** 启动时检查本应用 Beta 版更新（默认关） */
-    var isCheckUpdateBeta: Boolean
-        get() = pref.getBoolean("isCheckUpdateBeta", false)
-        set(value) = pref.edit().putBoolean("isCheckUpdateBeta", value).apply()
+        set(value) = pref.edit().putString("useradomid", value).apply()
 
     /**
      * SSL 证书校验（默认开）。

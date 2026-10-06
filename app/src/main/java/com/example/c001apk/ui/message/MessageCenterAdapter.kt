@@ -55,13 +55,15 @@ class MessageCenterAdapter(
             binding.setVariable(BR.isFeedLike, category == "feedLike")
             binding.executePendingBindings()
 
-            // 分类页里 @我 / @我的评论 点进动态详情；「我收到的赞」的 id 是点赞记录 id，
-            // 拿去开动态会开错，和分类页保持一致：不响应点击
+            // 分类页里 @我 / @我的评论 点进动态详情；「我收到的赞」的 id 是点赞记录主键
+            // （feed-<动态id>-<点赞人uid>），拿去开动态会开错，真正要开的是被赞的动态
+            // —— 归一化时它在 fid 上（V18 的 target_id）
+            val target = if (category == "feedLike") data.fid.orEmpty() else data.id
             itemView.setOnClickListener(
-                if (category == "feedLike") null
+                if (target.isBlank()) null
                 else { view ->
                     IntentUtil.startActivity<FeedActivity>(view.context) {
-                        putExtra("id", data.id)
+                        putExtra("id", target)
                     }
                 }
             )

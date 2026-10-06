@@ -9,10 +9,6 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <style name="AppTheme.About" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">#121212</item>
-        <item name="colorPrimaryDark">#121212</item>
-    </style>
 
     <style name="Theme.Material3.DynamicColors.DayNight.Rikka" parent="Theme.Material3.DynamicColors.Dark.Rikka" >
         <item name="android:windowLightStatusBar">false</item>

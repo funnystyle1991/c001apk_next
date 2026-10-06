@@ -77,18 +77,27 @@ class MessageContentAdapter(
         RecyclerView.ViewHolder(binding.root) {
         var id: String = ""
 
+        /**
+         * 「我收到的赞」要点进去的那条动态。
+         *
+         * 这一页的条目 id 是点赞记录的主键（`feed-<动态id>-<点赞人uid>`），拿去开动态会开错；
+         * 被赞的动态 id 在归一化时落到了 `fid`（V18 的 `target_id`，见 [NotificationV18Kit.toLikeMessage]）。
+         */
+        var fid: String = ""
+
         init {
-            if (type != "feedLike") {
-                itemView.setOnClickListener {
-                    IntentUtil.startActivity<FeedActivity>(itemView.context) {
-                        putExtra("id", id)
-                    }
+            itemView.setOnClickListener {
+                val target = if (type == "feedLike") fid else id
+                if (target.isBlank()) return@setOnClickListener
+                IntentUtil.startActivity<FeedActivity>(itemView.context) {
+                    putExtra("id", target)
                 }
             }
         }
 
         fun bind(data: MessageResponse.Data) {
             id = data.id
+            fid = data.fid.orEmpty()
             binding.setVariable(BR.type, type)
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.listener, listener)

@@ -177,10 +177,6 @@
         <item name="android:textSize">11sp</item>
     </style>
 
-    <style name="AppTheme.About" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">#465C67</item>
-        <item name="colorPrimaryDark">#465C67</item>
-    </style>
 
     <style name="Widget.Material3.Button.TextButton.Mod" parent="ThemeOverlay.AppCompat.Dark.ActionBar">
         <item name="android:textColor">?attr/colorControlNormal</item>

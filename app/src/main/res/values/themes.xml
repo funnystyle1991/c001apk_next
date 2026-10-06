@@ -5,7 +5,8 @@
         <item name="colorPrimaryVariant">@color/primary_dark_light_light_status_bar</item>
     </style>
 
-    <style name="Platform.Theme.C001apk" parent="Theme.Material3.DynamicColors.DayNight.Rikka" />
+    <!-- debug3 实验：M3E 形态层插在中间，去掉 parent 即回到原生 M3 主题链 -->
+    <style name="Platform.Theme.C001apk" parent="Theme.C001apk.M3E" />
 
     <style name="Theme.C001apk" parent="Platform.Theme.C001apk">
         <item name="android:windowActionBar">false</item>

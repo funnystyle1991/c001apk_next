@@ -614,10 +614,15 @@ class FeedViewModel @AssistedInject constructor(
                     }
                     itemCount = it.size + 1
                 }
+                // 分支必须互斥：两条分支共用一个 adapter，而 FeedDataAdapter.getItemCount 在
+                // 两边同时非空时返回 0。预览态走的是 else 分支（feedDataList 已填），这里不清掉
+                // 就会在详情回来切成图文排版时整块变 0 高度、图文消失只剩评论区
+                feedDataList = null
             } else {
                 feedDataList = ArrayList<HomeFeedResponse.Data>().also {
                     it.add(data)
                 }
+                articleList = null
             }
             if (!data.topReplyRows.isNullOrEmpty()) {
                 isTop = true

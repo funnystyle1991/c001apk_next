@@ -781,9 +781,9 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             binding.topMask.layoutParams.height = maskHeight
             binding.topMask.requestLayout()
         }
-        // 起点量准了才动列表里那一行：两块重叠着一起往上走，看起来才像"这一行飞上去了"。
-        // 量不准（兜底起点）就别藏，否则会变成列表里那行没了、顶栏又冒出来一行
-        if (titleSwitchStartY != null) setContentAuthorRowHidden(p > 0f)
+        // 一开滑就必须只剩一块：两块同屏（列表里那行随列表竖直往上滚 + 顶栏那行斜着进来）
+        // 是最刺眼的观感，比"起跳点差一点"糟糕得多，所以不再拿起点量没量到当开关
+        setContentAuthorRowHidden(p > 0f)
     }
 
     // 内容里那一行作者信息（item1 的）：作者行飞上去的这段，得把列表里这一行藏掉，
@@ -792,7 +792,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
     private var contentRowViews: List<View> = emptyList()
 
     /** 动态内容卡和图文详情头的作者行都是这几个 id（没有的 layout 就跳过） */
-    private val contentRowIds = intArrayOf(
+    private val contentRowIds = listOf(
         R.id.authorRow, R.id.avatar, R.id.uname, R.id.pubDate,
         R.id.device, R.id.privateBadge, R.id.follow, R.id.followLoading
     )
@@ -806,9 +806,9 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             return
         }
         if (contentRowItem !== item) {
-            if (contentRowItem?.isAttachedToWindow == false) {
-                contentRowViews.forEach { it.alpha = 1f }
-            }
+            // 换到别的 View 实例了：先把上一份的 alpha 还原。不能看 isAttachedToWindow ——
+            // item1 被回收去别的位置时它仍然 attached，那样就会留一个"作者行看不见"的卡片在列表里
+            contentRowViews.forEach { it.alpha = 1f }
             contentRowItem = item
             contentRowViews = contentRowIds.mapNotNull { item.findViewById<View>(it) }
         }
@@ -817,8 +817,8 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
     }
 
     private fun restoreContentAuthorRow() {
-        val item = contentRowItem ?: return
-        if (item.isAttachedToWindow) return
+        if (contentRowItem == null) return
+        // 位置 1 已经不在屏幕上了，这一份 View 要么被回收去别处、要么已经销毁：无条件还原 alpha
         contentRowViews.forEach { it.alpha = 1f }
         contentRowItem = null
         contentRowViews = emptyList()

@@ -7,7 +7,6 @@ import android.graphics.Outline
 import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.ViewOutlineProvider
-import android.view.ViewTreeObserver
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import androidx.core.app.ActivityOptionsCompat
@@ -286,37 +285,36 @@ object TransitionAnim {
                 clearRoundClip(view)
             }
         })
-        runOnFirstFrame(view) {
-            // 圆角 outline 要用到宽高，必须在 layout 之后才算得对
+        if (view.isLaidOut) {
+            // 已经在屏幕上的页（退场 / 归位）：宽高现成，当场开跑
             applyRoundClip(activity, view)
             view.startAnimation(anim)
             onStarted?.invoke()
-        }
-    }
-
-    /**
-     * 在 [view] 的「下一帧绘制之前」执行 [action]；已经布局完成的页（退场 / 归位）直接同步执行。
-     *
-     * 别用 `view.post {}`：那是主线程上的普通消息，会被 traversal 的同步屏障挡在**首次绘制
-     * 之后**。新页于是先按「终点位置」整屏画了一帧（详情页这一帧只有页面底色和骨架），之后
-     * 才从右边重新滑一遍——观感就是「先闪一屏空白，内容再滑进来」，还会卡一下。
-     *
-     * 而百分比位移又要求 view 已经 layout 过（宽高为 0 时 `100%` 解析成 0，动画干脆不动），
-     * 同时满足「已布局」和「尚未绘制」的时机只有 onPreDraw。
-     */
-    private fun runOnFirstFrame(view: View, action: () -> Unit) {
-        if (view.isLaidOut) {
-            action()
             return
         }
-        val observer = view.viewTreeObserver
-        observer.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                if (observer.isAlive) observer.removeOnPreDrawListener(this)
-                action()
-                return true
+
+        // 新页这时刚 setContentView，还没 layout，两个坑得一起躲：
+        // 1. 百分比位移要等 layout 完才算得出来（宽高为 0 时 `100%` 解析成 0，动画直接不动）；
+        // 2. 而一旦等到首帧画完之后才启动，content 已经先按「终点位置」整屏画过一帧——
+        //    详情页这帧只有底色和骨架，看着就是「先闪一屏空白，内容再滑进来」。
+        // 做法：先不依赖 layout 把它整个挪到屏幕外面去，等 post 落到首帧之后、宽高有了，
+        // 再抹掉预置位移换成动画，两段首尾相接，既不闪也不会不动。
+        view.translationX = activity.resources.displayMetrics.widthPixels.toFloat()
+        var retries = 0
+        val start: Runnable = object : Runnable {
+            override fun run() {
+                if (view.width == 0 && retries < 5) {
+                    retries++
+                    view.postDelayed(this, 16)
+                    return
+                }
+                view.translationX = 0f
+                applyRoundClip(activity, view)
+                view.startAnimation(anim)
+                onStarted?.invoke()
             }
-        })
+        }
+        view.post(start)
     }
 
     /**

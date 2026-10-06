@@ -317,6 +317,9 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             dateline = viewModel.dateLine
             deviceTitle = viewModel.device
         }
+        // 先把作者行摆到起点上：XML 里它是 gone，得先转成 invisible 排布出来，
+        // 后面才量得到它的静态位置（也让首帧不会从兜底值跳一下）
+        applyTitleSwitch(0f)
         footerAdapter = FooterAdapter(ReloadListener(), height)
 
         binding.replyCount.text = "共 ${viewModel.replyCount} 回复"
@@ -738,22 +741,35 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
         }
 
     /**
-     * 顶栏作者行和"动态/图文"标题的一进一出：[progress] 为 0 时只显示标题（作者行在标题位的
-     * 左下一格、看不见），为 1 时作者行正好落到标题的位置。初末两个位置固定，两轴位移按同一个
-     * 进度线性收敛，所以是沿着两点之间的直线平移过来，而不是纯垂直地顶上来。
+     * 顶栏作者行和"动态/图文"标题的一进一出：[progress] 为 0 时作者行就停在内容里那一行自己的
+     * 位置上（被列表那一行挡着，看不见），为 1 时正好落到顶栏标题的位置。起点量的是内容里那一行
+     * 的屏幕位置，所以观感是这一块被手指拖着斜着滑上去，而不是从顶栏下边冒出来。初末两个位置
+     * 一次量好固定住，两轴位移按同一个进度线性收敛 => 沿两点之间的直线平移。
      */
     private fun applyTitleSwitch(progress: Float) {
         val p = progress.coerceIn(0f, 1f)
         val row = binding.titleProfile
-        val slide = (if (row.height > 0) row.height else 40.dp).toFloat()
-        // 起点是终点的左下角：顶栏这行被左边的返回按钮顶着、整体往右缩了一段，而内容里
-        // 那一行是贴着内容左边缘的。两轴按同一个 p 线性收敛 => 沿这条直线平移过去
-        row.translationY = (1f - p) * slide
-        row.translationX = (1f - p) * titleSwitchOffsetX
+        // 起点就是内容里那一行本身的屏幕位置，量一次固定住（item1 一滑出屏幕就量不到了，
+        // 每帧现量会在半路跳回兜底值，起点也就跟着往上跳）
+        measureTitleSwitchStart()
+        val dx = titleSwitchStartX ?: -24.dp.toFloat()
+        val dy = titleSwitchStartY ?: (if (row.height > 0) row.height else 40.dp).toFloat()
+        // 两轴按同一个 p 线性收敛 => 这一块是从原地被拖着斜着滑上去，不是从顶栏下边冒出来
+        row.translationY = (1f - p) * dy
+        row.translationX = (1f - p) * dx
         // 全程不打透明度：滑进来多少就完整露出多少，不做淡入
         row.alpha = 1f
-        // INVISIBLE 而不是 GONE：没滑到位之前也不该能点到头像；p 为 0 时整行还在顶栏底下
-        row.visibility = if (p > 0f) View.VISIBLE else View.INVISIBLE
+        // INVISIBLE 而不是 GONE：没滑到位之前也不该能点到头像
+        if (p > 0f) {
+            if (row.visibility != View.VISIBLE) {
+                row.visibility = View.VISIBLE
+                // 导航键、标题都是运行时 addSystemView 追加到子 View 末尾的，会盖在作者行上；
+                // 每次都等它们挂完再提到最前，保证滑上来的这块不被压住
+                binding.toolBar.bringChildToFront(row)
+            }
+        } else {
+            row.visibility = View.INVISIBLE
+        }
         toolbarTitleView?.let {
             // 纯位移滑出顶栏（移出自身在顶栏里的整段高度才会被裁掉），标题也不淡
             it.translationY = -p * (it.top + it.height)
@@ -774,37 +790,52 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
      * 取 pubDate 的 bottom：动态内容卡的作者行和图文头部项的作者行都把它当最后一行，
      * 而 item 的 top 就是 0，所以它的 bottom 就是那一格的高度。
      */
+    private var titleSwitchDistanceCache: Float? = null
+
     private val titleSwitchDistance: Float
         get() {
+            titleSwitchDistanceCache?.let { return it }
             val authorRowBottom = binding.recyclerView.layoutManager
                 ?.findViewByPosition(1)
                 ?.findViewById<View>(R.id.pubDate)
                 ?.bottom
-            return (authorRowBottom?.takeIf { it > 0 } ?: 40.dp).toFloat()
+            if (authorRowBottom == null || authorRowBottom <= 0) return 40.dp.toFloat()
+            titleSwitchDistanceCache = authorRowBottom.toFloat()
+            return authorRowBottom.toFloat()
         }
 
+    // 起点偏移（内容里那一行与顶栏标题位之差）量一次就固定：item1 一滑出屏幕就量不到了
+    private var titleSwitchStartX: Float? = null
+    private var titleSwitchStartY: Float? = null
+
     /**
-     * 顶栏作者行起点的水平偏移（负值，起点在终点的左边）：终点那行是顶栏里的子 View，
-     * 排布时被左边的返回按钮挤到它右边，而起点（内容里那一行）是贴着内容左边缘的。
-     * 两处的水平差就是这条斜线的横向分量，直接量实际布局，别写死某个 dp。
-     * 量不到就退回 -24dp（差不多一个返回按钮的宽度）。
+     * 量作者行的起点 = 内容里那一行（item1 的作者行）的屏幕位置，横、纵各一个分量。
+     * 横向是负的（顶栏那行被返回按钮挤到右边）、纵向是正的（内容里那一行在顶栏下边）。
+     * 纵向是屏幕距离，得把当前滚动量加回去，还原成"列表停在顶部"时的位置，不然起点会随滚动往上跑。
+     * 量不到就留给调用方用兜底值，下一帧再试。
      */
-    private val titleSwitchOffsetX: Float
-        get() {
-            val row = binding.titleProfile
-            val rowLoc = IntArray(2)
-            row.getLocationOnScreen(rowLoc)
-            // getLocationOnScreen 带上了当前的 translationX，量静态位置要把它扣掉
-            val endLeft = rowLoc[0] - row.translationX
-            val startAvatar = binding.recyclerView.layoutManager
-                ?.findViewByPosition(1)
-                ?.findViewById<View>(R.id.avatar)
-                ?: return -24.dp.toFloat()
-            val startLoc = IntArray(2)
-            startAvatar.getLocationOnScreen(startLoc)
-            val dx = startLoc[0] - endLeft
-            return if (dx < 0f) dx else -24.dp.toFloat()
-        }
+    private fun measureTitleSwitchStart() {
+        if (titleSwitchStartX != null && titleSwitchStartY != null) return
+        val row = binding.titleProfile
+        // GONE 的 View 没排布过，位置是脏的，等它 INVISIBLE 之后再量
+        if (row.visibility == View.GONE || row.height <= 0) return
+        if (firstVisibleItemPosition !in 0..1) return
+        val startAvatar = binding.recyclerView.layoutManager
+            ?.findViewByPosition(1)
+            ?.findViewById<View>(R.id.avatar)
+            ?: return
+        val rowLoc = IntArray(2)
+        row.getLocationOnScreen(rowLoc)
+        // getLocationOnScreen 带上了当前的 translation，量静态位置要把它扣掉
+        val endLeft = rowLoc[0] - row.translationX
+        val endTop = rowLoc[1] - row.translationY
+        val startLoc = IntArray(2)
+        startAvatar.getLocationOnScreen(startLoc)
+        val dx = startLoc[0] - endLeft
+        val dy = startLoc[1] + scrollYDistance - endTop
+        if (dx < 0f) titleSwitchStartX = dx
+        if (dy > 0f) titleSwitchStartY = dy
+    }
 
     override fun onDestroy() {
         dialog?.dismiss()

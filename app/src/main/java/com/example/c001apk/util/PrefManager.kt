@@ -237,13 +237,14 @@ object PrefManager {
         set(value) = pref.edit().putBoolean("isCheckUpdateStable", value).apply()
 
     /**
-     * 用户随机 ID（`useradomid`）：本应用自己造的匿名标识，首次启动随机生成一份
+     * 用户随机 ID（上报头 `X-App-userrandomid`；Prefs 键沿用早期的 `useradomid` 不改，
+     * 改了会让已装用户被当成新用户重算）：本应用自己造的匿名标识，首次启动随机生成一份
      * 32 位 hex 落盘（[com.example.c001apk.MyApplication] 启动时初始化），
      * 之后只要不清应用数据就一直是这个值。
      *
      * 为什么不拿数字联盟 ID（DUID）去统计：DUID 是设备级实名标识，签发方（数字联盟）
      * 能把它反查回具体设备，上报它等于把用户的真实设备交给统计接口。换成本机自造的
-     * 随机串后，上报走自更新接口的 `X-App-userradomid` 请求头（见 [UpdateChecker]），
+     * 随机串后，上报走自更新接口的 `X-App-userrandomid` 请求头（见 [UpdateChecker]），
      * 服务端拿到的只是一个跟账号、跟设备都无关的随机值：
      * 换机 / 重装会变成新号，够用来数活跃设备与留存，但追不到人。
      */

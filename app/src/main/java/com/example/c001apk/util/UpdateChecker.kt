@@ -22,10 +22,10 @@ import org.json.JSONObject
  *
  * 升级信息走自建接口（顺带给服务端做匿名访问统计）：
  *
- *   GET https://service.houlangs.cn/c001apk/
- *   请求头 X-App-userradomid：本应用自造的随机用户 ID（见 [PrefManager.userRandomId]）。
+ *   GET https://service.houlangs.cn/c001apk/update/
+ *   请求头 X-App-userrandomid：本应用自造的随机用户 ID（见 [PrefManager.userRandomId]）。
  *   值不再拿数字联盟 DUID（那玩意能反查到具体设备），是本机随机生成、
- *   与账号设备都无关的 `useradomid`；服务端据此统计活跃设备 / 用户量。
+ *   与账号设备都无关的 `userrandomid`；服务端据此统计活跃设备 / 用户量。
  *
  * 一次请求同时返回两段（服务端：仓库 _rev/update_files/index.php）：
  * {
@@ -52,8 +52,12 @@ import org.json.JSONObject
  */
 object UpdateChecker {
 
-    /** 自建更新接口；stable / org 都在同一次响应里，不用分别请求 */
-    const val BASE_URL = "https://service.houlangs.cn/c001apk/"
+    /**
+     * 自建更新接口；stable / org 都在同一次响应里，不用分别请求。
+     * 服务端 2026-10-07 把升级 php 从 c001apk/ 挪到了 c001apk/update/，
+     * 旧地址只留一个 302 给没升级的老客户端，这里直接用新地址。
+     */
+    const val BASE_URL = "https://service.houlangs.cn/c001apk/update/"
 
     /**
      * 关于页「组织」按钮配置（响应里的 org 段），随时可下发/改名/换链接：
@@ -141,7 +145,7 @@ object UpdateChecker {
      * 拉取自建接口并拆成 stable / org 两段；失败返回 null
      * （调用方按「没有更新」「没有按钮」处理，不弹错误框）。
      *
-     * X-App-userradomid 传 [PrefManager.userRandomId]（本机随机 32 位 hex、首启生成后不变），
+     * X-App-userrandomid 传 [PrefManager.userRandomId]（本机随机 32 位 hex、首启生成后不变），
      * 服务端据此统计活跃设备 / 用户量。
      */
     private suspend fun loadSnapshot(): Snapshot? = withContext(Dispatchers.IO) {
@@ -150,7 +154,7 @@ object UpdateChecker {
         runCatching {
             val builder = Request.Builder()
                 .url(BASE_URL)
-                .header("X-App-userradomid", PrefManager.userRandomId)
+                .header("X-App-userrandomid", PrefManager.userRandomId)
                 .header("User-Agent", userAgent)
             installHeaders().forEach { (name, value) -> builder.header(name, value) }
             val request = builder.build()

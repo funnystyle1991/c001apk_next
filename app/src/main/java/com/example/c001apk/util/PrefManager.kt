@@ -216,9 +216,14 @@ object PrefManager {
         get() = pref.getString("animCurve", TransitionAnim.CURVE_M3_EMPHASIZED)!!
         set(value) = pref.edit().putString("animCurve", value).apply()
 
-    /** 水平转场动画类型（实验项）：slide 水平滑动 / fade 淡入淡出 / none 无动画 */
+    /**
+     * 水平转场动画类型（实验项）：slide 水平滑动 / fade 淡入淡出 / none 无动画。
+     * `parallax` 已从设置里摘掉（旧页退半屏，和 slide 观感重复），
+     * 兜底把存过的旧值折成 slide，否则下拉框会显示不出当前项。
+     */
     var animType: String
         get() = pref.getString("animType", TransitionAnim.TYPE_SLIDE)!!
+            .let { if (it == TransitionAnim.TYPE_PARALLAX) TransitionAnim.TYPE_SLIDE else it }
         set(value) = pref.edit().putString("animType", value).apply()
 
     /** 水平转场进入时长(ms)，实验项；退出固定为进入 - 50ms。存成字符串以便设置页用下拉框。 */

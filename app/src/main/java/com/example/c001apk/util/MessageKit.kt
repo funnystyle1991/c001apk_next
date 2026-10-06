@@ -87,6 +87,20 @@ object MessageKit {
     fun isSecretaryNotify(data: MessageResponse.Data?): Boolean =
         data?.type == "notify_xms" || data?.fromuid == "10086"
 
+    /** 图片消息：`message_pic` 非空就是一张图，气泡里要把文字那行换成图片 */
+    @JvmStatic
+    fun hasPic(data: MessageResponse.Data?): Boolean = !data?.messagePic.isNullOrEmpty()
+
+    /**
+     * 图片消息取原图要用消息 id（`/v6/message/showImage?id=`）。
+     * `/v6/message/chat` 里 `id` 偶尔为空，退到 `entityId`（两者是同一个值）。
+     */
+    @JvmStatic
+    fun picId(data: MessageResponse.Data?): String {
+        if (data == null) return ""
+        return data.id.ifEmpty { data.entityId.orEmpty() }
+    }
+
     /** 会话项是不是小秘书 */
     @JvmStatic
     fun isSecretary(data: MessageResponse.Data?): Boolean = isSecretaryName(partnerName(data))

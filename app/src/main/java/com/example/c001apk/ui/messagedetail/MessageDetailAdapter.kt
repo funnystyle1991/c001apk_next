@@ -8,6 +8,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.c001apk.BR
 import com.example.c001apk.databinding.ItemMessageChatBinding
 import com.example.c001apk.logic.model.MessageResponse
+import com.example.c001apk.util.ImageUtil
+import com.example.c001apk.util.MessageKit
 
 /**
  * 聊天记录列表。气泡靠左还是靠右，由消息的 fromuid 是否等于当前登录 uid 决定
@@ -19,7 +21,13 @@ import com.example.c001apk.logic.model.MessageResponse
 class MessageDetailAdapter(
     private val myUid: String,
     private val myAvatar: String,
-    private val partnerAvatar: String
+    private val partnerAvatar: String,
+    /**
+     * 图片消息的地址要现问 `showImage` 换签名地址（CDN 的裸地址会被 auth_key 挡），
+     * adapter 自己没有协程作用域，所以这件事交给页面 / ViewModel 做，结果回调回来。
+     * 同一条消息只会问一次（ViewModel 里有缓存）。
+     */
+    private val loadPic: (id: String, onReady: (String?) -> Unit) -> Unit
 ) : ListAdapter<MessageResponse.Data, MessageDetailAdapter.ChatViewHolder>(ChatDiffCallback()) {
 
     class ChatViewHolder(
@@ -30,13 +38,27 @@ class MessageDetailAdapter(
             data: MessageResponse.Data,
             isMe: Boolean,
             myAvatar: String,
-            partnerAvatar: String
+            partnerAvatar: String,
+            loadPic: (String, (String?) -> Unit) -> Unit
         ) {
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.isMe, isMe)
             binding.setVariable(BR.myAvatar, myAvatar)
             binding.setVariable(BR.partnerAvatar, partnerAvatar)
             binding.executePendingBindings()
+
+            val view = if (isMe) binding.picRight else binding.picLeft
+            val id = if (MessageKit.hasPic(data)) MessageKit.picId(data) else ""
+            // 换地址是异步的，等回调回来时 holder 可能已经复用了，
+            // 用 tag 记住当前这个 ImageView 摊到的是哪条消息，对不上就丢掉。
+            view.tag = id
+            view.setImageDrawable(null)
+            if (id.isEmpty()) return
+            loadPic(id) { url ->
+                if (view.tag == id && !url.isNullOrEmpty()) {
+                    ImageUtil.showChatIMG(view, url)
+                }
+            }
         }
     }
 
@@ -50,7 +72,7 @@ class MessageDetailAdapter(
 
     override fun onBindViewHolder(holder: ChatViewHolder, position: Int) {
         val item = currentList[position]
-        holder.bind(item, item.fromuid == myUid, myAvatar, partnerAvatar)
+        holder.bind(item, item.fromuid == myUid, myAvatar, partnerAvatar, loadPic)
     }
 
 }

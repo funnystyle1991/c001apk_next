@@ -5,7 +5,6 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.graphics.Outline
 import android.graphics.drawable.ColorDrawable
-import android.util.Log
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.animation.Animation
@@ -104,15 +103,6 @@ object TransitionAnim {
     /** 布局回调没来时的兜底帧数：逐帧等到有尺寸为止，最多等这么多帧就强制执行 */
     private const val MAX_FALLBACK_FRAMES = 12
 
-    /** 转场埋点开关（排查用，定下来后连同 diag 一起删） */
-    private const val DIAG = true
-
-    private const val TAG = "TransitionAnim"
-
-    private fun diag(msg: String) {
-        if (DIAG) Log.d(TAG, msg)
-    }
-
     /** 退出动画期间标记，避免 finish() 重入再播一次动画 */
     private val exiting = WeakHashMap<Activity, Boolean>()
 
@@ -131,7 +121,6 @@ object TransitionAnim {
     fun consumeEnter(): Boolean {
         val pending = enterPending
         enterPending = false
-        diag("consumeEnter -> $pending")
         return pending
     }
 
@@ -199,7 +188,6 @@ object TransitionAnim {
      */
     fun enterOptions(context: Context): ActivityOptions {
         enterPending = true
-        diag("enterOptions <- ${context.javaClass.simpleName}")
         return ActivityOptions.makeCustomAnimation(context, 0, 0)
     }
 
@@ -222,7 +210,6 @@ object TransitionAnim {
         // 旧页已经布局完会立刻开跑，而新页还在等自己的首帧，中间那几十毫秒屏幕上是
         // 旧页滑走后的底色，看着像「先空一下，内容才进来」。
         val lower = lowerOf(activity)
-        diag("playEnter ${activity.javaClass.simpleName}@${activity.hashCode()} lower=${lower?.javaClass?.simpleName}")
         animateContent(activity, res("rin")) {
             lower?.let { animateContent(it, res("lout")) }
         }
@@ -286,11 +273,6 @@ object TransitionAnim {
     private fun animateContent(activity: Activity, resId: Int, onStarted: (() -> Unit)? = null) {
         val view = if (resId == 0) null else contentView(activity)
         val anim = if (view == null) null else AnimationUtils.loadAnimation(activity, resId)
-        diag(
-            "animateContent ${activity.javaClass.simpleName}@${activity.hashCode()} res=$resId " +
-                "view=${view?.javaClass?.simpleName} anim=${anim != null} laidOut=${view?.isLaidOut} " +
-                "size=${view?.width}x${view?.height} attached=${view?.isAttachedToWindow}"
-        )
         if (view == null || anim == null) {
             onStarted?.invoke()
             return
@@ -341,15 +323,12 @@ object TransitionAnim {
         val run = Runnable {
             if (consumed) return@Runnable
             consumed = true
-            diag("firstFrame fire size=${view.width}x${view.height} laidOut=${view.isLaidOut}")
             action()
         }
         if (view.isLaidOut && view.width > 0) {
-            diag("runOnFirstFrame 已在屏上，同步执行")
             run.run()
             return
         }
-        diag("runOnFirstFrame 挂 layout 回调 laidOut=${view.isLaidOut} size=${view.width}x${view.height}")
         view.doOnNextLayout { run.run() }
         // 兜底：万一这帧没等来 layout（重页面冷启动可能拖到百毫秒级），就逐帧轮询到有尺寸为止，
         // 最多 MAX_FALLBACK_FRAMES 帧后强制执行。用固定超时不行——超时太短会在没尺寸时白启动动画
@@ -360,7 +339,6 @@ object TransitionAnim {
                 if (consumed) return
                 frames++
                 if ((view.isLaidOut && view.width > 0) || frames > MAX_FALLBACK_FRAMES) {
-                    diag("runOnFirstFrame 兜底第 $frames 帧执行 size=${view.width}x${view.height}")
                     run.run()
                 } else {
                     view.postOnAnimation(this)

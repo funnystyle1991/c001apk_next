@@ -1,6 +1,9 @@
 import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 import org.jetbrains.kotlin.konan.properties.Properties
 import java.io.ByteArrayOutputStream
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 plugins {
     alias(libs.plugins.android.application)
@@ -82,10 +85,12 @@ val channel = (findProperty("channel") as String?)?.takeIf { it.isNotBlank() } ?
 val apkPrefix = "c001apk_next"
 // 打包时刻，关于页显示用。固定按北京时间打：CI 跑在 UTC，不锁时区的话
 // 装机后会看到「编译于 04:12」这种跟本机钟点对不上的值。
-val buildTime = java.time.format.DateTimeFormatter
+// 注意：这里不能写 java.time.*，Gradle Kotlin DSL 里 `java` 会解析成 JavaPluginExtension，
+// 把 java 包名整个遮住（Unresolved reference: time），所以走文件顶部的 import。
+val buildTime = DateTimeFormatter
     .ofPattern("yyyy-MM-dd HH:mm")
-    .withZone(java.time.ZoneId.of("Asia/Shanghai"))
-    .format(java.time.Instant.now())
+    .withZone(ZoneId.of("Asia/Shanghai"))
+    .format(Instant.now())
 
 android {
     // 注意：namespace 决定 R / ViewBinding / DataBinding 生成类的包名，

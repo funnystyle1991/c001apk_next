@@ -139,11 +139,11 @@ class FeedViewModel @AssistedInject constructor(
     }
 
     fun fetchFeedReply() {
-        // 评论和详情是并发发的：详情页"列表项直出首屏"那条路径里 Activity 不等详情就先建了 Fragment，
-        // 于是评论请求和详情请求同时在飞。而 isRefreshing / isLoadMore 是两个请求**共用**的标志，
-        // 详情先回来会把它俩清掉，评论后回来时就判到自己"既不是刷新也不是加载更多"，整批数据被丢掉
-        // ——表现就是进页面评论区空着，手动下拉刷新（那时详情早结束了）才有。
-        // 起请求时把这次的意图固定下来，回调里不再读共享标志。
+        // 详情和评论首屏是并发发的：详情页"列表项直出首屏"那条路径里 Activity 不等详情就先建了
+        // Fragment，于是评论请求和详情请求同时在飞。而 isRefreshing / isLoadMore 是**共用**的分页
+        // 标志，只要半路有人把它俩清掉（详情请求曾经就会，见 fetchFeedData），评论回来时就判到自己
+        // "既不是刷新也不是加载更多"，整批数据被丢掉——表现是进页面评论区空着，下拉刷新才有。
+        // 起请求时把这次的意图固定下来，回调里不再读共享标志，谁清都不影响这一批数据。
         val isRefreshRequest = isRefreshing
         val isLoadMoreRequest = isLoadMore
         viewModelScope.launch(Dispatchers.IO) {
@@ -156,6 +156,11 @@ class FeedViewModel @AssistedInject constructor(
                         footerState.postValue(FooterState.Loading)
                 }
                 .collect { result ->
+                    // 复位放在最前面，别放尾部：下面每个 return@collect 都是一个出口，
+                    // 漏掉一次（接口回 message 那种）isRefreshing 就永远卡在 true，
+                    // loadMore 的守卫一直被挡住 —— 滚到底再也不会加载，只能下拉刷新
+                    isRefreshing = false
+                    isLoadMore = false
                     val feedReplyList = feedReplyData.value?.toMutableList() ?: ArrayList()
                     val data = result.getOrNull()
                     if (data != null) {
@@ -218,8 +223,6 @@ class FeedViewModel @AssistedInject constructor(
                         footerState.postValue(FooterState.LoadingError(LOADING_FAILED))
                         result.exceptionOrNull()?.printStackTrace()
                     }
-                    isRefreshing = false
-                    isLoadMore = false
                 }
         }
     }
@@ -240,6 +243,10 @@ class FeedViewModel @AssistedInject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             networkRepo.getFeedContent(id, frid)
                 .collect { result ->
+                    // 这一支**不动** isRefreshing / isLoadMore：它俩是评论分页的标志，详情请求跟分页
+                    // 没关系。而详情和评论首屏是并发发的（列表项直出首屏那条路径），详情回来顺手把
+                    // 标志清掉，评论请求就会判到自己"既不是刷新也不是加载更多"整批丢掉；预取那类
+                    // 守卫也会误判成"没人在请求"而重复发一页
                     val feed = result.getOrNull()
                     if (feed != null) {
                         if (feed.message != null) {
@@ -256,8 +263,6 @@ class FeedViewModel @AssistedInject constructor(
                         activityState.postValue(LoadingState.LoadingFailed(LOADING_FAILED))
                         result.exceptionOrNull()?.printStackTrace()
                     }
-                    isRefreshing = false
-                    isLoadMore = false
                 }
         }
     }

@@ -73,6 +73,8 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
     private val fabViewBehavior by lazy { HideBottomViewOnScrollBehavior<FloatingActionButton>() }
     private var dialog: AlertDialog? = null
     private var isShowReply = false
+    /** 这一轮分页里正文快滑到底时预取过评论没有：一次就够，反复预取会把下一页一路拉完 */
+    private var replyPreloaded = false
     private lateinit var intentActivityResultLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -192,12 +194,18 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                 firstVisibleItemPosition =
                     if (isPortrait) mLayoutManager.findFirstVisibleItemPosition()
                     else sLayoutManager.findFirstVisibleItemPositions(null).min()
+                // 预取要看正文最后一项露出来没有，所以末位每帧也跟着更新一次
+                // （常规分页那处只在停手时更新，那个时机够用，这里等不了）
+                lastVisibleItemPosition =
+                    if (isPortrait) mLayoutManager.findLastVisibleItemPosition()
+                    else sLayoutManager.findLastVisibleItemPositions(null).max()
                 // 内容里的作者行被顶掉多少，顶栏作者行就往上滑多少：滑到 1 时正好落到标题的位置。
                 // 不写成"过了阈值就切"，是因为要跟着手指走（活动页那种顶掉+挪位），不是到点瞬切
                 val progress =
                     if (firstVisibleItemPosition in (0..1)) scrollYDistance / titleSwitchDistance
                     else 1f
                 applyTitleSwitch(progress)
+                preloadReplyIfNeeded()
             }
         })
     }
@@ -205,6 +213,34 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
     private fun loadMore() {
         viewModel.isLoadMore = true
         viewModel.fetchFeedReply()
+    }
+
+    /**
+     * 正文快滑到底（正文最后一项进屏幕）就先把评论区下一页要回来。
+     *
+     * 常规分页只在列表滑到底、且停手（SCROLL_STATE_IDLE）时才发请求，而长图文正文有好几屏：
+     * 等用户读完正文、评论区刚露头那一刻才去请求，滑进去就是一片空白干等一个网络来回。
+     * 评论区从 `viewModel.itemCount` 开始（HeaderAdapter + 正文项），所以正文最后一项是
+     * `itemCount - 1`，它一进屏幕就说明下一页评论马上要用上了。
+     */
+    private fun preloadReplyIfNeeded() {
+        if (replyPreloaded) return
+        // 正文最后一项还没进屏幕：离评论区还远，先不打扰
+        if (viewModel.itemCount <= 0 || lastVisibleItemPosition < viewModel.itemCount - 1) return
+        // 首屏/刷新/上一页正在飞，或者已经到底：交给正常流程，等下一次滚动再看
+        if (viewModel.isEnd || viewModel.isRefreshing || viewModel.isLoadMore) return
+        replyPreloaded = true
+        if (viewModel.feedReplyData.value.isNullOrEmpty()) {
+            // 首屏那批还没落地（失败，或者被并发的详情请求丢过一次）：当作首页请求重来一次
+            viewModel.firstItem = null
+            viewModel.lastItem = null
+            viewModel.page = 1
+            viewModel.isEnd = false
+            viewModel.isRefreshing = true
+            viewModel.fetchFeedReply()
+        } else {
+            loadMore()
+        }
     }
 
     private fun initObserve() {
@@ -283,6 +319,8 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
         viewModel.isEnd = false
         viewModel.isRefreshing = true
         viewModel.isLoadMore = false
+        // 重新从第一页开始，预取的名额也跟着还回来
+        replyPreloaded = false
         viewModel.fetchFeedReply()
     }
 
@@ -484,6 +522,8 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             viewModel.isRefreshing = true
             viewModel.isLoadMore = false
             viewModel.isRefreshReply = true
+            // 换排序等于重新分页，预取名额同样还回来
+            replyPreloaded = false
             dialog = MaterialAlertDialogBuilder(
                 requireContext(),
                 R.style.ThemeOverlay_MaterialAlertDialog_Rounded

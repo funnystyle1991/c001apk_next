@@ -5,12 +5,13 @@ import android.app.ActivityOptions
 import android.content.Context
 import android.graphics.Outline
 import android.graphics.drawable.ColorDrawable
+import android.util.Log
 import android.view.View
 import android.view.ViewOutlineProvider
-import android.view.ViewTreeObserver
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import androidx.core.app.ActivityOptionsCompat
+import androidx.core.view.doOnNextLayout
 import com.google.android.material.color.MaterialColors
 import java.lang.ref.WeakReference
 import java.util.WeakHashMap
@@ -100,6 +101,18 @@ object TransitionAnim {
     /** 读不到系统屏幕圆角时的兜底圆角（dp） */
     private const val FALLBACK_CORNER_DP = 28f
 
+    /** 布局回调没来时的兜底帧数：逐帧等到有尺寸为止，最多等这么多帧就强制执行 */
+    private const val MAX_FALLBACK_FRAMES = 12
+
+    /** 转场埋点开关（排查用，定下来后连同 diag 一起删） */
+    private const val DIAG = true
+
+    private const val TAG = "TransitionAnim"
+
+    private fun diag(msg: String) {
+        if (DIAG) Log.d(TAG, msg)
+    }
+
     /** 退出动画期间标记，避免 finish() 重入再播一次动画 */
     private val exiting = WeakHashMap<Activity, Boolean>()
 
@@ -118,6 +131,7 @@ object TransitionAnim {
     fun consumeEnter(): Boolean {
         val pending = enterPending
         enterPending = false
+        diag("consumeEnter -> $pending")
         return pending
     }
 
@@ -185,6 +199,7 @@ object TransitionAnim {
      */
     fun enterOptions(context: Context): ActivityOptions {
         enterPending = true
+        diag("enterOptions <- ${context.javaClass.simpleName}")
         return ActivityOptions.makeCustomAnimation(context, 0, 0)
     }
 
@@ -207,6 +222,7 @@ object TransitionAnim {
         // 旧页已经布局完会立刻开跑，而新页还在等自己的首帧，中间那几十毫秒屏幕上是
         // 旧页滑走后的底色，看着像「先空一下，内容才进来」。
         val lower = lowerOf(activity)
+        diag("playEnter ${activity.javaClass.simpleName}@${activity.hashCode()} lower=${lower?.javaClass?.simpleName}")
         animateContent(activity, res("rin")) {
             lower?.let { animateContent(it, res("lout")) }
         }
@@ -270,10 +286,19 @@ object TransitionAnim {
     private fun animateContent(activity: Activity, resId: Int, onStarted: (() -> Unit)? = null) {
         val view = if (resId == 0) null else contentView(activity)
         val anim = if (view == null) null else AnimationUtils.loadAnimation(activity, resId)
+        diag(
+            "animateContent ${activity.javaClass.simpleName}@${activity.hashCode()} res=$resId " +
+                "view=${view?.javaClass?.simpleName} anim=${anim != null} laidOut=${view?.isLaidOut} " +
+                "size=${view?.width}x${view?.height} attached=${view?.isAttachedToWindow}"
+        )
         if (view == null || anim == null) {
             onStarted?.invoke()
             return
         }
+        // onCreate 阶段内容视图还没布局：先把它整块推到屏幕外，让「首帧画出来时内容不在终点
+        // 位置」不依赖动画启动的时机——启动晚了也只是「还没滑进来」，不会先闪一帧终点画面。
+        val preset = !view.isLaidOut && view.width == 0
+        if (preset) view.translationX = view.resources.displayMetrics.widthPixels.toFloat()
         // 各槽位的终点都是原位（rin 到 0、lin 回到 1.0），fillAfter 只为了避免收尾那帧
         // 属性复位造成的闪动；旧页 lout 的终点是「半屏外 + 0.7 + 全透明」，返回时由 lin 接着走
         anim.fillAfter = true
@@ -289,8 +314,8 @@ object TransitionAnim {
         // 圆角裁剪（要读宽高）和百分比位移（宽高为 0 时 `100%` 解析成 0，动画干脆不动）
         // 都必须在 layout 之后；而一旦等到首帧画完才启动，新页已经先按「终点位置」整屏画过
         // 一帧——详情页这帧只有底色和骨架，就是那个「先闪一下空白，内容再滑进来」。
-        // 同时满足「已布局」和「尚未绘制」的只有 onPreDraw。
         runOnFirstFrame(view) {
+            if (preset) view.translationX = 0f
             applyRoundClip(activity, view)
             view.startAnimation(anim)
             onStarted?.invoke()
@@ -298,32 +323,51 @@ object TransitionAnim {
     }
 
     /**
-     * 在 [view] 的「下一帧绘制之前」执行 [action]；已经在屏幕上的页（退场 / 归位）直接同步执行。
+     * 在 [view] 完成 layout 之后、首帧绘制之前执行 [action]；已经在屏幕上的页（退场 / 归位）直接同步执行。
      *
-     * 这里有个必须记住的坑：onCreate 阶段 `view.viewTreeObserver` 拿到的是**尚未 attach 时**的
-     * floating observer，它会在 attach 时被 merge 进真正的 observer 然后 `kill()` 掉。若在回调里
-     * 用捕获的那个去 `removeOnPreDrawListener`，此刻 `isAlive` 已经是 false，移除会**静默失败**，
-     * 于是每帧都回调一次、动画被反复重启，画面永远停在第一帧——表现就是整页卡在屏幕外一片空白。
-     * 所以移除时必须重新取一次当前 observer；[consumed] 再兜一层，保证 [action] 只跑一次。
+     * 这条通路踩过两次坑，别再回到 `ViewTreeObserver.OnPreDrawListener`：
+     * - onCreate 阶段 `view.viewTreeObserver` 拿到的是**尚未 attach 时**的 floating observer，
+     *   它会在 attach 时被 merge 进真正的 observer 然后 `kill()`；用捕获的那个去
+     *   `removeOnPreDrawListener` 会静默失败，表现是每帧重启动画、整页卡在屏幕外；
+     * - 而在这套 Activity / 主题组合下（rikka MaterialActivity + AppCompat 子装饰），preDraw
+     *   这条路干脆一次都不回调：动画等于没播，旧页也不退场。
+     *
+     * 改成挂在 View 自己身上的 layout 回调：布局必然早于绘制，且不经过 ViewTreeObserver，
+     * 不受 merge / kill 影响。再加一条逐帧兜底（最多 [MAX_FALLBACK_FRAMES] 帧），
+     * 保证 [action] 一定会跑、且只跑一次。
      */
     private fun runOnFirstFrame(view: View, action: () -> Unit) {
-        if (view.isLaidOut) {
+        var consumed = false
+        val run = Runnable {
+            if (consumed) return@Runnable
+            consumed = true
+            diag("firstFrame fire size=${view.width}x${view.height} laidOut=${view.isLaidOut}")
             action()
+        }
+        if (view.isLaidOut && view.width > 0) {
+            diag("runOnFirstFrame 已在屏上，同步执行")
+            run.run()
             return
         }
-        var consumed = false
-        val listener = object : ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                if (consumed) return true
-                consumed = true
-                val current = view.viewTreeObserver
-                if (current.isAlive) current.removeOnPreDrawListener(this)
-                action()
-                return true
+        diag("runOnFirstFrame 挂 layout 回调 laidOut=${view.isLaidOut} size=${view.width}x${view.height}")
+        view.doOnNextLayout { run.run() }
+        // 兜底：万一这帧没等来 layout（重页面冷启动可能拖到百毫秒级），就逐帧轮询到有尺寸为止，
+        // 最多 MAX_FALLBACK_FRAMES 帧后强制执行。用固定超时不行——超时太短会在没尺寸时白启动动画
+        // （画面停在终点、看着还是「没动画」），太长又白白延长「只有底色」的时间。
+        var frames = 0
+        val poll = object : Runnable {
+            override fun run() {
+                if (consumed) return
+                frames++
+                if ((view.isLaidOut && view.width > 0) || frames > MAX_FALLBACK_FRAMES) {
+                    diag("runOnFirstFrame 兜底第 $frames 帧执行 size=${view.width}x${view.height}")
+                    run.run()
+                } else {
+                    view.postOnAnimation(this)
+                }
             }
         }
-        val observer = view.viewTreeObserver
-        if (observer.isAlive) observer.addOnPreDrawListener(listener)
+        view.postOnAnimation(poll)
     }
 
     /**
@@ -332,9 +376,14 @@ object TransitionAnim {
      */
     private fun applyRoundClip(activity: Activity, view: View) {
         val radius = screenCornerRadius(activity)
+        // 尺寸兜底：超时兜底路径下 view 可能还没量到宽高，而 outline 为 0x0 时
+        // clipToOutline 会把整页裁成空——那一帧就是全白/全透明。所以取不到就按屏幕尺寸裁。
+        val metrics = view.resources.displayMetrics
+        val w = if (view.width > 0) view.width else metrics.widthPixels
+        val h = if (view.height > 0) view.height else metrics.heightPixels
         view.outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(v: View, outline: Outline) {
-                outline.setRoundRect(0, 0, v.width, v.height, radius)
+                outline.setRoundRect(0, 0, w, h, radius)
             }
         }
         view.clipToOutline = true

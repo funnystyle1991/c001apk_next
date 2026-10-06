@@ -16,6 +16,7 @@
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@null"
         android:fitsSystemWindows="false"
         app:consumeSystemWindowsInsets="end"
         app:edgeToEdge="true"
@@ -63,14 +64,13 @@
 
                     <com.google.android.material.imageview.ShapeableImageView
                         android:id="@+id/avatar"
-                        android:layout_width="0dp"
-                        android:layout_height="0dp"
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
                         android:layout_marginStart="20dp"
                         android:background="@color/cover"
                         android:foreground="@drawable/selector_bg_avatar"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
                         app:layout_constraintBottom_toBottomOf="parent"
-                        app:layout_constraintDimensionRatio="1"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toTopOf="parent"
                         app:shapeAppearance="@style/circleImageStyle"
@@ -80,12 +80,12 @@
                         android:id="@+id/name"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
+                        android:layout_marginStart="14dp"
                         android:ellipsize="end"
                         android:lines="1"
                         android:maxLines="1"
                         android:singleLine="true"
-                        android:textSize="16sp"
+                        android:textSize="18sp"
                         android:textStyle="bold"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
                         app:layout_constraintEnd_toEndOf="@id/guideline"
@@ -104,8 +104,11 @@
                         android:id="@+id/level"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:layout_marginTop="5dp"
+                        android:layout_marginStart="14dp"
+                        android:layout_marginTop="6dp"
+                        android:textColor="?android:textColorSecondary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
                         app:layout_constraintStart_toEndOf="@+id/avatar"
                         app:layout_constraintTop_toBottomOf="@id/name"
@@ -115,23 +118,41 @@
                         android:id="@+id/exp"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textColor="?android:textColorSecondary"
+                        android:textSize="10sp"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
                         app:layout_constraintEnd_toEndOf="@id/guideline"
                         app:layout_constraintTop_toTopOf="@id/level"
                         tools:ignore="NestedWeights"
                         tools:text="500/1000" />
 
+                    <!--
+                        等级进度条，按桌面版做成一条连续的条。M3E 的 linearProgressIndicatorStyle
+                        （见 themes_m3e.xml）继承的是 M3 那套：指示器与轨道之间留 indicatorTrackGapSize
+                        的空隙、两侧各自收圆角（看着就是"中间断开"），外加轨道末端一个停止指示点。
+                        所以要三处覆盖：
+                          indicatorTrackGapSize=0dp  去掉中缝
+                          trackInnerCornerRadius=0dp 接缝两侧改成直角，否则半圆对半圆会留上下凹口
+                          trackStopIndicatorSize=0dp 去掉末端光点（组件默认值本就是 0）
+                        trackCornerRadius 保留，只管整条两端的外圆角。
+                        注意：间隙为 0 时若把 indeterminateAnimationType 改成 contiguous，validateSpec
+                        会抛异常；继承链里是 disjoint，别去动它。
+                    -->
                     <com.google.android.material.progressindicator.LinearProgressIndicator
                         android:id="@+id/progress"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:layout_marginTop="5dp"
+                        android:layout_marginStart="14dp"
+                        android:layout_marginTop="6dp"
                         android:visibility="@{isLogin ? View.VISIBLE : View.INVISIBLE}"
+                        app:indicatorTrackGapSize="0dp"
                         app:layout_constraintEnd_toEndOf="@id/guideline"
                         app:layout_constraintStart_toEndOf="@id/avatar"
                         app:layout_constraintTop_toBottomOf="@id/level"
                         app:trackCornerRadius="20dp"
+                        app:trackInnerCornerRadius="0dp"
+                        app:trackStopIndicatorSize="0dp"
+                        app:trackThickness="5dp"
                         tools:max="1000"
                         tools:progress="500" />
 
@@ -140,9 +161,9 @@
             </com.google.android.material.appbar.MaterialToolbar>
 
             <!--
-                2026-09-18 二次修正：这里曾经额外塞了一个「九宫格」GridLayout，
-                与下方 RecyclerView 里原有的 item_message_mine 卡片重复，导致「我的」页出现两套入口。
-                现在统一只保留原有卡片（MessageSecondAdapter + item_message_mine.xml）。
+                2026-10-05：页面按桌面版重排——消息入口搬去首页工具栏、
+                通知列表独立成 MessageCenterActivity，这里只剩个人中心
+                （头部用户卡 + 统计卡 + 功能宫格）。宫格见 item_mine_menu.xml。
             -->
             <View
                 android:layout_width="match_parent"

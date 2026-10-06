@@ -123,6 +123,42 @@ abstract class BasePagerFragment : Fragment(), IOnTabClickContainer {
 
     abstract fun onBackClick()
 
+    /** percent 高于它：折叠头部完全不透明（percent = 1 是完全展开） */
+    protected open val headerOpaquePercent = 0.75f
+
+    /** percent 低于它：折叠头部完全隐藏（percent = 0 是完全收起） */
+    protected open val headerGonePercent = 0.35f
+
+    /** 最近一次的折叠进度，异步绑完头部数据时可以拿来补一次当前状态 */
+    protected var headerFadePercent = 1f
+        private set
+
+    /**
+     * 下滑时把整块折叠头部（封面 + 头像 + 昵称 / 简介 / 数据 / 装备条 …）淡出，
+     * 只留折叠后的工具栏标题。
+     *
+     * 头部是 `COLLAPSE_MODE_PARALLAX`、跟着 AppBar 一起往上走，而折叠标题固定在工具栏上，
+     * 不淡出的话两层文字会从彼此下面穿过去 —— 用户主页和话题页都踩过这个。
+     *
+     * @param header 折叠头部，数据还没到时可以传 null
+     * @param percent 1 = 完全展开 / 0 = 完全收起（`AppBarLayoutStateChangeListener` 的口径）
+     * @return 头部当前的不透明度，调用方据此决定顶栏图标用白还是用主题色
+     */
+    protected fun applyHeaderFade(header: View?, percent: Float): Float {
+        headerFadePercent = percent
+        val alpha = ((percent - headerGonePercent) / (headerOpaquePercent - headerGonePercent))
+            .coerceIn(0f, 1f)
+        if (header == null) return alpha
+        if (header.alpha != alpha) header.alpha = alpha
+
+        // 全透明之后这块仍然吃触摸事件（头像 / 关注 / 装备条都挂着点击），会变成
+        // 「看不见但点得到」，所以一起换成 INVISIBLE（不参与测量，AppBar 的
+        // totalScrollRange 不会跟着跳）。这里每次都写一遍：setVisibility 值没变时
+        // 自己会直接返回，而头部数据晚到时（先 GONE 再点亮）需要这一次纠正。
+        header.visibility = if (alpha == 0f) View.INVISIBLE else View.VISIBLE
+        return alpha
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null

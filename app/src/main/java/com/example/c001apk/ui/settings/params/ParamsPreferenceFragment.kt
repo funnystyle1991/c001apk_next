@@ -110,7 +110,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -141,7 +141,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -171,7 +171,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -202,7 +202,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -240,7 +240,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -280,7 +280,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -321,7 +321,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -362,7 +362,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -396,7 +396,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -434,7 +434,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -466,7 +466,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -495,7 +495,7 @@ class ParamsPreferenceFragment : PreferenceFragmentCompat(), SharedPreferences.O
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )

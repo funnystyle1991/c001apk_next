@@ -1,0 +1,16 @@
+<!--
+    消息中心宫格「我的回复」格用。
+    形状跟 ic_reply 一样，但那份是 ?attr/colorControlNormal（首页 FAB 在用，不能改），
+    宫格是彩色圆底 + 白色图标，所以这里单独留一份写死白色。
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:autoMirrored="true"
+    android:tint="@android:color/white"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z" />
+</vector>

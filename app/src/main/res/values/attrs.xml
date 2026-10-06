@@ -187,4 +187,11 @@
 
     </declare-styleable>
 
+    <!-- 正文里的「查看链接」画成胶囊按钮（私信气泡用，见 item_message_chat.xml） -->
+    <declare-styleable name="LinkTextView">
+
+        <attr name="linkAsChip" format="boolean" />
+
+    </declare-styleable>
+
 </resources>

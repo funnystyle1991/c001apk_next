@@ -208,31 +208,59 @@ object PrefManager {
         get() = pref.getBoolean("isColorFilter", true)
         set(value) = pref.edit().putBoolean("isColorFilter", value).apply()
 
+    /**
+     * 水平转场动画曲线（实验项，见 [com.example.c001apk.util.TransitionAnim]）。
+     * 取值 linear / m2 / std / emph，默认 `emph` 与已改造的正式资源一致。
+     */
+    var animCurve: String
+        get() = pref.getString("animCurve", TransitionAnim.CURVE_M3_EMPHASIZED)!!
+        set(value) = pref.edit().putString("animCurve", value).apply()
+
+    /**
+     * 水平转场动画类型（实验项）：slide 水平滑动 / fade 淡入淡出 / none 无动画。
+     * `parallax` 已从设置里摘掉（旧页退半屏，和 slide 观感重复），
+     * 兜底把存过的旧值折成 slide，否则下拉框会显示不出当前项。
+     */
+    var animType: String
+        get() = pref.getString("animType", TransitionAnim.TYPE_SLIDE)!!
+            .let { if (it == TransitionAnim.TYPE_PARALLAX) TransitionAnim.TYPE_SLIDE else it }
+        set(value) = pref.edit().putString("animType", value).apply()
+
+    /** 水平转场进入时长(ms)，实验项；退出固定为进入 - 50ms。存成字符串以便设置页用下拉框。 */
+    var animDuration: Int
+        get() = pref.getString("animDuration", "300")!!.toIntOrNull() ?: 300
+        set(value) = pref.edit().putString("animDuration", value.toString()).apply()
+
     /** 启动时检查本应用正式版更新（升级信息走自建接口，默认开） */
     var isCheckUpdateStable: Boolean
         get() = pref.getBoolean("isCheckUpdateStable", true)
         set(value) = pref.edit().putBoolean("isCheckUpdateStable", value).apply()
 
     /**
-     * 自更新接口的匿名统计 ID（`X-Union-Id` 请求头）。
+     * 用户随机 ID（上报头 `X-App-userrandomid`；Prefs 键沿用早期的 `useradomid` 不改，
+     * 改了会让已装用户被当成新用户重算）：本应用自己造的匿名标识，首次启动随机生成一份
+     * 32 位 hex 落盘（[com.example.c001apk.MyApplication] 启动时初始化），
+     * 之后只要不清应用数据就一直是这个值。
      *
-     * 安装后首次读取时随机生成 32 位 hex 并落盘，之后不再变化；
-     * 只用于服务端统计「多少台设备在查更新」，不含任何用户/设备信息，
-     * 与设备串（xAppDevice / szlmId）完全无关。
+     * 为什么不拿数字联盟 ID（DUID）去统计：DUID 是设备级实名标识，签发方（数字联盟）
+     * 能把它反查回具体设备，上报它等于把用户的真实设备交给统计接口。换成本机自造的
+     * 随机串后，上报走自更新接口的 `X-App-userrandomid` 请求头（见 [UpdateChecker]），
+     * 服务端拿到的只是一个跟账号、跟设备都无关的随机值：
+     * 换机 / 重装会变成新号，够用来数活跃设备与留存，但追不到人。
      */
-    var updateUnionId: String
+    var userRandomId: String
         get() {
-            pref.getString("updateUnionId", null)?.takeIf { it.isNotEmpty() }?.let { return it }
+            pref.getString("useradomid", null)?.takeIf { it.isNotEmpty() }?.let { return it }
+            // 老版本把这个值存在 updateUnionId 下，沿用一次，免得已统计过的用户被算成新用户
+            pref.getString("updateUnionId", null)?.takeIf { it.isNotEmpty() }?.let {
+                pref.edit().putString("useradomid", it).apply()
+                return it
+            }
             val id = java.util.UUID.randomUUID().toString().replace("-", "")
-            pref.edit().putString("updateUnionId", id).apply()
+            pref.edit().putString("useradomid", id).apply()
             return id
         }
-        set(value) = pref.edit().putString("updateUnionId", value).apply()
-
-    /** 启动时检查本应用 Beta 版更新（默认关） */
-    var isCheckUpdateBeta: Boolean
-        get() = pref.getBoolean("isCheckUpdateBeta", false)
-        set(value) = pref.edit().putBoolean("isCheckUpdateBeta", value).apply()
+        set(value) = pref.edit().putString("useradomid", value).apply()
 
     /**
      * SSL 证书校验（默认开）。

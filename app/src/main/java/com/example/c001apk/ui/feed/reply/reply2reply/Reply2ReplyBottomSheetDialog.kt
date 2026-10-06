@@ -267,7 +267,8 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment() {
             message: String?,
             dateline: String?,
             rid: Any?,
-            isViewReply: Any?
+            isViewReply: Any?,
+            feedData: Any?
         ) {
             super.onViewFeed(
                 view,
@@ -279,7 +280,8 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment() {
                 message,
                 dateline,
                 rid,
-                isViewReply
+                isViewReply,
+                feedData
             )
             if (!uid.isNullOrEmpty() && PrefManager.isRecordHistory)
                 viewModel.saveHistory(

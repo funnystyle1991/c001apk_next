@@ -17,6 +17,17 @@ class MessageFirstAdapter : RecyclerView.Adapter<MessageFirstAdapter.FirstViewHo
     private val fffTitle = listOf("动态", "关注", "粉丝")
     private var ffflist: List<String>? = null
 
+    /**
+     * 未登录时本地没有任何个人数据，整块统计卡不占位
+     * （否则会留一张三个空格子的灰卡，很难看）。
+     */
+    var isLogin: Boolean = true
+        set(value) {
+            if (field == value) return
+            field = value
+            notifyDataSetChanged()
+        }
+
     fun setFFFList(ffflist: List<String>) {
         if (ffflist.isNotEmpty()) {
             this.ffflist = ffflist
@@ -87,7 +98,7 @@ class MessageFirstAdapter : RecyclerView.Adapter<MessageFirstAdapter.FirstViewHo
         return FirstViewHolder(binding, fffTitle)
     }
 
-    override fun getItemCount() = 1
+    override fun getItemCount() = if (isLogin) 1 else 0
 
     override fun onBindViewHolder(holder: FirstViewHolder, position: Int) {
         holder.bind(ffflist)

@@ -69,7 +69,7 @@ class HistoryActivity : BaseActivity<ActivityHistoryBinding>() {
             setColorSchemeColors(
                 MaterialColors.getColor(
                     this@HistoryActivity,
-                    com.google.android.material.R.attr.colorPrimary,
+                    androidx.appcompat.R.attr.colorPrimary,
                     0
                 )
             )

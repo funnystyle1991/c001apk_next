@@ -5,6 +5,7 @@ import com.example.c001apk.adapter.AppAdapter
 import com.example.c001apk.adapter.FooterAdapter
 import com.example.c001apk.adapter.FooterState
 import com.example.c001apk.adapter.HeaderAdapter
+import com.example.c001apk.ui.dialog.ApkDownloadDialog
 import com.example.c001apk.util.showPublishStatusDialog
 import com.example.c001apk.ui.home.IOnTabClickContainer
 import com.example.c001apk.ui.home.IOnTabClickListener
@@ -31,6 +32,17 @@ abstract class BaseAppFragment<VM : BaseAppViewModel> : BaseViewFragment<VM>(),
             appAdapter.submitList(it)
             if (binding.vfContainer.displayedChild != it.size)
                 binding.vfContainer.displayedChild = it.size
+        }
+
+        viewModel.apkDownload.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandledOrReturnNull()?.let { info ->
+                ApkDownloadDialog.newInstance(
+                    url = info.url,
+                    fileName = info.fileName,
+                    title = info.title,
+                    size = info.size,
+                ).show(childFragmentManager, "apkDownload")
+            }
         }
 
         viewModel.publishStatusEvent.observe(viewLifecycleOwner) { event ->

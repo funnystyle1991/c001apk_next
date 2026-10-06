@@ -6,12 +6,14 @@ import android.text.Html
 import android.view.LayoutInflater
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.view.View
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.text.method.LinkMovementMethodCompat
 import androidx.core.view.isVisible
 import androidx.databinding.BindingAdapter
 import com.example.c001apk.R
+import com.example.c001apk.constant.Constants
 import com.example.c001apk.logic.model.FeedArticleContentBean
 import com.example.c001apk.logic.model.HomeFeedResponse
 import com.example.c001apk.util.ImageUtil
@@ -31,7 +33,7 @@ fun setExtraPic(imageView: ImageView, extraPic: String?) {
             setBackgroundColor(
                 MaterialColors.getColor(
                     imageView.context,
-                    com.google.android.material.R.attr.colorPrimary,
+                    androidx.appcompat.R.attr.colorPrimary,
                     0
                 )
             )
@@ -52,16 +54,18 @@ fun setExtraPic(imageView: ImageView, extraPic: String?) {
 
 @BindingAdapter("setFollowText")
 fun setFollowText(textView: TextView, followAuthor: Int) {
+    // 列表项不下发 followAuthor，详情回来前是"未知"：按钮先隐身，让 followLoading 的转圈顶上
+    val unknown = followAuthor == Constants.FOLLOW_AUTHOR_UNKNOWN
     with(PrefManager.isLogin) {
-        textView.isVisible = this
-        if (this) {
+        textView.isVisible = this && !unknown
+        if (this && !unknown) {
             when (followAuthor) {
                 0 -> {
                     textView.text = "关注"
                     textView.setTextColor(
                         MaterialColors.getColor(
                             textView.context,
-                            com.google.android.material.R.attr.colorPrimary,
+                            androidx.appcompat.R.attr.colorPrimary,
                             0
                         )
                     )
@@ -79,20 +83,37 @@ fun setFollowText(textView: TextView, followAuthor: Int) {
 
 }
 
+@BindingAdapter("followLoading")
+fun followLoading(view: View, followAuthor: Int) {
+    view.isVisible = followAuthor == Constants.FOLLOW_AUTHOR_UNKNOWN
+}
+
 @BindingAdapter("setArticleImage")
 fun setArticleImage(
     imageView: NineGridImageView,
     setArticleImage: FeedArticleContentBean.Data,
 ) {
-    setArticleImage.url?.let {
-        val urlList = ArrayList<String>()
-        urlList.add("$it.s.jpg")
-        val imageLp = ImageUtil.getImageLp(it)
-        imageView.imgWidth = imageLp.first
-        imageView.imgHeight = imageLp.second
-        imageView.isCompress = true
-        imageView.setUrlList(urlList)
-    }
+    setNineGridImage(imageView, setArticleImage.url, true)
+}
+
+/**
+ * 图文详情的封面。列表项里只有一个 messageCover 裸地址，作为整页头图要顶在作者行下面，
+ * 所以按原图取（清晰优先），排版宽高仍靠 url 里的 `@WxH` 提示算。
+ */
+@BindingAdapter("setFeedCover")
+fun setFeedCover(imageView: NineGridImageView, cover: String?) {
+    setNineGridImage(imageView, cover, false)
+}
+
+private fun setNineGridImage(imageView: NineGridImageView, url: String?, thumbnail: Boolean) {
+    if (url.isNullOrEmpty()) return
+    val urlList = ArrayList<String>()
+    urlList.add(if (thumbnail) "$url.s.jpg" else url)
+    val imageLp = ImageUtil.getImageLp(url)
+    imageView.imgWidth = imageLp.first
+    imageView.imgHeight = imageLp.second
+    imageView.isCompress = true
+    imageView.setUrlList(urlList)
 }
 
 @BindingAdapter(value = ["targetRow", "relationRows", "isFeedContent"], requireAll = true)
@@ -186,7 +207,7 @@ fun setLike(textView: TextView, isLike: Int?) {
         val color = if (it == 1)
             MaterialColors.getColor(
                 textView.context,
-                com.google.android.material.R.attr.colorPrimary,
+                androidx.appcompat.R.attr.colorPrimary,
                 0
             )
         else textView.context.getColor(android.R.color.darker_gray)
@@ -265,4 +286,17 @@ fun setCover(imageView: ImageView, imageUrl: String?) {
     imageUrl?.let {
         ImageUtil.showIMG(imageView, it, true)
     }
+}
+
+/**
+ * 聊天气泡头像：只负责加载图片，**不碰 visibility**。
+ * 用 setImage 的话它会按「url 是否为空」改可见性，和布局里的
+ * `android:visibility="@{isMe ? GONE : VISIBLE}"` 抢同一个属性。
+ */
+@BindingAdapter("avatarImage")
+fun avatarImage(imageView: ImageView, imageUrl: String?) {
+    if (imageUrl.isNullOrEmpty())
+        imageView.setImageDrawable(null)
+    else
+        ImageUtil.showIMG(imageView, imageUrl)
 }

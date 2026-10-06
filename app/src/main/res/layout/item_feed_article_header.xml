@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <import type="android.view.View" />
+
+        <import type="com.example.c001apk.util.DateUtils" />
+
+        <variable
+            name="data"
+            type="com.example.c001apk.logic.model.HomeFeedResponse.Data" />
+
+        <variable
+            name="listener"
+            type="com.example.c001apk.adapter.ItemListener" />
+
+        <variable
+            name="followAuthor"
+            type="int" />
+    </data>
+
+    <!--
+      图文详情的头部：作者行（和动态详情内容卡同款）+ 封面。
+      列表项直出首屏时就用它铺排版，详情回来只在其下补正文，画面不会跳。
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/authorRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/avatar"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@color/cover"
+                android:foreground="@drawable/selector_bg_avatar"
+                android:onClick="@{(view) -> listener.onViewUser(view, data.userInfo.uid)}"
+                app:layout_constraintBottom_toBottomOf="@id/pubDate"
+                app:layout_constraintDimensionRatio="1"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:setImage="@{data.userInfo.userAvatar}"
+                app:shapeAppearance="@style/circleImageStyle" />
+
+            <TextView
+                android:id="@+id/uname"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:ellipsize="end"
+                android:lines="1"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:text="@{data.userInfo.username}"
+                app:layout_constraintEnd_toStartOf="@id/follow"
+                app:layout_constraintStart_toEndOf="@id/avatar"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/follow"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:onClick="@{() -> listener.onFollowUser(data.uid, followAuthor)}"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:setFollowText="@{followAuthor}"
+                tools:text="关注" />
+
+            <!-- 关注状态未知（列表项不下发 followAuthor）时就在按钮位转圈，等详情补上 -->
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/followLoading"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:indeterminate="true"
+                android:visibility="gone"
+                app:followLoading="@{followAuthor}"
+                app:layout_constraintBottom_toBottomOf="@id/follow"
+                app:layout_constraintEnd_toEndOf="@id/follow"
+                app:layout_constraintTop_toTopOf="@id/follow"
+                app:trackCornerRadius="12dp" />
+
+            <TextView
+                android:id="@+id/pubDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="@{DateUtils.fromToday(data.dateline)}"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="13sp"
+                app:layout_constraintStart_toEndOf="@id/avatar"
+                app:layout_constraintTop_toBottomOf="@id/uname" />
+
+            <TextView
+                android:id="@+id/device"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="13sp"
+                android:visibility="@{data.deviceTitle == null || data.deviceTitle.isEmpty ? View.GONE : View.VISIBLE}"
+                app:customText="@{data.deviceTitle}"
+                app:icon="@{@drawable/ic_device}"
+                app:layout_constraintEnd_toStartOf="@id/privateBadge"
+                app:layout_constraintStart_toEndOf="@id/pubDate"
+                app:layout_constraintTop_toBottomOf="@id/uname" />
+
+            <TextView
+                android:id="@+id/privateBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="5dp"
+                android:background="@drawable/bg_private_badge"
+                android:paddingStart="5dp"
+                android:paddingTop="1dp"
+                android:paddingEnd="5dp"
+                android:paddingBottom="1dp"
+                android:text="@string/publish_status_private"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="11sp"
+                android:visibility="@{data.publishStatus != null &amp;&amp; data.publishStatus == 1 ? View.VISIBLE : View.GONE}"
+                app:layout_constraintBottom_toBottomOf="@id/device"
+                app:layout_constraintEnd_toStartOf="@id/follow"
+                app:layout_constraintTop_toTopOf="@id/device" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!-- 封面：列表项里就带着 messageCover，先铺上去，别等详情回来才出现 -->
+        <com.example.c001apk.view.ninegridimageview.NineGridImageView
+            android:id="@+id/cover"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:visibility="@{data.messageCover == null || data.messageCover.isEmpty() ? View.GONE : View.VISIBLE}"
+            app:setFeedCover="@{data.messageCover}" />
+
+    </LinearLayout>
+
+</layout>

@@ -58,4 +58,53 @@
         <item>@string/color_blue_grey</item>
     </string-array>
 
+    <!--
+        水平转场动画实验项（临时脚手架，见 util/TransitionAnim.kt）：
+        三组下拉框分别对应曲线 / 类型 / 进入时长，组合由 tools/gen_transition_anim.py
+        预先烘成 res/anim/exp_*.xml。手感定下来后连同这些数组一起删掉。
+    -->
+    <string-array name="anim_curve_texts" translatable="false">
+        <item>线性（匀速）· 改造前</item>
+        <item>M2 标准 (0.4, 0, 0.2, 1)</item>
+        <item>M3 标准（= M3 强调，同曲线）</item>
+        <item>M3 强调（= M3 标准，同曲线）</item>
+        <item>弹簧（rikkahub 同款）</item>
+    </string-array>
+
+    <string-array name="anim_curve_values" translatable="false">
+        <item>linear</item>
+        <item>m2</item>
+        <item>std</item>
+        <item>emph</item>
+        <item>spring</item>
+    </string-array>
+
+    <string-array name="anim_type_texts" translatable="false">
+        <item>水平滑动</item>
+        <item>淡入淡出</item>
+        <item>无动画</item>
+    </string-array>
+
+    <string-array name="anim_type_values" translatable="false">
+        <item>slide</item>
+        <item>fade</item>
+        <item>none</item>
+    </string-array>
+
+    <string-array name="anim_speed_texts" translatable="false">
+        <item>100ms（退出 50ms）</item>
+        <item>200ms（退出 150ms）</item>
+        <item>300ms（退出 250ms）· M3 默认</item>
+        <item>400ms（退出 350ms）</item>
+        <item>500ms（退出 450ms）</item>
+    </string-array>
+
+    <string-array name="anim_speed_values" translatable="false">
+        <item>100</item>
+        <item>200</item>
+        <item>300</item>
+        <item>400</item>
+        <item>500</item>
+    </string-array>
+
 </resources>

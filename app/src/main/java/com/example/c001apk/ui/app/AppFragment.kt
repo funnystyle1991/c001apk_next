@@ -1,9 +1,7 @@
 package com.example.c001apk.ui.app
 
 import android.app.ActivityOptions
-import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
@@ -15,14 +13,13 @@ import androidx.fragment.app.viewModels
 import com.example.c001apk.R
 import com.example.c001apk.databinding.BaseViewAppBinding
 import com.example.c001apk.ui.base.BasePagerFragment
+import com.example.c001apk.ui.dialog.ApkDownloadDialog
 import com.example.c001apk.ui.feed.reply.ReplyActivity
 import com.example.c001apk.ui.search.SearchActivity
-import com.example.c001apk.util.ClipboardUtil
 import com.example.c001apk.util.ImageUtil
 import com.example.c001apk.util.IntentUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.ReplaceViewHelper
-import com.example.c001apk.util.Utils.downloadApk
 import com.example.c001apk.view.AppBarLayoutStateChangeListener
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
@@ -222,26 +219,22 @@ class AppFragment : BasePagerFragment() {
     }
 
     private fun onDownload() {
-        try {
-            downloadApk(
-                requireContext(),
-                viewModel.downloadUrl.toString(),
-                "${viewModel.appData?.title}-${viewModel.appData?.apkversionname}-${viewModel.appData?.apkversioncode}.apk"
-            )
-        } catch (e: Exception) {
-            try {
-                startActivity(
-                    Intent(
-                        Intent.ACTION_VIEW,
-                        Uri.parse(viewModel.downloadUrl.toString())
-                    )
-                )
-            } catch (e: ActivityNotFoundException) {
-                Toast.makeText(requireContext(), "下载失败", Toast.LENGTH_SHORT).show()
-                ClipboardUtil.copyText(requireContext(), viewModel.downloadUrl.toString())
-                e.printStackTrace()
-            }
+        val url = viewModel.downloadUrl
+        if (url.isNullOrEmpty()) {
+            // 链接还没拿到（点得太快），先取回直链，回来后 download Event 会再进这里
+            viewModel.onGetDownloadLink()
+            return
         }
+        val app = viewModel.appData
+        val version = "${app?.apkversionname.orEmpty()} ${app?.apkversioncode.orEmpty()}".trim()
+        // 文件名里不能出现路径分隔符，应用名偶尔带 "/"
+        val name = "${app?.title.orEmpty()}-$version".replace('/', '_')
+        ApkDownloadDialog.newInstance(
+            url = url,
+            fileName = "$name.apk",
+            title = "${app?.title.orEmpty()} $version".trim(),
+            size = app?.apksize.orEmpty(),
+        ).show(childFragmentManager, "apkDownload")
     }
 
     override fun getFragment(

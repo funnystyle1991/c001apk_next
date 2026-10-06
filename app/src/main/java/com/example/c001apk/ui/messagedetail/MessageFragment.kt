@@ -46,7 +46,11 @@ class MessageFragment : BasePagerFragment() {
 
             "contactsFollow" -> "好友关注"
 
+            "commentMe" -> "我的回复"
+
             "list" -> "私信"
+
+            "secretary" -> "酷安小秘书"
 
             else -> ""
         }

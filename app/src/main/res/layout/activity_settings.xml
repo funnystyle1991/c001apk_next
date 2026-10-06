@@ -29,9 +29,10 @@
 
     </com.google.android.material.appbar.AppBarLayout>
 
+    <!-- 一级页（SettingsActivity）与二级页（SettingsDetailActivity）共用此布局，
+         Fragment 由各自 Activity 手动添加，因此这里不再写死 android:name。 -->
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/settingsContainer"
-        android:name="com.example.c001apk.ui.settings.SettingsPreferenceFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />

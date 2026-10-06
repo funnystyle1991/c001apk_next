@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.c001apk.BR
 import com.example.c001apk.R
+import com.example.c001apk.databinding.ItemAppVersionBinding
 import com.example.c001apk.databinding.ItemCollectionListItemBinding
 import com.example.c001apk.databinding.ItemFeedReplyBinding
 import com.example.c001apk.databinding.ItemHomeFeedBinding
@@ -279,7 +280,7 @@ class AppAdapter(
                     binding.followBtn.setTextColor(
                         MaterialColors.getColor(
                             itemView.context,
-                            com.google.android.material.R.attr.colorPrimary,
+                            androidx.appcompat.R.attr.colorPrimary,
                             0
                         )
                     )
@@ -457,7 +458,7 @@ class AppAdapter(
                     )
                     textSize = 14f
                     setTextColor(
-                        MaterialColors.getColor(context, com.google.android.material.R.attr.colorPrimary, 0)
+                        MaterialColors.getColor(context, androidx.appcompat.R.attr.colorPrimary, 0)
                     )
                     text = row.price?.let { "¥$it" }.orEmpty()
                 }
@@ -590,6 +591,43 @@ class AppAdapter(
                 data.priceMin?.let { "¥$it" },
                 data.configName
             ).joinToString("\n")
+        }
+    }
+
+    // 版本历史条目（/v6/apk/downloadVersionList）：接口只下发 versionName / versionSize / versionDate，
+    // versionName 缺失时退回同一接口里的 version 字段
+    class AppVersionViewHolder(
+        val binding: ItemAppVersionBinding,
+        private val listener: ItemListener,
+    ) : BaseViewHolder<ViewDataBinding>(binding) {
+
+        private var packageName: String? = null
+        private var versionCode: Long? = null
+        private var versionName: String? = null
+        private var versionSize: String? = null
+
+        init {
+            binding.root.setOnClickListener {
+                listener.onDownloadVersion(
+                    it,
+                    packageName,
+                    versionCode,
+                    versionName,
+                    versionSize
+                )
+            }
+        }
+
+        override fun bind(data: HomeFeedResponse.Data) {
+            versionName = data.versionName ?: data.version.orEmpty()
+            versionCode = data.versionCode
+            packageName = data.packageName
+            versionSize = data.versionSize
+            binding.versionName.text = versionName
+            binding.versionInfo.text = listOfNotNull(
+                data.versionSize,
+                data.versionDate
+            ).joinToString(" · ")
         }
     }
 
@@ -785,6 +823,15 @@ class AppAdapter(
                 )
             }
 
+            22 -> {
+                AppVersionViewHolder(
+                    ItemAppVersionBinding.inflate(
+                        LayoutInflater.from(parent.context), parent,
+                        false
+                    ), listener
+                )
+            }
+
             else -> {
                 UnsupportedViewHolder(
                     ItemHomeUnsupportedBinding.inflate(
@@ -842,7 +889,7 @@ class AppAdapter(
                             holder.binding.followBtn.setTextColor(
                                 MaterialColors.getColor(
                                     holder.itemView.context,
-                                    com.google.android.material.R.attr.colorPrimary,
+                                    androidx.appcompat.R.attr.colorPrimary,
                                     0
                                 )
                             )
@@ -854,7 +901,12 @@ class AppAdapter(
     }
 
     override fun getItemViewType(position: Int): Int {
-        return when (currentList[position].entityType) {
+        val item = currentList[position]
+        // 版本历史（/v6/apk/downloadVersionList）的条目没有 entityType / entityId，只有 version* 字段。
+        // entityType 虽然声明为非空 String，但 Gson 遇到缺失字段会塞 null，
+        // 直接交给下面的 when 取 hashCode 会 NPE，所以先单独认出来（顺便兜住其它 null 情况）
+        if (item.entityType.isNullOrEmpty() && item.versionId != null) return 22
+        return when (item.entityType.orEmpty()) {
             "card" -> {
                 when (currentList[position].entityTemplate) {
                     "imageCarouselCard_1" -> 0

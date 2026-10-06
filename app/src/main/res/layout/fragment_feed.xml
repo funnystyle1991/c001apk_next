@@ -43,94 +43,6 @@
         app:fitsSystemWindowsInsets="@integer/internal_fragment_insets"
         tools:context=".ui.feed.FeedFragment">
 
-        <com.google.android.material.appbar.AppBarLayout
-            android:id="@+id/appBar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@null"
-            android:fitsSystemWindows="false"
-            app:fitsSystemWindowsInsets="@integer/internal_fragment_top_insets">
-
-            <com.google.android.material.appbar.MaterialToolbar
-                android:id="@+id/toolBar"
-                android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize">
-
-                <androidx.constraintlayout.widget.ConstraintLayout
-                    android:id="@+id/titleProfile"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone">
-
-                    <com.google.android.material.imageview.ShapeableImageView
-                        android:id="@+id/avatar"
-                        android:layout_width="0dp"
-                        android:layout_height="0dp"
-                        android:background="@color/cover"
-                        android:foreground="@drawable/selector_bg_avatar"
-                        android:onClick="@{(view) -> listener.onViewUser(view, username)}"
-                        app:layout_constraintBottom_toBottomOf="@id/date"
-                        app:layout_constraintDimensionRatio="1"
-                        app:layout_constraintStart_toStartOf="parent"
-                        app:layout_constraintTop_toTopOf="parent"
-                        app:setImage="@{avatarUrl}"
-                        app:shapeAppearance="@style/circleImageStyle" />
-
-                    <TextView
-                        android:id="@+id/name"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:ellipsize="end"
-                        android:maxLines="1"
-                        android:text="@{username}"
-                        android:textSize="15sp"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toEndOf="@id/avatar"
-                        app:layout_constraintTop_toTopOf="parent"
-                        tools:text="name" />
-
-                    <TextView
-                        android:id="@+id/date"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="10dp"
-                        android:maxLines="1"
-                        android:text="@{String.valueOf(DateUtils.fromToday(dateline))}"
-                        android:textColor="@android:color/darker_gray"
-                        android:textSize="13sp"
-                        app:layout_constraintStart_toEndOf="@id/avatar"
-                        app:layout_constraintTop_toBottomOf="@id/name"
-                        tools:text="date" />
-
-                    <TextView
-                        android:id="@+id/device"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="5dp"
-                        android:ellipsize="end"
-                        android:maxLines="1"
-                        android:textColor="@android:color/darker_gray"
-                        android:textSize="13sp"
-                        android:visibility="@{deviceTitle == null || deviceTitle.isEmpty ? View.INVISIBLE : View.VISIBLE}"
-                        app:customText="@{deviceTitle}"
-                        app:icon="@{@drawable/ic_device}"
-                        app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintStart_toEndOf="@id/date"
-                        app:layout_constraintTop_toBottomOf="@id/name"
-                        tools:text="device" />
-
-                </androidx.constraintlayout.widget.ConstraintLayout>
-
-            </com.google.android.material.appbar.MaterialToolbar>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1px"
-                android:background="?attr/colorSurfaceVariant" />
-
-        </com.google.android.material.appbar.AppBarLayout>
-
         <FrameLayout
             android:id="@+id/contentLayout"
             android:layout_width="match_parent"
@@ -287,6 +199,110 @@
         <include
             android:id="@+id/errorLayout"
             layout="@layout/item_error_layout" />
+
+        <!-- 顶栏排在列表后面：CoordinatorLayout 按子 View 顺序绘制，appBar 写在 contentLayout
+             之前时，作者行滑出顶栏下边界的那半截会被列表整个盖掉（bringChildToFront 只在运行时
+             管用，这里按静态顺序钉死）。顶栏本身透明、不裁子 View，排在后面不会挡住列表内容。 -->
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/appBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@null"
+            android:clipChildren="false"
+            android:fitsSystemWindows="false"
+            app:fitsSystemWindowsInsets="@integer/internal_fragment_top_insets">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolBar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:clipChildren="false">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/titleProfile"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/avatar"
+                        android:layout_width="0dp"
+                        android:layout_height="0dp"
+                        android:background="@color/cover"
+                        android:foreground="@drawable/selector_bg_avatar"
+                        android:onClick="@{(view) -> listener.onViewUser(view, username)}"
+                        app:layout_constraintBottom_toBottomOf="@id/date"
+                        app:layout_constraintDimensionRatio="1"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:setImage="@{avatarUrl}"
+                        app:shapeAppearance="@style/circleImageStyle" />
+
+                    <TextView
+                        android:id="@+id/name"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@{username}"
+                        android:textSize="15sp"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toEndOf="@id/avatar"
+                        app:layout_constraintTop_toTopOf="parent"
+                        tools:text="name" />
+
+                    <TextView
+                        android:id="@+id/date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="10dp"
+                        android:maxLines="1"
+                        android:text="@{String.valueOf(DateUtils.fromToday(dateline))}"
+                        android:textColor="@android:color/darker_gray"
+                        android:textSize="13sp"
+                        app:layout_constraintStart_toEndOf="@id/avatar"
+                        app:layout_constraintTop_toBottomOf="@id/name"
+                        tools:text="date" />
+
+                    <TextView
+                        android:id="@+id/device"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="5dp"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@android:color/darker_gray"
+                        android:textSize="13sp"
+                        android:visibility="@{deviceTitle == null || deviceTitle.isEmpty ? View.INVISIBLE : View.VISIBLE}"
+                        app:customText="@{deviceTitle}"
+                        app:icon="@{@drawable/ic_device}"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintStart_toEndOf="@id/date"
+                        app:layout_constraintTop_toBottomOf="@id/name"
+                        tools:text="device" />
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+            </com.google.android.material.appbar.MaterialToolbar>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:background="?attr/colorSurfaceVariant" />
+
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <!-- 作者行要能整块滑到顶栏下边去，所以顶栏那一支设了 clipChildren=false，
+             标题滑出顶栏的那一截就没人裁了 —— 用这块跟"顶栏上方空白"等高的底片把它压住。
+             顶栏上方本来没有空白时它是 0 高，等于没有。 -->
+        <View
+            android:id="@+id/topMask"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:background="?android:windowBackground"
+            android:clickable="false"
+            android:focusable="false" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

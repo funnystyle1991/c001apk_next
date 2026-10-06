@@ -3,8 +3,10 @@ name: CI
 on:
   workflow_dispatch:
   push:
-    # main = 稳定线；beta / debug / update = 测试线，互不干扰、可随时回滚
-    branches: [ main, beta, debug, update ]
+    # main  = 发布线：每推一次（= 发一次正式版）版本号自动 +1，产物进 release-latest
+    # debug = 测试线：沿用当前版本号，产物进 debug-latest（prerelease）
+    # update = 只放升级配置 json，不构建产物（见 Publish 步骤的排除条件）
+    branches: [ main, debug, update ]
     paths-ignore:
       - '**.md'
       - '**.txt'
@@ -12,7 +14,8 @@ on:
       - '.idea/**'
       - '!.github/workflows/**'
 
-# 把 APK 发布到 GitHub Release 需要写权限（默认只读会 403）
+# 把 APK 发布到 GitHub Release 需要写权限（默认只读会 403）；
+# 正式版构建完还要把涨过的版本号写回 main，同样用这个权限
 permissions:
   contents: write
 
@@ -48,7 +51,7 @@ jobs:
             echo KEY_ALIAS='${{ secrets.KEY_ALIAS }}' >> local.properties
             echo KEY_PASSWORD='${{ secrets.KEY_PASSWORD }}' >> local.properties
           else
-            echo "::warning::未配置 SIGN_KEYSTORE_BASE64，release 将退回 debug 签名（仅供测试，不可作为正式版分发）"
+            echo "::waning::未配置 SIGN_KEYSTORE_BASE64，release 将退回 debug 签名（仅供测试，不可作为正式版分发）"
           fi
 
       # 注意：不要钉死补丁号（如 v4.0.2），GitHub 会把废弃的旧版本直接判失败
@@ -66,23 +69,45 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      # 渠道只影响 versionName 后缀：c001apk_next-V1.0.1-release / -beta / -debug
+      # 渠道只影响 versionName 后缀：c001apk_next-V1.0.2-release / -debug
       - name: Resolve channel
         id: channel
         run: |
           case "${GITHUB_REF_NAME}" in
             main) C=release ;;
-            beta) C=beta ;;
             *)    C=debug ;;
           esac
           echo "channel=$C" >> $GITHUB_OUTPUT
           echo "本次构建渠道：$C"
 
+      # 正式版版本号：每推一次 main 就把 version.properties 的 patch +1、versionCode +1，
+      # 用解出来的号构建（-Poverride*，见 app/build.gradle.kts），构建完再写回 main
+      # 作为下一次的基线（最后的 Commit bumped version 步骤）。
+      # debug / update 不解算，继续用文件里的当前号 —— 与正式版保持同一个 versionCode，
+      # 用户可以 release / debug 来回覆盖安装。
+      - name: Resolve version
+        id: ver
+        if: github.ref_name == 'main'
+        run: |
+          set -euo pipefail
+          NAME=$(grep -m1 '^VERSION_NAME=' version.properties | cut -d= -f2-)
+          CODE=$(grep -m1 '^VERSION_CODE=' version.properties | cut -d= -f2-)
+          BASE=${NAME#V}
+          NEW_NAME="V${BASE%.*}.$(( ${BASE##*.} + 1 ))"
+          NEW_CODE=$(( CODE + 1 ))
+          echo "name=${NEW_NAME}" >> $GITHUB_OUTPUT
+          echo "code=${NEW_CODE}" >> $GITHUB_OUTPUT
+          echo "版本号：${NAME}（${CODE}）→ ${NEW_NAME}（${NEW_CODE}）"
+
       - name: Build release
         id: buildRelease
         run: |
           set -o pipefail
-          ./gradlew :app:assembleRelease -Pchannel=${{ steps.channel.outputs.channel }} 2>&1 | tee gradle-release.log
+          OVERRIDE=""
+          if [ -n "${{ steps.ver.outputs.name }}" ]; then
+            OVERRIDE="-PoverrideVersionName=${{ steps.ver.outputs.name }} -PoverrideVersionCode=${{ steps.ver.outputs.code }}"
+          fi
+          ./gradlew :app:assembleRelease -Pchannel=${{ steps.channel.outputs.channel }} $OVERRIDE --stacktrace 2>&1 | tee gradle-release.log
           echo "releaseName=$(ls app/build/outputs/apk/release/*.apk | awk -F '(/|\\.apk)' '{print $6}')" >> $GITHUB_OUTPUT
 
       - name: Upload release
@@ -106,7 +131,7 @@ jobs:
             "$BT/apksigner" verify --print-certs "$APK" | tee /tmp/certs.txt
             echo "::notice::$(basename "$APK") 签名证书 SHA-256 = $(grep -m1 'certificate SHA-256 digest' /tmp/certs.txt | sed 's/.*digest: //')"
           else
-            echo "::warning::未找到 apksigner，跳过签名校验"
+            echo "::waning::未找到 apksigner，跳过签名校验"
           fi
 
       - name: Upload mappings
@@ -132,7 +157,6 @@ jobs:
 
       # 每个分支把各自编译出来的发行版放到「自己固定位置」的 GitHub Release：
       #   main  → release-latest（正式版）
-      #   beta  → beta-latest（Beta 版，prerelease）
       #   debug → debug-latest（测试版，prerelease）
       # update 分支只放更新配置（json），不发布产物。
       - name: Publish to GitHub Releases
@@ -143,7 +167,6 @@ jobs:
           set -euo pipefail
           case "${GITHUB_REF_NAME}" in
             main) TAG=release-latest; TITLE="正式版（main 自动构建）"; PRE=() ;;
-            beta) TAG=beta-latest;    TITLE="Beta 版（beta 自动构建）"; PRE=(--prerelease) ;;
             *)    TAG=debug-latest;   TITLE="测试版（debug 自动构建）"; PRE=(--prerelease) ;;
           esac
 
@@ -156,8 +179,14 @@ jobs:
           done
           echo "本次发布产物：${FILES[*]}"
 
-          VERSION=$(grep -m1 '^VERSION_NAME=' version.properties | cut -d= -f2-)
-          CODE=$(grep -m1 '^VERSION_CODE=' version.properties | cut -d= -f2-)
+          # main 上 version.properties 里存的是「上一次发过的」号，本次用的是 Resolve version
+          # 解出来的号；非 main 分支没有 override，直接读文件
+          VERSION="${{ steps.ver.outputs.name }}"
+          CODE="${{ steps.ver.outputs.code }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep -m1 '^VERSION_NAME=' version.properties | cut -d= -f2-)
+            CODE=$(grep -m1 '^VERSION_CODE=' version.properties | cut -d= -f2-)
+          fi
           NOTES=/tmp/release-notes.md
           {
             echo "自动构建：\`${GITHUB_REF_NAME}\` 分支 @ ${GITHUB_SHA:0:7}"
@@ -197,7 +226,7 @@ jobs:
           ok=0
           for i in 1 2 3 4 5; do
             if gh release upload "$TAG" "${FILES[@]}" --clobber; then ok=1; break; fi
-            echo "::warning::发布 ${TAG} 上传失败（第 ${i} 次），5 秒后重试"
+            echo "::waning::发布 ${TAG} 上传失败（第 ${i} 次），5 秒后重试"
             sleep 5
           done
           if [ "$ok" != 1 ]; then
@@ -216,6 +245,25 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           echo "::notice::${TITLE} → https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
 
+      # 正式版：把本次用掉的版本号写回 main，作为下一次 +1 的基线。
+      # GITHUB_TOKEN 的推送本身不会再触发 workflow，再加 [skip ci] 双保险。
+      - name: Commit bumped version
+        if: success() && github.ref_name == 'main'
+        run: |
+          set -euo pipefail
+          sed -i "s/^VERSION_NAME=.*/VERSION_NAME=${{ steps.ver.outputs.name }}/" version.properties
+          sed -i "s/^VERSION_CODE=.*/VERSION_CODE=${{ steps.ver.outputs.code }}/" version.properties
+          git add version.properties
+          if git diff --cached --quiet; then
+            echo "版本号无变化，跳过提交"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "chore(release): ${{ steps.ver.outputs.name }}（versionCode ${{ steps.ver.outputs.code }}）[skip ci]"
+          git push origin HEAD:main
+          echo "::notice::已把 ${{ steps.ver.outputs.name }}（${{ steps.ver.outputs.code }}）写回 main，下次发布在此基础上 +1"
+
       # 失败时把 Gradle 日志尾部转成 annotation，
       # 这样在 Actions 页面和失败通知邮件里就能直接看到原因，不用再翻完整日志
       - name: Report Gradle failure
@@ -226,7 +274,7 @@ jobs:
           for f in gradle-release.log gradle-debug.log; do
             if [ -f "$f" ]; then
               echo "::error::logs found: $f ($(wc -c < "$f") bytes)"
-              tail -25 "$f" | while IFS= read -r line; do echo "::error::$line"; done
+              tail -120 "$f" | while IFS= read -r line; do echo "::error::$line"; done
               break
             fi
           done

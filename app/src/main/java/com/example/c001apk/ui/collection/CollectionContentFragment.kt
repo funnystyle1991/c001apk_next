@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.fragment.app.viewModels
 import com.example.c001apk.R
 import com.example.c001apk.ui.base.BaseAppFragment
+import com.example.c001apk.util.TransitionAnim
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -46,10 +47,10 @@ class CollectionContentFragment : BaseAppFragment<CollectionContentViewModel>() 
                 requireActivity().supportFragmentManager
                     .beginTransaction()
                     .setCustomAnimations(
-                        R.anim.right_in,
-                        R.anim.left_out_fragment,
-                        R.anim.left_in,
-                        R.anim.right_out
+                        TransitionAnim.fragmentEnter(),
+                        TransitionAnim.fragmentExit(),
+                        TransitionAnim.fragmentPopEnter(),
+                        TransitionAnim.fragmentPopExit()
                     )
                     .replace(
                         R.id.fragmentContainer,

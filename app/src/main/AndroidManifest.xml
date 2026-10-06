@@ -430,6 +430,14 @@
         <activity
             android:name=".ui.messagedetail.MessageActivity"
             android:exported="false" />
+        <!-- 私信聊天页：独立 Activity，保证右滑返回能跟手预览 -->
+        <activity
+            android:name=".ui.messagedetail.MessageDetailActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.message.MessageCenterActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.dyh.DyhActivity"
             android:exported="false" />
@@ -438,8 +446,7 @@
             android:exported="false" />
         <activity
             android:name=".ui.others.AboutActivity"
-            android:exported="false"
-            android:theme="@style/AppTheme.About" />
+            android:exported="false" />
         <activity
             android:name=".ui.follow.FFFListActivity"
             android:exported="false" />
@@ -452,6 +459,10 @@
         <!-- 2026-09-18 重构：设置入口从底栏迁移到「我的」页面右上角图标 -->
         <activity
             android:name=".ui.settings.SettingsActivity"
+            android:exported="false" />
+        <!-- 设置二级页独立成 Activity：与关于页一样走系统预测性返回，右滑可跟手预览 -->
+        <activity
+            android:name=".ui.settings.SettingsDetailActivity"
             android:exported="false" />
         <activity
             android:name=".ui.app.AppActivity"

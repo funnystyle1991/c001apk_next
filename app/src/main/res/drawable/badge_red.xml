@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 未读消息红点：小圆角矩形，数字长了自己变宽，只有 1 位数字时看起来是圆的 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FF4039" />
+    <corners android:radius="8dp" />
+</shape>

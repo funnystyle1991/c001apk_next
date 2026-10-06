@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 转场动画实验用：ease-in-cubic cubic-bezier(0.32, 0, 0.67, 0)（生成物，勿手改） -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:controlX1="0.32"
+    android:controlX2="0.67"
+    android:controlY1="0.0"
+    android:controlY2="0.0" />

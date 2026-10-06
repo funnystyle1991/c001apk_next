@@ -55,7 +55,7 @@ object AppUtils {
     fun getInstalledSystemApp(context: Context): List<PackageInfo> {
         val packageManager = context.packageManager
         return packageManager.getInstalledPackages(0).filter {
-            (it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            (it.applicationInfo!!.flags and ApplicationInfo.FLAG_SYSTEM) != 0
         }
     }
 
@@ -63,7 +63,7 @@ object AppUtils {
     fun getInstalledUserApp(context: Context): List<PackageInfo> {
         val packageManager = context.packageManager
         return packageManager.getInstalledPackages(0).filter {
-            (it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+            (it.applicationInfo!!.flags and ApplicationInfo.FLAG_SYSTEM) == 0
         }
     }
 
@@ -71,7 +71,7 @@ object AppUtils {
         val packageManager = context.packageManager
         val packs = mutableListOf<String>()
         packageManager.getInstalledPackages(0).filter {
-            (it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
+            (it.applicationInfo!!.flags and ApplicationInfo.FLAG_SYSTEM) == 0
         }.forEach {
             packs.add(it.packageName)
         }
@@ -82,7 +82,7 @@ object AppUtils {
         val packageManager = context.packageManager
         val packs = mutableListOf<String>()
         packageManager.getInstalledPackages(0).filter {
-            (it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+            (it.applicationInfo!!.flags and ApplicationInfo.FLAG_SYSTEM) != 0
         }.forEach {
             packs.add(it.packageName)
         }
@@ -101,7 +101,7 @@ object AppUtils {
 
     fun getTargetSdkVersion(context: Context, packageName: String): Int {
         return runCatching {
-            context.packageManager.getPackageInfo(packageName, 0).applicationInfo.targetSdkVersion
+            context.packageManager.getPackageInfo(packageName, 0).applicationInfo!!.targetSdkVersion
         }.getOrDefault(-1)
     }
 
@@ -110,20 +110,21 @@ object AppUtils {
             context.packageManager.getPackageInfo(
                 packageName,
                 0
-            ).applicationInfo.loadLabel(context.packageManager).toString()
+            ).applicationInfo!!.loadLabel(context.packageManager).toString()
         } catch (e: java.lang.Exception) {
             "未获取到"
         }
     }
 
     fun getAppName(context: Context, packageInfo: PackageInfo): String {
-        return packageInfo.applicationInfo.loadLabel(context.packageManager).toString()
+        return packageInfo.applicationInfo!!.loadLabel(context.packageManager).toString()
     }
 
 
     fun getAppVersionName(context: Context, packageName: String): String {
         return try {
-            context.packageManager.getPackageInfo(packageName, 0).versionName
+            // compileSdk 35 起 PackageInfo.versionName 为 String?（@Nullable）
+            context.packageManager.getPackageInfo(packageName, 0).versionName ?: ""
         } catch (e: Exception) {
             "未安装"
         }

@@ -2,6 +2,7 @@ package com.example.c001apk.ui.home
 
 import android.os.Bundle
 import android.view.View
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.viewpager2.adapter.FragmentStateAdapter
@@ -11,7 +12,7 @@ import com.example.c001apk.ui.base.BaseFragment
 import com.example.c001apk.ui.homefeed.HomeFeedFragment
 import com.example.c001apk.ui.hometopic.HomeTopicFragment
 import com.example.c001apk.ui.main.MainActivity
-import com.example.c001apk.ui.others.CopyActivity
+import com.example.c001apk.ui.message.MessageCenterActivity
 import com.example.c001apk.ui.search.SearchActivity
 import com.example.c001apk.util.IntentUtil
 import com.google.android.material.tabs.TabLayout
@@ -30,6 +31,12 @@ class HomeFragment : BaseFragment<FragmentHomeBinding>(), IOnTabClickContainer {
         super.onViewCreated(view, savedInstanceState)
 
         initButton()
+
+        // 消息入口的未读角标：数字与消息中心宫格同源（UnreadCounter），0 时不显示
+        viewModel.unreadCount.observe(viewLifecycleOwner) { count ->
+            binding.messageBadge.isVisible = count > 0
+            binding.messageBadge.text = if (count > 99) "99+" else count.toString()
+        }
 
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: Tab) {
@@ -68,15 +75,22 @@ class HomeFragment : BaseFragment<FragmentHomeBinding>(), IOnTabClickContainer {
 
     }
 
+    override fun onResume() {
+        super.onResume()
+        // 回到首页刷新一次未读数：消息中心宫格的红点和这里的消息入口角标都读这份缓存。
+        // 从消息中心返回时也会走到这里，刚看过的通知会同步从角标上掉下来。
+        viewModel.refreshUnreadCount()
+    }
+
     private fun initButton() {
         binding.search.setOnClickListener {
             IntentUtil.startActivity<SearchActivity>(requireContext()) {
             }
         }
 
-        binding.menu.setOnClickListener {
-            IntentUtil.startActivity<CopyActivity>(requireContext()) {
-                putExtra("type", "homeMenu")
+        // 原来这里是「编辑Tab」，已挪到 设置 → 外观，位置让给消息入口
+        binding.message.setOnClickListener {
+            IntentUtil.startActivity<MessageCenterActivity>(requireContext()) {
             }
         }
     }

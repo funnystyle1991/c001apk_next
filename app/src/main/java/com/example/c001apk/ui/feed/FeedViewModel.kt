@@ -139,13 +139,20 @@ class FeedViewModel @AssistedInject constructor(
     }
 
     fun fetchFeedReply() {
+        // 评论和详情是并发发的：详情页"列表项直出首屏"那条路径里 Activity 不等详情就先建了 Fragment，
+        // 于是评论请求和详情请求同时在飞。而 isRefreshing / isLoadMore 是两个请求**共用**的标志，
+        // 详情先回来会把它俩清掉，评论后回来时就判到自己"既不是刷新也不是加载更多"，整批数据被丢掉
+        // ——表现就是进页面评论区空着，手动下拉刷新（那时详情早结束了）才有。
+        // 起请求时把这次的意图固定下来，回调里不再读共享标志。
+        val isRefreshRequest = isRefreshing
+        val isLoadMoreRequest = isLoadMore
         viewModelScope.launch(Dispatchers.IO) {
             networkRepo.getFeedContentReply(
                 id, listType, page, firstItem, lastItem, discussMode,
                 feedType.toString(), blockStatus, fromFeedAuthor
             )
                 .onStart {
-                    if (isLoadMore)
+                    if (isLoadMoreRequest)
                         footerState.postValue(FooterState.Loading)
                 }
                 .collect { result ->
@@ -159,12 +166,12 @@ class FeedViewModel @AssistedInject constructor(
                             if (firstItem == null)
                                 firstItem = data.data.first().id
                             lastItem = data.data.last().id
-                            if (isRefreshing) {
+                            if (isRefreshRequest) {
                                 feedReplyList.clear()
                                 if (listType == "lastupdate_desc" && feedTopReplyList.isNotEmpty())
                                     feedReplyList.addAll(feedTopReplyList)
                             }
-                            if (isRefreshing || isLoadMore) {
+                            if (isRefreshRequest || isLoadMoreRequest) {
                                 data.data.forEach { reply ->
                                     if (reply.entityType == "feed_reply") {
                                         if (listType == "lastupdate_desc"
@@ -203,7 +210,7 @@ class FeedViewModel @AssistedInject constructor(
                             footerState.postValue(FooterState.LoadingDone)
                         } else if (data.data?.isEmpty() == true) {
                             isEnd = true
-                            if (isRefreshing)
+                            if (isRefreshRequest)
                                 feedReplyData.postValue(emptyList())
                             footerState.postValue(FooterState.LoadingEnd(LOADING_END))
                         }

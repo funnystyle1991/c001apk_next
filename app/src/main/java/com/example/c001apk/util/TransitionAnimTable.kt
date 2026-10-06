@@ -20,6 +20,10 @@ internal object TransitionAnimTable {
         "fade_linear_100_lin" -> R.anim.exp_fade_linear_100_fin
         "fade_linear_100_lout" -> R.anim.exp_fade_linear_100_fout
         "fade_linear_100_rout" -> R.anim.exp_fade_linear_100_fout
+        "parallax_linear_100_rin" -> R.anim.exp_parallax_linear_100_rin
+        "parallax_linear_100_lout" -> R.anim.exp_parallax_linear_100_lout
+        "parallax_linear_100_lin" -> R.anim.exp_parallax_linear_100_lin
+        "parallax_linear_100_rout" -> R.anim.exp_parallax_linear_100_rout
         "slide_linear_200_rin" -> R.anim.exp_slide_linear_200_rin
         "slide_linear_200_lin" -> R.anim.exp_slide_linear_200_lin
         "slide_linear_200_lout" -> R.anim.exp_slide_linear_200_lout
@@ -28,6 +32,10 @@ internal object TransitionAnimTable {
         "fade_linear_200_lin" -> R.anim.exp_fade_linear_200_fin
         "fade_linear_200_lout" -> R.anim.exp_fade_linear_200_fout
         "fade_linear_200_rout" -> R.anim.exp_fade_linear_200_fout
+        "parallax_linear_200_rin" -> R.anim.exp_parallax_linear_200_rin
+        "parallax_linear_200_lout" -> R.anim.exp_parallax_linear_200_lout
+        "parallax_linear_200_lin" -> R.anim.exp_parallax_linear_200_lin
+        "parallax_linear_200_rout" -> R.anim.exp_parallax_linear_200_rout
         "slide_linear_300_rin" -> R.anim.exp_slide_linear_300_rin
         "slide_linear_300_lin" -> R.anim.exp_slide_linear_300_lin
         "slide_linear_300_lout" -> R.anim.exp_slide_linear_300_lout
@@ -36,6 +44,10 @@ internal object TransitionAnimTable {
         "fade_linear_300_lin" -> R.anim.exp_fade_linear_300_fin
         "fade_linear_300_lout" -> R.anim.exp_fade_linear_300_fout
         "fade_linear_300_rout" -> R.anim.exp_fade_linear_300_fout
+        "parallax_linear_300_rin" -> R.anim.exp_parallax_linear_300_rin
+        "parallax_linear_300_lout" -> R.anim.exp_parallax_linear_300_lout
+        "parallax_linear_300_lin" -> R.anim.exp_parallax_linear_300_lin
+        "parallax_linear_300_rout" -> R.anim.exp_parallax_linear_300_rout
         "slide_linear_400_rin" -> R.anim.exp_slide_linear_400_rin
         "slide_linear_400_lin" -> R.anim.exp_slide_linear_400_lin
         "slide_linear_400_lout" -> R.anim.exp_slide_linear_400_lout
@@ -44,6 +56,10 @@ internal object TransitionAnimTable {
         "fade_linear_400_lin" -> R.anim.exp_fade_linear_400_fin
         "fade_linear_400_lout" -> R.anim.exp_fade_linear_400_fout
         "fade_linear_400_rout" -> R.anim.exp_fade_linear_400_fout
+        "parallax_linear_400_rin" -> R.anim.exp_parallax_linear_400_rin
+        "parallax_linear_400_lout" -> R.anim.exp_parallax_linear_400_lout
+        "parallax_linear_400_lin" -> R.anim.exp_parallax_linear_400_lin
+        "parallax_linear_400_rout" -> R.anim.exp_parallax_linear_400_rout
         "slide_linear_500_rin" -> R.anim.exp_slide_linear_500_rin
         "slide_linear_500_lin" -> R.anim.exp_slide_linear_500_lin
         "slide_linear_500_lout" -> R.anim.exp_slide_linear_500_lout
@@ -52,6 +68,10 @@ internal object TransitionAnimTable {
         "fade_linear_500_lin" -> R.anim.exp_fade_linear_500_fin
         "fade_linear_500_lout" -> R.anim.exp_fade_linear_500_fout
         "fade_linear_500_rout" -> R.anim.exp_fade_linear_500_fout
+        "parallax_linear_500_rin" -> R.anim.exp_parallax_linear_500_rin
+        "parallax_linear_500_lout" -> R.anim.exp_parallax_linear_500_lout
+        "parallax_linear_500_lin" -> R.anim.exp_parallax_linear_500_lin
+        "parallax_linear_500_rout" -> R.anim.exp_parallax_linear_500_rout
         "slide_m2_100_rin" -> R.anim.exp_slide_m2_100_rin
         "slide_m2_100_lin" -> R.anim.exp_slide_m2_100_lin
         "slide_m2_100_lout" -> R.anim.exp_slide_m2_100_lout
@@ -60,6 +80,10 @@ internal object TransitionAnimTable {
         "fade_m2_100_lin" -> R.anim.exp_fade_m2_100_fin
         "fade_m2_100_lout" -> R.anim.exp_fade_m2_100_fout
         "fade_m2_100_rout" -> R.anim.exp_fade_m2_100_fout
+        "parallax_m2_100_rin" -> R.anim.exp_parallax_m2_100_rin
+        "parallax_m2_100_lout" -> R.anim.exp_parallax_m2_100_lout
+        "parallax_m2_100_lin" -> R.anim.exp_parallax_m2_100_lin
+        "parallax_m2_100_rout" -> R.anim.exp_parallax_m2_100_rout
         "slide_m2_200_rin" -> R.anim.exp_slide_m2_200_rin
         "slide_m2_200_lin" -> R.anim.exp_slide_m2_200_lin
         "slide_m2_200_lout" -> R.anim.exp_slide_m2_200_lout
@@ -68,6 +92,10 @@ internal object TransitionAnimTable {
         "fade_m2_200_lin" -> R.anim.exp_fade_m2_200_fin
         "fade_m2_200_lout" -> R.anim.exp_fade_m2_200_fout
         "fade_m2_200_rout" -> R.anim.exp_fade_m2_200_fout
+        "parallax_m2_200_rin" -> R.anim.exp_parallax_m2_200_rin
+        "parallax_m2_200_lout" -> R.anim.exp_parallax_m2_200_lout
+        "parallax_m2_200_lin" -> R.anim.exp_parallax_m2_200_lin
+        "parallax_m2_200_rout" -> R.anim.exp_parallax_m2_200_rout
         "slide_m2_300_rin" -> R.anim.exp_slide_m2_300_rin
         "slide_m2_300_lin" -> R.anim.exp_slide_m2_300_lin
         "slide_m2_300_lout" -> R.anim.exp_slide_m2_300_lout
@@ -76,6 +104,10 @@ internal object TransitionAnimTable {
         "fade_m2_300_lin" -> R.anim.exp_fade_m2_300_fin
         "fade_m2_300_lout" -> R.anim.exp_fade_m2_300_fout
         "fade_m2_300_rout" -> R.anim.exp_fade_m2_300_fout
+        "parallax_m2_300_rin" -> R.anim.exp_parallax_m2_300_rin
+        "parallax_m2_300_lout" -> R.anim.exp_parallax_m2_300_lout
+        "parallax_m2_300_lin" -> R.anim.exp_parallax_m2_300_lin
+        "parallax_m2_300_rout" -> R.anim.exp_parallax_m2_300_rout
         "slide_m2_400_rin" -> R.anim.exp_slide_m2_400_rin
         "slide_m2_400_lin" -> R.anim.exp_slide_m2_400_lin
         "slide_m2_400_lout" -> R.anim.exp_slide_m2_400_lout
@@ -84,6 +116,10 @@ internal object TransitionAnimTable {
         "fade_m2_400_lin" -> R.anim.exp_fade_m2_400_fin
         "fade_m2_400_lout" -> R.anim.exp_fade_m2_400_fout
         "fade_m2_400_rout" -> R.anim.exp_fade_m2_400_fout
+        "parallax_m2_400_rin" -> R.anim.exp_parallax_m2_400_rin
+        "parallax_m2_400_lout" -> R.anim.exp_parallax_m2_400_lout
+        "parallax_m2_400_lin" -> R.anim.exp_parallax_m2_400_lin
+        "parallax_m2_400_rout" -> R.anim.exp_parallax_m2_400_rout
         "slide_m2_500_rin" -> R.anim.exp_slide_m2_500_rin
         "slide_m2_500_lin" -> R.anim.exp_slide_m2_500_lin
         "slide_m2_500_lout" -> R.anim.exp_slide_m2_500_lout
@@ -92,6 +128,10 @@ internal object TransitionAnimTable {
         "fade_m2_500_lin" -> R.anim.exp_fade_m2_500_fin
         "fade_m2_500_lout" -> R.anim.exp_fade_m2_500_fout
         "fade_m2_500_rout" -> R.anim.exp_fade_m2_500_fout
+        "parallax_m2_500_rin" -> R.anim.exp_parallax_m2_500_rin
+        "parallax_m2_500_lout" -> R.anim.exp_parallax_m2_500_lout
+        "parallax_m2_500_lin" -> R.anim.exp_parallax_m2_500_lin
+        "parallax_m2_500_rout" -> R.anim.exp_parallax_m2_500_rout
         "slide_std_100_rin" -> R.anim.exp_slide_std_100_rin
         "slide_std_100_lin" -> R.anim.exp_slide_std_100_lin
         "slide_std_100_lout" -> R.anim.exp_slide_std_100_lout
@@ -100,6 +140,10 @@ internal object TransitionAnimTable {
         "fade_std_100_lin" -> R.anim.exp_fade_std_100_fin
         "fade_std_100_lout" -> R.anim.exp_fade_std_100_fout
         "fade_std_100_rout" -> R.anim.exp_fade_std_100_fout
+        "parallax_std_100_rin" -> R.anim.exp_parallax_std_100_rin
+        "parallax_std_100_lout" -> R.anim.exp_parallax_std_100_lout
+        "parallax_std_100_lin" -> R.anim.exp_parallax_std_100_lin
+        "parallax_std_100_rout" -> R.anim.exp_parallax_std_100_rout
         "slide_std_200_rin" -> R.anim.exp_slide_std_200_rin
         "slide_std_200_lin" -> R.anim.exp_slide_std_200_lin
         "slide_std_200_lout" -> R.anim.exp_slide_std_200_lout
@@ -108,6 +152,10 @@ internal object TransitionAnimTable {
         "fade_std_200_lin" -> R.anim.exp_fade_std_200_fin
         "fade_std_200_lout" -> R.anim.exp_fade_std_200_fout
         "fade_std_200_rout" -> R.anim.exp_fade_std_200_fout
+        "parallax_std_200_rin" -> R.anim.exp_parallax_std_200_rin
+        "parallax_std_200_lout" -> R.anim.exp_parallax_std_200_lout
+        "parallax_std_200_lin" -> R.anim.exp_parallax_std_200_lin
+        "parallax_std_200_rout" -> R.anim.exp_parallax_std_200_rout
         "slide_std_300_rin" -> R.anim.exp_slide_std_300_rin
         "slide_std_300_lin" -> R.anim.exp_slide_std_300_lin
         "slide_std_300_lout" -> R.anim.exp_slide_std_300_lout
@@ -116,6 +164,10 @@ internal object TransitionAnimTable {
         "fade_std_300_lin" -> R.anim.exp_fade_std_300_fin
         "fade_std_300_lout" -> R.anim.exp_fade_std_300_fout
         "fade_std_300_rout" -> R.anim.exp_fade_std_300_fout
+        "parallax_std_300_rin" -> R.anim.exp_parallax_std_300_rin
+        "parallax_std_300_lout" -> R.anim.exp_parallax_std_300_lout
+        "parallax_std_300_lin" -> R.anim.exp_parallax_std_300_lin
+        "parallax_std_300_rout" -> R.anim.exp_parallax_std_300_rout
         "slide_std_400_rin" -> R.anim.exp_slide_std_400_rin
         "slide_std_400_lin" -> R.anim.exp_slide_std_400_lin
         "slide_std_400_lout" -> R.anim.exp_slide_std_400_lout
@@ -124,6 +176,10 @@ internal object TransitionAnimTable {
         "fade_std_400_lin" -> R.anim.exp_fade_std_400_fin
         "fade_std_400_lout" -> R.anim.exp_fade_std_400_fout
         "fade_std_400_rout" -> R.anim.exp_fade_std_400_fout
+        "parallax_std_400_rin" -> R.anim.exp_parallax_std_400_rin
+        "parallax_std_400_lout" -> R.anim.exp_parallax_std_400_lout
+        "parallax_std_400_lin" -> R.anim.exp_parallax_std_400_lin
+        "parallax_std_400_rout" -> R.anim.exp_parallax_std_400_rout
         "slide_std_500_rin" -> R.anim.exp_slide_std_500_rin
         "slide_std_500_lin" -> R.anim.exp_slide_std_500_lin
         "slide_std_500_lout" -> R.anim.exp_slide_std_500_lout
@@ -132,6 +188,10 @@ internal object TransitionAnimTable {
         "fade_std_500_lin" -> R.anim.exp_fade_std_500_fin
         "fade_std_500_lout" -> R.anim.exp_fade_std_500_fout
         "fade_std_500_rout" -> R.anim.exp_fade_std_500_fout
+        "parallax_std_500_rin" -> R.anim.exp_parallax_std_500_rin
+        "parallax_std_500_lout" -> R.anim.exp_parallax_std_500_lout
+        "parallax_std_500_lin" -> R.anim.exp_parallax_std_500_lin
+        "parallax_std_500_rout" -> R.anim.exp_parallax_std_500_rout
         "slide_emph_100_rin" -> R.anim.exp_slide_emph_100_rin
         "slide_emph_100_lin" -> R.anim.exp_slide_emph_100_lin
         "slide_emph_100_lout" -> R.anim.exp_slide_emph_100_lout
@@ -140,6 +200,10 @@ internal object TransitionAnimTable {
         "fade_emph_100_lin" -> R.anim.exp_fade_emph_100_fin
         "fade_emph_100_lout" -> R.anim.exp_fade_emph_100_fout
         "fade_emph_100_rout" -> R.anim.exp_fade_emph_100_fout
+        "parallax_emph_100_rin" -> R.anim.exp_parallax_emph_100_rin
+        "parallax_emph_100_lout" -> R.anim.exp_parallax_emph_100_lout
+        "parallax_emph_100_lin" -> R.anim.exp_parallax_emph_100_lin
+        "parallax_emph_100_rout" -> R.anim.exp_parallax_emph_100_rout
         "slide_emph_200_rin" -> R.anim.exp_slide_emph_200_rin
         "slide_emph_200_lin" -> R.anim.exp_slide_emph_200_lin
         "slide_emph_200_lout" -> R.anim.exp_slide_emph_200_lout
@@ -148,6 +212,10 @@ internal object TransitionAnimTable {
         "fade_emph_200_lin" -> R.anim.exp_fade_emph_200_fin
         "fade_emph_200_lout" -> R.anim.exp_fade_emph_200_fout
         "fade_emph_200_rout" -> R.anim.exp_fade_emph_200_fout
+        "parallax_emph_200_rin" -> R.anim.exp_parallax_emph_200_rin
+        "parallax_emph_200_lout" -> R.anim.exp_parallax_emph_200_lout
+        "parallax_emph_200_lin" -> R.anim.exp_parallax_emph_200_lin
+        "parallax_emph_200_rout" -> R.anim.exp_parallax_emph_200_rout
         "slide_emph_300_rin" -> R.anim.exp_slide_emph_300_rin
         "slide_emph_300_lin" -> R.anim.exp_slide_emph_300_lin
         "slide_emph_300_lout" -> R.anim.exp_slide_emph_300_lout
@@ -156,6 +224,10 @@ internal object TransitionAnimTable {
         "fade_emph_300_lin" -> R.anim.exp_fade_emph_300_fin
         "fade_emph_300_lout" -> R.anim.exp_fade_emph_300_fout
         "fade_emph_300_rout" -> R.anim.exp_fade_emph_300_fout
+        "parallax_emph_300_rin" -> R.anim.exp_parallax_emph_300_rin
+        "parallax_emph_300_lout" -> R.anim.exp_parallax_emph_300_lout
+        "parallax_emph_300_lin" -> R.anim.exp_parallax_emph_300_lin
+        "parallax_emph_300_rout" -> R.anim.exp_parallax_emph_300_rout
         "slide_emph_400_rin" -> R.anim.exp_slide_emph_400_rin
         "slide_emph_400_lin" -> R.anim.exp_slide_emph_400_lin
         "slide_emph_400_lout" -> R.anim.exp_slide_emph_400_lout
@@ -164,6 +236,10 @@ internal object TransitionAnimTable {
         "fade_emph_400_lin" -> R.anim.exp_fade_emph_400_fin
         "fade_emph_400_lout" -> R.anim.exp_fade_emph_400_fout
         "fade_emph_400_rout" -> R.anim.exp_fade_emph_400_fout
+        "parallax_emph_400_rin" -> R.anim.exp_parallax_emph_400_rin
+        "parallax_emph_400_lout" -> R.anim.exp_parallax_emph_400_lout
+        "parallax_emph_400_lin" -> R.anim.exp_parallax_emph_400_lin
+        "parallax_emph_400_rout" -> R.anim.exp_parallax_emph_400_rout
         "slide_emph_500_rin" -> R.anim.exp_slide_emph_500_rin
         "slide_emph_500_lin" -> R.anim.exp_slide_emph_500_lin
         "slide_emph_500_lout" -> R.anim.exp_slide_emph_500_lout
@@ -172,6 +248,10 @@ internal object TransitionAnimTable {
         "fade_emph_500_lin" -> R.anim.exp_fade_emph_500_fin
         "fade_emph_500_lout" -> R.anim.exp_fade_emph_500_fout
         "fade_emph_500_rout" -> R.anim.exp_fade_emph_500_fout
+        "parallax_emph_500_rin" -> R.anim.exp_parallax_emph_500_rin
+        "parallax_emph_500_lout" -> R.anim.exp_parallax_emph_500_lout
+        "parallax_emph_500_lin" -> R.anim.exp_parallax_emph_500_lin
+        "parallax_emph_500_rout" -> R.anim.exp_parallax_emph_500_rout
         else -> 0
     }
 }

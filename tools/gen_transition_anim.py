@@ -9,12 +9,18 @@
 
 维度：
   曲线 curve  : linear(M3 线性) / m2(M2 标准 0.4,0,0.2,1) / std(M3 标准) / emph(M3 强调)
-  类型 type   : slide(水平滑动) / fade(淡入淡出)；none(无动画) 由代码直接传 0，不需要资源
+  类型 type   : slide(水平滑动) / fade(淡入淡出) / parallax(视差滑动，rikkahub 同款)；
+               none(无动画) 由代码直接传 0，不需要资源
   速度 speed  : 进入时长 100/200/300/400/500ms，退出固定 = 进入 - 50ms（对齐 M3 medium2/medium1）
+
+parallax 的形状取自 rikkahub 的 NavDisplay.transitionSpec（单 Activity Compose）：
+  进入  新页 translateX 100% -> 0；旧页 translateX 0 -> -50% + scale 1 -> 0.7 + alpha 1 -> 0
+  退出  下层页 translateX -50% -> 0 + scale 0.7 -> 1 + alpha 0 -> 1；当前页 translateX 0 -> 100%
+它本身没有 duration / easing（Compose 默认无回弹 spring），这里仍按本实验的曲线与时长档位走。
 
 产物：
   app/src/main/res/interpolator/exp_m2_standard.xml
-  app/src/main/res/anim/exp_<type>_<curve>_<enter>_<slot>.xml       共 120 个
+  app/src/main/res/anim/exp_<type>_<curve>_<enter>_<slot>.xml       共 200 个
   app/src/main/java/com/example/c001apk/util/TransitionAnimTable.kt  生成式查表
 
 选定最终方案后：把赢家的曲线/时长固化回 right_in / left_out / left_in / right_out，
@@ -73,6 +79,68 @@ FADE = """<?xml version="1.0" encoding="utf-8"?>
     android:fromAlpha="{frm}"
     android:interpolator="{interp}"
     android:toAlpha="{to}" />
+"""
+
+# 视差滑动里「单独平移」的两端：新页整屏滑入 / 返回时当前页整屏滑出
+PARALLAX_SLIDE = """<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：parallax / {curve} / 进入 {enter}ms（退出 {exit}ms） -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="{duration}"
+    android:fromXDelta="{frm}"
+    android:interpolator="{interp}"
+    android:toXDelta="{to}" />
+"""
+
+# 被压在下面的那一层：进入时退到左边半屏、缩到 0.7、淡出
+PARALLAX_LAYER_OUT = """<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：parallax 旧页退场（左移半屏 + 缩到 0.7 + 淡出）/ {curve} / {duration}ms -->
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <translate
+        android:duration="{duration}"
+        android:fromXDelta="0"
+        android:interpolator="{interp}"
+        android:toXDelta="-50%" />
+    <scale
+        android:duration="{duration}"
+        android:fromXScale="1.0"
+        android:fromYScale="1.0"
+        android:interpolator="{interp}"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:toXScale="0.7"
+        android:toYScale="0.7" />
+    <alpha
+        android:duration="{duration}"
+        android:fromAlpha="1.0"
+        android:interpolator="{interp}"
+        android:toAlpha="0.0" />
+</set>
+"""
+
+# 返回时从上面那层底下归位：-50% / 0.7 / 全透明 -> 原样
+PARALLAX_LAYER_IN = """<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：parallax 下层页归位（从左侧半屏 + 0.7 + 透明归位）/ {curve} / {duration}ms -->
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <translate
+        android:duration="{duration}"
+        android:fromXDelta="-50%"
+        android:interpolator="{interp}"
+        android:toXDelta="0" />
+    <scale
+        android:duration="{duration}"
+        android:fromXScale="0.7"
+        android:fromYScale="0.7"
+        android:interpolator="{interp}"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:toXScale="1.0"
+        android:toYScale="1.0" />
+    <alpha
+        android:duration="{duration}"
+        android:fromAlpha="0.0"
+        android:interpolator="{interp}"
+        android:toAlpha="1.0" />
+</set>
 """
 
 KT_HEADER = """package com.example.c001apk.util
@@ -151,6 +219,26 @@ def main():
             for slot in SLOTS:
                 key = "fade_%s_%d_%s" % (curve, enter, slot)
                 entries.append((key, fin if slot in ("rin", "lin") else fout))
+
+            # 视差滑动：四个槽位形状各不相同，逐个烘（rikkahub 同款）
+            p_rin = "exp_parallax_%s_%d_rin" % (curve, enter)
+            p_lout = "exp_parallax_%s_%d_lout" % (curve, enter)
+            p_lin = "exp_parallax_%s_%d_lin" % (curve, enter)
+            p_rout = "exp_parallax_%s_%d_rout" % (curve, enter)
+            files.append((p_rin, PARALLAX_SLIDE.format(
+                curve=curve, enter=enter, exit=exit_ms,
+                duration=enter, frm="100%", to="0", interp=enter_interp)))
+            files.append((p_lout, PARALLAX_LAYER_OUT.format(
+                curve=curve, enter=enter, exit=exit_ms,
+                duration=exit_ms, interp=exit_interp)))
+            files.append((p_lin, PARALLAX_LAYER_IN.format(
+                curve=curve, enter=enter, exit=exit_ms,
+                duration=enter, interp=enter_interp)))
+            files.append((p_rout, PARALLAX_SLIDE.format(
+                curve=curve, enter=enter, exit=exit_ms,
+                duration=exit_ms, frm="0", to="100%", interp=exit_interp)))
+            for slot, name in (("rin", p_rin), ("lout", p_lout), ("lin", p_lin), ("rout", p_rout)):
+                entries.append(("parallax_%s_%d_%s" % (curve, enter, slot), name))
 
     for name, content in files:
         write(os.path.join(ANIM_DIR, name + ".xml"), content)

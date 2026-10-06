@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：parallax 旧页退场（左移半屏 + 缩到 0.7 + 淡出）/ linear / 350ms -->
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <translate
+        android:duration="350"
+        android:fromXDelta="0"
+        android:interpolator="@android:interpolator/linear"
+        android:toXDelta="-50%" />
+    <scale
+        android:duration="350"
+        android:fromXScale="1.0"
+        android:fromYScale="1.0"
+        android:interpolator="@android:interpolator/linear"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:toXScale="0.7"
+        android:toYScale="0.7" />
+    <alpha
+        android:duration="350"
+        android:fromAlpha="1.0"
+        android:interpolator="@android:interpolator/linear"
+        android:toAlpha="0.0" />
+</set>

@@ -37,6 +37,13 @@ object TransitionAnim {
     /** 类型：淡入淡出 */
     const val TYPE_FADE = "fade"
 
+    /**
+     * 类型：视差滑动（rikkahub 同款）。新页整屏滑入，被压住的旧页同时左移半屏、
+     * 缩到 0.7 并淡出；返回时反向归位。注意旧页的缩放作用在整个 window 上，
+     * 四周会露出窗口下层（壁纸）——这是单 Activity Compose 里没有的代价。
+     */
+    const val TYPE_PARALLAX = "parallax"
+
     /** 类型：无动画 */
     const val TYPE_NONE = "none"
 

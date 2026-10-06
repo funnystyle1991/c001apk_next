@@ -65,12 +65,18 @@ fun String.execute(currentWorkingDir: File = file("./")): String {
     return String(byteOut.toByteArray()).trim()
 }
 
-// ===== 发行版本（唯一真源：仓库根目录 version.properties，发布只改那个文件）=====
-// 规则：只有 beta 阶段主动推进版本号，main 继承 beta 的版本号；debug 快速迭代不涨号。
+// ===== 发行版本（唯一真源：仓库根目录 version.properties）=====
+// 规则：正式版只在 main 分支发布，每发一次 CI 自动把 patch +1、versionCode +1：
+//       CI 用 -PoverrideVersionName / -PoverrideVersionCode 把本次要发的号传进来，
+//       构建完再把新号写回 version.properties 提交，作为下一次的基线。
+//       debug 线不涨号，沿用文件里的当前号 —— 与正式版同一个 versionCode，可来回覆盖安装。
 val releaseProps = Properties().also { it.load(rootProject.file("version.properties").inputStream()) }
-val verCode = releaseProps.getProperty("VERSION_CODE").trim().toInt()
-val verTag = releaseProps.getProperty("VERSION_NAME").trim()
-// 发行渠道：CI 按分支传 -Pchannel=release|beta|debug；本地不传默认 release
+val fileCode = releaseProps.getProperty("VERSION_CODE").trim().toInt()
+val fileTag = releaseProps.getProperty("VERSION_NAME").trim()
+// CI 发正式版时传入的本次版本号；本地构建 / debug 线不传，用文件里的值
+val verCode = (findProperty("overrideVersionCode") as String?)?.takeIf { it.isNotBlank() }?.trim()?.toInt() ?: fileCode
+val verTag = (findProperty("overrideVersionName") as String?)?.takeIf { it.isNotBlank() }?.trim() ?: fileTag
+// 发行渠道：CI 按分支传 -Pchannel=release|debug；本地不传默认 release
 val channel = (findProperty("channel") as String?)?.takeIf { it.isNotBlank() } ?: "release"
 // versionName 统一前缀（与仓库同名）：c001apk_next-V1.0.1-release
 val apkPrefix = "c001apk_next"
@@ -127,7 +133,7 @@ android {
             buildConfigField("boolean", "HTTP_LOG", (channel == "debug" || name == "debug").toString())
         }
         release {
-            // 拼出完整版本名：c001apk_next-V1.0.1-release（beta 分支为 -beta）
+            // 拼出完整版本名：c001apk_next-V1.0.2-release
             versionNameSuffix = "-$channel"
             isMinifyEnabled = true
             isShrinkResources = true

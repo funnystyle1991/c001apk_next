@@ -51,6 +51,7 @@ import com.example.c001apk.util.EmojiUtils
 import com.example.c001apk.util.ImageUtil.getImageDimensionsAndMD5
 import com.example.c001apk.util.ImageUtil.showIMG
 import com.example.c001apk.util.ImageUtil.toHex
+import com.example.c001apk.util.TransitionAnim
 import com.example.c001apk.util.dp
 import com.example.c001apk.util.makeToast
 import com.example.c001apk.util.ossUpload
@@ -893,9 +894,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
     private fun launchAtTopic(type: String) {
         val intent = Intent(this, AtTopicActivity::class.java)
         intent.putExtra("type", type)
-        val options = ActivityOptionsCompat.makeCustomAnimation(
-            this, R.anim.right_in, R.anim.left_out
-        )
+        val options = TransitionAnim.enterOptionsCompat(this)
         atTopicResultLauncher.launch(intent, options)
     }
 

@@ -19,6 +19,7 @@ import com.example.c001apk.databinding.FragmentSearchBinding
 import com.example.c001apk.logic.model.SearchHotResponse
 import com.example.c001apk.ui.base.BaseFragment
 import com.example.c001apk.ui.blacklist.IOnItemClickListener
+import com.example.c001apk.util.TransitionAnim
 import com.google.android.flexbox.FlexDirection
 import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
@@ -314,10 +315,10 @@ class SearchFragment : BaseFragment<FragmentSearchBinding>(), IOnItemClickListen
         requireActivity().supportFragmentManager
             .beginTransaction()
             .setCustomAnimations(
-                R.anim.right_in,
-                R.anim.left_out_fragment,
-                R.anim.left_in,
-                R.anim.right_out
+                TransitionAnim.fragmentEnter(),
+                TransitionAnim.fragmentExit(),
+                TransitionAnim.fragmentPopEnter(),
+                TransitionAnim.fragmentPopExit()
             )
             .replace(
                 R.id.fragmentContainer,

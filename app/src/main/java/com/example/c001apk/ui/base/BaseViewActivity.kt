@@ -11,6 +11,7 @@ import com.example.c001apk.constant.Constants
 import com.example.c001apk.databinding.BaseFragmentContainerBinding
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.ThemeUtils
+import com.example.c001apk.util.TransitionAnim
 import rikka.material.app.MaterialActivity
 
 abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
@@ -107,7 +108,7 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
 
     override fun finish() {
         super.finish()
-        overridePendingTransition(R.anim.left_in, R.anim.right_out)
+        TransitionAnim.applyReturn(this)
     }
 
 }

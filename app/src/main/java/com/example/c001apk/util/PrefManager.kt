@@ -208,6 +208,24 @@ object PrefManager {
         get() = pref.getBoolean("isColorFilter", true)
         set(value) = pref.edit().putBoolean("isColorFilter", value).apply()
 
+    /**
+     * 水平转场动画曲线（实验项，见 [com.example.c001apk.util.TransitionAnim]）。
+     * 取值 linear / m2 / std / emph，默认 `emph` 与已改造的正式资源一致。
+     */
+    var animCurve: String
+        get() = pref.getString("animCurve", TransitionAnim.CURVE_M3_EMPHASIZED)!!
+        set(value) = pref.edit().putString("animCurve", value).apply()
+
+    /** 水平转场动画类型（实验项）：slide 水平滑动 / fade 淡入淡出 / none 无动画 */
+    var animType: String
+        get() = pref.getString("animType", TransitionAnim.TYPE_SLIDE)!!
+        set(value) = pref.edit().putString("animType", value).apply()
+
+    /** 水平转场进入时长(ms)，实验项；退出固定为进入 - 50ms。存成字符串以便设置页用下拉框。 */
+    var animDuration: Int
+        get() = pref.getString("animDuration", "300")!!.toIntOrNull() ?: 300
+        set(value) = pref.edit().putString("animDuration", value.toString()).apply()
+
     /** 启动时检查本应用正式版更新（升级信息走自建接口，默认开） */
     var isCheckUpdateStable: Boolean
         get() = pref.getBoolean("isCheckUpdateStable", true)

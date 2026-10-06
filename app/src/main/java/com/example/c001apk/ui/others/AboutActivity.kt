@@ -14,6 +14,7 @@ import com.drakeet.about.Line
 import com.example.c001apk.BuildConfig
 import com.example.c001apk.R
 import com.example.c001apk.util.PrefManager
+import com.example.c001apk.util.TransitionAnim
 import com.example.c001apk.util.UpdateChecker
 import kotlinx.coroutines.launch
 
@@ -285,7 +286,7 @@ class AboutActivity : AbsAboutActivity() {
 
     override fun finish() {
         super.finish()
-        overridePendingTransition(R.anim.left_in, R.anim.right_out)
+        TransitionAnim.applyReturn(this)
     }
 
 }

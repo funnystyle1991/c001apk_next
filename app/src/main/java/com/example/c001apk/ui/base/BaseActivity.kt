@@ -6,9 +6,9 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import androidx.viewbinding.ViewBinding
-import com.example.c001apk.R
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.ThemeUtils
+import com.example.c001apk.util.TransitionAnim
 import rikka.material.app.MaterialActivity
 import java.lang.reflect.ParameterizedType
 
@@ -49,7 +49,7 @@ abstract class BaseActivity<VB : ViewBinding> : MaterialActivity() {
 
     override fun finish() {
         super.finish()
-        overridePendingTransition(R.anim.left_in, R.anim.right_out)
+        TransitionAnim.applyReturn(this)
     }
 
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：slide / emph / 进入 500ms（退出 450ms） -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="450"
+    android:fromXDelta="0"
+    android:interpolator="@interpolator/m3_sys_motion_easing_emphasized_accelerate"
+    android:toXDelta="100%" />

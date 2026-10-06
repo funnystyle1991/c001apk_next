@@ -22,6 +22,10 @@
     <string name="dark_theme">深色主题</string>
     <string name="settings_pure_black_dark_theme">纯黑主题</string>
     <string name="settings_pure_black_dark_theme_summary">当深色主题启用时使用纯黑主题</string>
+    <!-- 水平转场动画实验项（临时脚手架，见 util/TransitionAnim.kt） -->
+    <string name="settings_transition_curve">转场曲线</string>
+    <string name="settings_transition_type">转场类型</string>
+    <string name="settings_transition_speed">转场速度</string>
     <string name="dark_theme_off">总是关闭</string>
     <string name="dark_theme_on">总是开启</string>
     <string name="follow_system">跟随系统</string>

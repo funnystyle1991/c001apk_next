@@ -93,15 +93,27 @@ fun setArticleImage(
     imageView: NineGridImageView,
     setArticleImage: FeedArticleContentBean.Data,
 ) {
-    setArticleImage.url?.let {
-        val urlList = ArrayList<String>()
-        urlList.add("$it.s.jpg")
-        val imageLp = ImageUtil.getImageLp(it)
-        imageView.imgWidth = imageLp.first
-        imageView.imgHeight = imageLp.second
-        imageView.isCompress = true
-        imageView.setUrlList(urlList)
-    }
+    setNineGridImage(imageView, setArticleImage.url, true)
+}
+
+/**
+ * 图文详情的封面。列表项里只有一个 messageCover 裸地址，作为整页头图要顶在作者行下面，
+ * 所以按原图取（清晰优先），排版宽高仍靠 url 里的 `@WxH` 提示算。
+ */
+@BindingAdapter("setFeedCover")
+fun setFeedCover(imageView: NineGridImageView, cover: String?) {
+    setNineGridImage(imageView, cover, false)
+}
+
+private fun setNineGridImage(imageView: NineGridImageView, url: String?, thumbnail: Boolean) {
+    if (url.isNullOrEmpty()) return
+    val urlList = ArrayList<String>()
+    urlList.add(if (thumbnail) "$url.s.jpg" else url)
+    val imageLp = ImageUtil.getImageLp(url)
+    imageView.imgWidth = imageLp.first
+    imageView.imgHeight = imageLp.second
+    imageView.isCompress = true
+    imageView.setUrlList(urlList)
 }
 
 @BindingAdapter(value = ["targetRow", "relationRows", "isFeedContent"], requireAll = true)

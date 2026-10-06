@@ -145,7 +145,12 @@ class FeedQuestionFragment : BaseFragment<FragmentFeedVoteBinding>() {
 
     private fun initView() {
         feedDataAdapter =
-            FeedDataAdapter(ItemClickListener(), viewModel.feedDataList, viewModel.articleList)
+            FeedDataAdapter(
+                ItemClickListener(),
+                viewModel.feedDataList,
+                viewModel.articleList,
+                viewModel.articleHeader
+            )
         feedReplyAdapter = FeedReplyAdapter(ItemClickListener())
         footerAdapter = FooterAdapter(ReloadListener())
         binding.recyclerView.apply {

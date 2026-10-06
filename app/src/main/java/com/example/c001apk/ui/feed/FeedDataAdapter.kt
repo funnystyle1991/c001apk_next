@@ -2,12 +2,14 @@ package com.example.c001apk.ui.feed
 
 import android.content.res.Configuration
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.example.c001apk.BR
 import com.example.c001apk.adapter.ItemListener
 import com.example.c001apk.constant.Constants
+import com.example.c001apk.databinding.ItemFeedArticleHeaderBinding
 import com.example.c001apk.databinding.ItemFeedArticleImageBinding
 import com.example.c001apk.databinding.ItemFeedArticleShareUrlBinding
 import com.example.c001apk.databinding.ItemFeedArticleTextBinding
@@ -20,11 +22,19 @@ class FeedDataAdapter(
     private val listener: ItemListener,
     feedDataList: List<HomeFeedResponse.Data>?,
     articleList: List<FeedArticleContentBean.Data>?,
+    header: HomeFeedResponse.Data? = null,
 ) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var feedDataList: List<HomeFeedResponse.Data>? = feedDataList
     private var articleList: List<FeedArticleContentBean.Data>? = articleList
+
+    /** 图文详情的头部项（作者行 + 封面）。只有图文有，动态把它并进内容卡里了。 */
+    private var header: HomeFeedResponse.Data? = header
+
+    /** 头部项占着一个位置，图文正文块的 position 都要往后挪一格 */
+    private val headerOffset: Int
+        get() = if (header != null) 1 else 0
 
     /**
      * 详情回填：列表项直出首屏时 adapter 拿到的是预览 list 的引用，而 [FeedViewModel.handleFeedData]
@@ -33,9 +43,11 @@ class FeedDataAdapter(
     fun submit(
         feedDataList: List<HomeFeedResponse.Data>?,
         articleList: List<FeedArticleContentBean.Data>?,
+        header: HomeFeedResponse.Data?,
     ) {
         this.feedDataList = feedDataList
         this.articleList = articleList
+        this.header = header
         notifyDataSetChanged()
     }
 
@@ -60,13 +72,33 @@ class FeedDataAdapter(
         }
     }
 
+    /**
+     * 图文详情的头部：作者行 + 封面。
+     * 预览态（列表项直出）就铺这一项，详情回来只在它下面补正文，画面不会往下跳。
+     */
+    class ArticleHeaderViewHolder(
+        val binding: ItemFeedArticleHeaderBinding,
+        val listener: ItemListener
+    ) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(data: HomeFeedResponse.Data?) {
+            binding.setVariable(BR.data, data)
+            binding.setVariable(BR.listener, listener)
+            binding.setVariable(
+                BR.followAuthor,
+                data?.userAction?.followAuthor ?: Constants.FOLLOW_AUTHOR_UNKNOWN
+            )
+            binding.executePendingBindings()
+        }
+    }
+
     class TextViewHolder(val binding: ItemFeedArticleTextBinding, val listener: ItemListener) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(data: FeedArticleContentBean.Data?) {
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.listener, listener)
-            binding.textView.paint.isFakeBoldText =
-                (bindingAdapterPosition in listOf(0, 1)) && data?.title == "true"
+            // title 标记是给图文首行标题打的。不能再按 adapter position 判断：封面挪进头部项后
+            // 标题已经不在 0/1 位上，按位置判断的话标题就永远不加粗了
+            binding.textView.paint.isFakeBoldText = data?.title == "true"
             binding.executePendingBindings()
         }
     }
@@ -100,13 +132,18 @@ class FeedDataAdapter(
                     parent,
                     false
                 )
-                with(binding.root.layoutParams) {
-                    if (parent.context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-                        && this is StaggeredGridLayoutManager.LayoutParams
-                    )
-                        isFullSpan = true
-                }
+                setFullSpan(parent, binding.root)
                 FeedViewHolder(binding, listener)
+            }
+
+            4 -> {
+                val binding = ItemFeedArticleHeaderBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false
+                )
+                setFullSpan(parent, binding.root)
+                ArticleHeaderViewHolder(binding, listener)
             }
 
             1 -> TextViewHolder(
@@ -137,10 +174,21 @@ class FeedDataAdapter(
         }
     }
 
+    private fun setFullSpan(parent: ViewGroup, root: View) {
+        with(root.layoutParams) {
+            if (parent.context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+                && this is StaggeredGridLayoutManager.LayoutParams
+            )
+                isFullSpan = true
+        }
+    }
+
     override fun getItemCount(): Int {
         // 属性是 var（详情回填要整体换掉），先落到局部变量才能 smart cast
-        val feeds = feedDataList
         val articles = articleList
+        // 图文：头部项 + 正文块
+        if (header != null) return headerOffset + (articles?.size ?: 0)
+        val feeds = feedDataList
         return if (feeds.isNullOrEmpty() && !articles.isNullOrEmpty()) articles.size
         else if (!feeds.isNullOrEmpty() && articles.isNullOrEmpty()) feeds.size
         else 0
@@ -148,10 +196,11 @@ class FeedDataAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (holder) {
-            is FeedViewHolder -> holder.bind(feedDataList?.getOrNull(position))
-            is TextViewHolder -> holder.bind(articleList?.getOrNull(position))
-            is ImageViewHolder -> holder.bind(articleList?.getOrNull(position))
-            is ShareUrlViewHolder -> holder.bind(articleList?.getOrNull(position))
+            is ArticleHeaderViewHolder -> holder.bind(header)
+            is FeedViewHolder -> holder.bind(feedDataList?.getOrNull(position - headerOffset))
+            is TextViewHolder -> holder.bind(articleList?.getOrNull(position - headerOffset))
+            is ImageViewHolder -> holder.bind(articleList?.getOrNull(position - headerOffset))
+            is ShareUrlViewHolder -> holder.bind(articleList?.getOrNull(position - headerOffset))
         }
     }
 
@@ -164,6 +213,11 @@ class FeedDataAdapter(
             onBindViewHolder(holder, position)
         } else {
             if (payloads[0] == true) {
+                // 关注状态回填：动态在内容卡上，图文在头部作者行上
+                if (holder is ArticleHeaderViewHolder) {
+                    holder.bind(header)
+                    return
+                }
                 with(holder as FeedViewHolder) {
                     binding.setVariable(
                         BR.likeData,
@@ -184,13 +238,14 @@ class FeedDataAdapter(
     }
 
     override fun getItemViewType(position: Int): Int {
+        if (header != null && position == 0) return 4
         val articles = articleList
         return if (articles.isNullOrEmpty()) 0
-        else when (articles[position].type) {
+        else when (articles[position - headerOffset].type) {
             "text" -> 1
             "image" -> 2
             "shareUrl" -> 3
-            else -> throw IllegalArgumentException("invalid article type: ${articles[position].type}")
+            else -> throw IllegalArgumentException("invalid article type: ${articles[position - headerOffset].type}")
         }
     }
 

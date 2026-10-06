@@ -10,6 +10,7 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.ActivityResultLauncher
@@ -191,15 +192,12 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                 firstVisibleItemPosition =
                     if (isPortrait) mLayoutManager.findFirstVisibleItemPosition()
                     else sLayoutManager.findFirstVisibleItemPositions(null).min()
-                val shouldShow =
-                    if (firstVisibleItemPosition in (0..1)) scrollYDistance >= 40.dp
-                    else true
-                binding.toolBar.title = if (shouldShow) null else viewModel.feedTypeName
-                if (shouldShow && !binding.titleProfile.isVisible) {
-                    binding.titleProfile.alpha = 0f
-                    binding.titleProfile.animate().alpha(1f).setDuration(500)
-                }
-                binding.titleProfile.isVisible = shouldShow
+                // 内容里的作者行被顶掉多少，顶栏作者行就往上滑多少：滑到 1 时正好落到标题的位置。
+                // 不写成"过了阈值就切"，是因为要跟着手指走（活动页那种顶掉+挪位），不是到点瞬切
+                val progress =
+                    if (firstVisibleItemPosition in (0..1)) scrollYDistance / titleSwitchDistance
+                    else 1f
+                applyTitleSwitch(progress)
             }
         })
     }
@@ -213,7 +211,11 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
         viewModel.feedDataUpdateState.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandledOrReturnNull()?.let {
                 // 详情回来了：首屏那批是列表项直出的，adapter 还持有预览 list 的引用，必须换掉
-                feedDataAdapter.submit(viewModel.feedDataList, viewModel.articleList)
+                feedDataAdapter.submit(
+                    viewModel.feedDataList,
+                    viewModel.articleList,
+                    viewModel.articleHeader
+                )
                 // 图文的内容项数从 1 变成 N，装饰器按新 itemCount 重算 offsets，
                 // 否则正文会按预览期的边界渲染（顶到屏幕边、排序 tab 提前吸附）
                 binding.recyclerView.invalidateItemDecorations()
@@ -289,7 +291,8 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
         feedDataAdapter = FeedDataAdapter(
             ItemClickListener(),
             viewModel.feedDataList,
-            viewModel.articleList
+            viewModel.articleList,
+            viewModel.articleHeader
         )
         feedReplyAdapter = FeedReplyAdapter(ItemClickListener())
         feedFixAdapter =
@@ -718,6 +721,46 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                 if (isPortrait) mLayoutManager.findViewByPosition(firstVisibleItemPosition)
                 else sLayoutManager.findViewByPosition(firstVisibleItemPosition)
             return abs(firstVisibleChildView?.top ?: 0)
+        }
+
+    /**
+     * 顶栏作者行和"动态/图文"标题的一进一出：[progress] 为 0 时只显示标题（作者行在下方一格、
+     * 看不见），为 1 时作者行正好滑到标题的位置。数值跟着滚动走，所以是滑到位而不是瞬切。
+     */
+    private fun applyTitleSwitch(progress: Float) {
+        val p = progress.coerceIn(0f, 1f)
+        val row = binding.titleProfile
+        val slide = (if (row.height > 0) row.height else 40.dp).toFloat()
+        row.translationY = (1f - p) * slide
+        row.alpha = p
+        // INVISIBLE 而不是 GONE：没滑到位之前也不该能点到头像
+        row.visibility = if (p > 0f) View.VISIBLE else View.INVISIBLE
+        toolbarTitleView?.let {
+            it.translationY = -p * it.height
+            it.alpha = 1f - p
+        }
+    }
+
+    /**
+     * MaterialToolbar 的标题 TextView 是它自己 new 出来 addSystemView 挂上去的（没有公开的 id），
+     * 直接子 View 里第一个 TextView 就是标题，其余的（返回键、菜单）都不是 TextView。
+     */
+    private val toolbarTitleView: TextView?
+        get() = (0 until binding.toolBar.childCount)
+            .firstNotNullOfOrNull { binding.toolBar.getChildAt(it) as? TextView }
+
+    /**
+     * 顶栏作者行滑到位所需的滚动距离 = 内容里作者行那一格的高度（量不到就退回 40dp）。
+     * 取 pubDate 的 bottom：动态内容卡的作者行和图文头部项的作者行都把它当最后一行，
+     * 而 item 的 top 就是 0，所以它的 bottom 就是那一格的高度。
+     */
+    private val titleSwitchDistance: Float
+        get() {
+            val authorRowBottom = binding.recyclerView.layoutManager
+                ?.findViewByPosition(1)
+                ?.findViewById<View>(R.id.pubDate)
+                ?.bottom
+            return (authorRowBottom?.takeIf { it > 0 } ?: 40.dp).toFloat()
         }
 
     override fun onDestroy() {

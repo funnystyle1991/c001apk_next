@@ -73,6 +73,12 @@ class FeedViewModel @AssistedInject constructor(
 
     var feedDataList: MutableList<HomeFeedResponse.Data>? = null
     var articleList: MutableList<FeedArticleContentBean.Data>? = null
+
+    /**
+     * 图文详情的头部项数据（作者行 + 封面）在 adapter 里的位置和 [feedDataList] 的首项等价：
+     * 动态把作者行并进内容卡，图文则单独铺一项在最上面。非图文时为 null。
+     */
+    var articleHeader: HomeFeedResponse.Data? = null
     var articleMsg: String? = null
     var articleDateLine: Long? = null
     private val feedTopReplyList = ArrayList<TotalReplyResponse.Data>()
@@ -89,8 +95,10 @@ class FeedViewModel @AssistedInject constructor(
                         if (response.message != null) {
                             toastText.postValue(Event(response.message))
                         } else {
-                            feedDataList?.getOrNull(0)?.userAction?.followAuthor =
-                                if (followAuthor == 1) 0 else 1
+                            val newState = if (followAuthor == 1) 0 else 1
+                            feedDataList?.getOrNull(0)?.userAction?.followAuthor = newState
+                            // 图文没有 feedDataList，作者行挂在 articleHeader（同一份 feedData）上
+                            feedData?.userAction?.followAuthor = newState
                             feedUserState.postValue(Event(true))
                         }
                     } else {
@@ -578,24 +586,19 @@ class FeedViewModel @AssistedInject constructor(
             feedType = data.feedType
 
             // 列表项不下发 message_raw_output（Kotlin 侧是 null，不等于字符串 "null"，单看原条件
-            // 会放行并 Gson 出空正文）→ 预览态一律先按普通卡片渲染，等详情回来再升级成图文排版
-            if (!isPreview && feedType in listOf("feedArticle", "trade")
-                && data.messageRawOutput != "null"
+            // 会放行并 Gson 出空正文）→ 预览态不解析正文，但排版照图文铺（作者行 + 封面 + 标题），
+            // 详情回来只在其下补正文，首屏不会先出卡片再整块换成图文。
+            if (feedType in listOf("feedArticle", "trade")
+                && (isPreview || data.messageRawOutput != "null")
             ) {
                 articleMsg =
                     if ((data.message?.length ?: 0) > 150)
                         data.message?.substring(0, 150)
                     else data.message
                 articleDateLine = data.dateline
+                // 作者行和封面在头部项里（见 FeedDataAdapter.ArticleHeaderViewHolder），
+                // 所以正文列表从标题开始
                 articleList = ArrayList<FeedArticleContentBean.Data>().also {
-                    if (data.messageCover?.isNotEmpty() == true) {
-                        it.add(
-                            FeedArticleContentBean.Data(
-                                "image", null, data.messageCover,
-                                null, null, null, null
-                            )
-                        )
-                    }
                     if (data.messageTitle?.isNotEmpty() == true) {
                         it.add(
                             FeedArticleContentBean.Data(
@@ -604,25 +607,32 @@ class FeedViewModel @AssistedInject constructor(
                             )
                         )
                     }
-                    val feedRaw = """{"data":${data.messageRawOutput}}"""
-                    val feedJson: FeedArticleContentBean = Gson().fromJson(
-                        feedRaw, FeedArticleContentBean::class.java
-                    )
-                    feedJson.data?.forEach { item ->
-                        if (item.type in listOf("text", "image", "shareUrl"))
-                            it.add(item)
+                    if (!isPreview) {
+                        val feedRaw = """{"data":${data.messageRawOutput}}"""
+                        val feedJson: FeedArticleContentBean = Gson().fromJson(
+                            feedRaw, FeedArticleContentBean::class.java
+                        )
+                        feedJson.data?.forEach { item ->
+                            if (item.type in listOf("text", "image", "shareUrl"))
+                                it.add(item)
+                        }
                     }
-                    itemCount = it.size + 1
+                    // HeaderAdapter(1) + 图文头部项(1) + 正文块
+                    itemCount = it.size + 2
                 }
+                articleHeader = data
                 // 分支必须互斥：两条分支共用一个 adapter，而 FeedDataAdapter.getItemCount 在
-                // 两边同时非空时返回 0。预览态走的是 else 分支（feedDataList 已填），这里不清掉
-                // 就会在详情回来切成图文排版时整块变 0 高度、图文消失只剩评论区
+                // 两边同时非空时返回 0。预览态和详情回填都走这一支，feedDataList 不清掉就会让
+                // 图文整块变 0 高度、只剩评论区
                 feedDataList = null
             } else {
                 feedDataList = ArrayList<HomeFeedResponse.Data>().also {
                     it.add(data)
                 }
                 articleList = null
+                articleHeader = null
+                // HeaderAdapter(1) + 内容卡(1)
+                itemCount = 2
             }
             if (!data.topReplyRows.isNullOrEmpty()) {
                 isTop = true

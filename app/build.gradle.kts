@@ -79,7 +79,9 @@ android {
     // 注意：namespace 决定 R / ViewBinding / DataBinding 生成类的包名，
     // 源码里全是 import com.example.c001apk.R / com.example.c001apk.databinding.*，不能跟着改名
     namespace = "com.example.c001apk"
-    compileSdk = 34
+    // compileSdk 35：material 1.14 传递依赖 androidx.core 1.16，其 AAR metadata 要求编译目标 >= 35
+    // targetSdk 仍留在 34，避免 Android 15 强制 edge-to-edge 改变既有窗口行为（实验分支先只对齐编译目标）
+    compileSdk = 35
 
     defaultConfig {
         // 包名同样保持不变：改 applicationId 等于换一个 App，老用户无法覆盖安装

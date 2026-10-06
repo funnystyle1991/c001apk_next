@@ -107,19 +107,95 @@ object ImageUtil {
      * 传入的必须是 `showImage` 302 出来的**带 auth_key 的完整地址**，裸地址会被 CDN 挡。
      */
     @SuppressLint("CheckResult")
-    fun showChatIMG(view: ImageView, url: String?) {
+    fun showChatIMG(view: ImageView, url: String?, width: Int = 0, height: Int = 0) {
         if (url.isNullOrEmpty()) return
         val newUrl = GlideUrl(
             url,
             LazyHeaders.Builder().addHeader("User-Agent", USER_AGENT).build()
         )
-        Glide.with(view)
-            .load(newUrl)
+        val request = Glide.with(view).load(newUrl)
+        // 气泡按图片真实比例定死了宽高（见 [chatImageSize]），这里按同一个尺寸取图，
+        // 免得 Glide 按 ImageView 的当前尺寸(可能还是占位的 72dp)降采样后又被放大糊掉
+        if (width > 0 && height > 0) request.override(width, height)
+        request
             .transform(CenterCrop())
             .transition(withCrossFade())
             .diskCacheStrategy(DiskCacheStrategy.ALL)
             .skipMemoryCache(false)
             .into(view)
+    }
+
+    /**
+     * 量一下图片的原始像素宽高（只解 bounds，不整张解码，几十 KB 的头部就够）。
+     * 先把文件拉进 Glide 的磁盘缓存再读，[showChatIMG] 接着用同一份缓存，不会重复下载。
+     */
+    suspend fun loadImageSize(context: Context, url: String): Pair<Int, Int>? =
+        withContext(Dispatchers.IO) {
+            try {
+                val file = Glide.with(context.applicationContext)
+                    .asFile()
+                    .load(
+                        GlideUrl(
+                            url,
+                            LazyHeaders.Builder().addHeader("User-Agent", USER_AGENT).build()
+                        )
+                    )
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .submit()
+                    .get()
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(file.absolutePath, options)
+                if (options.outWidth > 0 && options.outHeight > 0)
+                    options.outWidth to options.outHeight
+                else null
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+    /**
+     * 算私信气泡里的图片该显示多大（px）。
+     *
+     * 之前的写法是死宽 180dp + CenterCrop，横图竖图都挤成同一条，这里改成按比例：
+     * 宽度铺到 220dp 封顶、高度 260dp 封顶，小图不拉到满宽（按原始像素 1:1），
+     * 极端比例（细长条 / 全景）先夹到 0.6~2.2 免得气泡被拉成一根面条。
+     */
+    fun chatImageSize(context: Context, imgWidth: Int, imgHeight: Int): Pair<Int, Int> {
+        val density = context.resources.displayMetrics.density
+        val maxWidth = 220f * density
+        val maxHeight = 260f * density
+        val minWidth = 72f * density
+        if (imgWidth <= 0 || imgHeight <= 0) return minWidth.toInt() to minWidth.toInt()
+        val ratio = (imgWidth.toFloat() / imgHeight.toFloat()).coerceIn(0.6f, 2.2f)
+        var width = minOf(imgWidth / density, maxWidth)
+        var height = width / ratio
+        if (height > maxHeight) {
+            height = maxHeight
+            width = height * ratio
+        }
+        if (width < minWidth) {
+            width = minWidth
+            height = width / ratio
+        }
+        return width.toInt() to height.toInt()
+    }
+
+    /**
+     * 私信图片点开全屏。跟 [startBigImgViewSimple] 的区别是**不做 http2https**：
+     * message-pic2 这个 CDN 不支持 https（见 [showChatIMG]），换了协议就加载不出来。
+     *
+     * 两个已知取舍：
+     * 1. 没挂长按存图（走 [showSaveImgDialog] → `downloadPicture` 会把地址升成 https，必失败）；
+     * 2. Mojito 用的是它自带那套 Glide 加载器（`GlideImageLoader`），**不带酷安 UA**，
+     *    这里赌 CDN 只认 auth_key（签名地址）。要是全屏加载不出来，就得给 Mojito 的图片
+     *    客户端补上 UA（见 MyApplication 里的 `Mojito.initialize`）。
+     */
+    fun startChatBigImgViewSimple(imageView: ImageView, url: String) {
+        imageView.mojito(url) {
+            progressLoader {
+                DefaultPercentProgress()
+            }
+        }
     }
 
     private suspend fun saveImageToGallery(ctx: Context, imageUrl: String): Boolean =

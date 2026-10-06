@@ -25,9 +25,9 @@ class MessageDetailAdapter(
     /**
      * 图片消息的地址要现问 `showImage` 换签名地址（CDN 的裸地址会被 auth_key 挡），
      * adapter 自己没有协程作用域，所以这件事交给页面 / ViewModel 做，结果回调回来。
-     * 同一条消息只会问一次（ViewModel 里有缓存）。
+     * 回调里除了地址还有图片原始宽高（气泡按它撑开），同一条消息只会问一次（ViewModel 有缓存）。
      */
-    private val loadPic: (id: String, onReady: (String?) -> Unit) -> Unit
+    private val loadPic: (id: String, onReady: (MessageKit.MessagePic?) -> Unit) -> Unit
 ) : ListAdapter<MessageResponse.Data, MessageDetailAdapter.ChatViewHolder>(ChatDiffCallback()) {
 
     class ChatViewHolder(
@@ -39,7 +39,7 @@ class MessageDetailAdapter(
             isMe: Boolean,
             myAvatar: String,
             partnerAvatar: String,
-            loadPic: (String, (String?) -> Unit) -> Unit
+            loadPic: (String, (MessageKit.MessagePic?) -> Unit) -> Unit
         ) {
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.isMe, isMe)
@@ -53,10 +53,23 @@ class MessageDetailAdapter(
             // 用 tag 记住当前这个 ImageView 摊到的是哪条消息，对不上就丢掉。
             view.tag = id
             view.setImageDrawable(null)
+            // 复用过来时上一条消息的点击监听可能还在，先摘掉，免得点空图点开上一张
+            view.setOnClickListener(null)
             if (id.isEmpty()) return
-            loadPic(id) { url ->
-                if (view.tag == id && !url.isNullOrEmpty()) {
-                    ImageUtil.showChatIMG(view, url)
+            loadPic(id) { pic ->
+                if (view.tag == id && pic != null) {
+                    // 按图片真实比例定气泡里的占位尺寸，再按同一个尺寸取图（不再死宽 180dp）
+                    val (width, height) =
+                        ImageUtil.chatImageSize(view.context, pic.width, pic.height)
+                    view.layoutParams = view.layoutParams.apply {
+                        this.width = width
+                        this.height = height
+                    }
+                    ImageUtil.showChatIMG(view, pic.url, width, height)
+                    // 点一下全屏看大图（long click 存图由 Mojito 那侧接管）
+                    view.setOnClickListener {
+                        ImageUtil.startChatBigImgViewSimple(view, pic.url)
+                    }
                 }
             }
         }

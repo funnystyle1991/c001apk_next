@@ -21,6 +21,7 @@ import android.widget.Toast
 import androidx.core.graphics.ColorUtils
 import com.example.c001apk.view.CenteredImageSpan
 import com.example.c001apk.view.MyURLSpan
+import com.google.android.material.color.MaterialColors
 import io.noties.markwon.core.spans.CodeBlockSpan
 import java.util.regex.Pattern
 
@@ -31,7 +32,8 @@ object SpannableStringBuilderUtil {
         text: String,
         size: Float,
         imgList: List<String>?,
-        showMoreReply: (() -> Unit)? = null
+        showMoreReply: (() -> Unit)? = null,
+        linkAsChip: Boolean = false
     ): SpannableStringBuilder {
         // 代码块复制按钮的占位符可能在文本被二次渲染时残留，先剔除
         val src = text.replace(PLACEHOLDER, "")
@@ -60,6 +62,8 @@ object SpannableStringBuilderUtil {
             builder.setSpan(MyURLSpan(mContext, url, imgList, showMoreReply), start, end, flags)
             builder.removeSpan(it)
         }
+        // 私信气泡里的「查看链接」要一眼能认出来（见 layout 里的 app:linkAsChip）
+        if (linkAsChip) addLinkChips(mContext, builder)
         if (PrefManager.showEmoji) {
             val pattern = Pattern.compile("\\[[^\\]]+\\]")
             val matcher = pattern.matcher(builder)
@@ -200,6 +204,88 @@ object SpannableStringBuilderUtil {
                 p
             )
         }
+    }
+
+    // ---------------- 「查看链接」胶囊按钮 ----------------
+
+    /** 服务端把纯文本消息里的链接下发成 `<a class="feed-link-url">查看链接</a>` */
+    private const val LINK_CHIP_LABEL = "查看链接"
+
+    /**
+     * 给正文里的「查看链接」套一层胶囊底色。
+     * 这个锚点是服务端生成的可点元素，但降级成纯文本后跟正文一模一样，
+     * 完全看不出它能点，所以这里把它画成一颗按钮（点击仍由同区间的 MyURLSpan 负责）。
+     */
+    private fun addLinkChips(context: Context, builder: SpannableStringBuilder) {
+        builder.getSpans(0, builder.length, MyURLSpan::class.java)
+            .forEach { span ->
+                val start = builder.getSpanStart(span)
+                val end = builder.getSpanEnd(span)
+                if (start < 0 || end <= start) return@forEach
+                if (builder.subSequence(start, end).toString() != LINK_CHIP_LABEL) return@forEach
+                builder.setSpan(
+                    LinkChipSpan(context),
+                    start, end,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+            }
+    }
+
+    /** 画成一颗主题色胶囊，颜色取主题 colorPrimary，深浅色主题都跟着走 */
+    private class LinkChipSpan(private val context: Context) : ReplacementSpan() {
+
+        override fun getSize(
+            paint: Paint,
+            text: CharSequence,
+            start: Int,
+            end: Int,
+            fm: Paint.FontMetricsInt?
+        ): Int {
+            val label = text.subSequence(start, end).toString()
+            return (paint.measureText(label) + dp(9f) * 2).toInt()
+        }
+
+        override fun draw(
+            canvas: Canvas,
+            text: CharSequence,
+            start: Int,
+            end: Int,
+            x: Float,
+            top: Int,
+            y: Int,
+            bottom: Int,
+            paint: Paint
+        ) {
+            val label = text.subSequence(start, end).toString()
+            val p = Paint(paint)
+            val accent = MaterialColors.getColor(
+                context,
+                androidx.appcompat.R.attr.colorPrimary,
+                p.color
+            )
+            val padding = dp(9f)
+            val width = p.measureText(label) + padding * 2
+            val height = p.textSize * 1.55f
+            val centerY = (top + bottom) / 2f
+            val rect = RectF(x, centerY - height / 2f, x + width, centerY + height / 2f)
+            val radius = height / 2f
+
+            p.style = Paint.Style.FILL
+            p.color = ColorUtils.setAlphaComponent(accent, 38)
+            canvas.drawRoundRect(rect, radius, radius, p)
+
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(1f)
+            p.color = ColorUtils.setAlphaComponent(accent, 130)
+            canvas.drawRoundRect(rect, radius, radius, p)
+
+            p.style = Paint.Style.FILL
+            p.textAlign = Paint.Align.LEFT
+            p.color = accent
+            canvas.drawText(label, x + padding, centerY - (p.descent() + p.ascent()) / 2f, p)
+        }
+
+        private fun dp(v: Float) = v * context.resources.displayMetrics.density
     }
 
 }

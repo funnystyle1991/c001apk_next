@@ -1,16 +1,22 @@
 package com.example.c001apk.ui.messagedetail
 
+import android.content.Context
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.c001apk.logic.model.MessageResponse
 import com.example.c001apk.logic.model.OSSUploadPrepareModel
 import com.example.c001apk.logic.model.OSSUploadPrepareResponse
+import com.example.c001apk.logic.model.StringEntity
 import com.example.c001apk.logic.repository.NetworkRepo
+import com.example.c001apk.logic.repository.RecentEmojiRepo
 import com.example.c001apk.util.Event
+import com.example.c001apk.util.ImageUtil
 import com.example.c001apk.util.MessageKit
 import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -28,11 +34,42 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class MessageDetailViewModel @Inject constructor(
-    private val networkRepo: NetworkRepo
+    private val networkRepo: NetworkRepo,
+    private val recentEmojiRepo: RecentEmojiRepo,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     val chatData = MutableLiveData<List<MessageResponse.Data>>()
     val toastText = MutableLiveData<Event<String>>()
+
+    /** 表情面板「最近」页的数据源，跟回复页共用同一张表 */
+    val recentEmojiLiveData: LiveData<List<StringEntity>> = recentEmojiRepo.loadAllListLive()
+
+    /** 首次进来「最近」是空的，面板要自动落到「默认」页（只做一次） */
+    var isEmojiInit = true
+
+    /** 表情用过就记一笔，下次排在「最近」里（跟回复页同一套逻辑，表最多留 27 条） */
+    fun updateRecentEmoji(data: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (recentEmojiRepo.checkEmoji(data)) {
+                recentEmojiRepo.updateEmoji(data, System.currentTimeMillis())
+            } else {
+                if (recentEmojiLiveData.value?.size == 27)
+                    recentEmojiLiveData.value?.last()?.data?.let {
+                        recentEmojiRepo.updateEmoji(it, data, System.currentTimeMillis())
+                    }
+                else
+                    recentEmojiRepo.insertEmoji(StringEntity(data))
+            }
+        }
+    }
+
+    /** 调试用：长按「最近」清空记录（跟回复页一致，只在 debug 包挂上去） */
+    fun deleteAllEmoji() {
+        viewModelScope.launch(Dispatchers.IO) {
+            recentEmojiRepo.deleteAll()
+        }
+    }
 
     /** OSS 上传准备就绪：带上 STS 凭证和**服务端分配的对象名**，交给页面去直传 */
     val uploadImage = MutableLiveData<Event<OSSUploadPrepareResponse.Data>>()
@@ -41,7 +78,7 @@ class MessageDetailViewModel @Inject constructor(
      * `showImage` 换来的签名地址缓存。auth_key 有效期约半小时，一次会话够用；
      * 列表来回滚动会反复 bind，不缓存的话每滚一次都要重新请求一遍。
      */
-    private val picUrlCache = HashMap<String, String>()
+    private val picUrlCache = HashMap<String, MessageKit.MessagePic>()
 
     var ukey = ""
     var uid = ""
@@ -126,8 +163,11 @@ class MessageDetailViewModel @Inject constructor(
     /**
      * 气泡里的图片地址。`message_pic` 只是 OSS 对象名，CDN 裸地址会被 auth_key 挡，
      * 得先问 `showImage` 拿 302 出来的签名地址。结果按消息 id 缓存，见 [picUrlCache]。
+     *
+     * 顺便量一下图片原始宽高（跟地址一起缓存）：气泡要按真实比例撑开，
+     * 不能再用写死的 180dp（见 [ImageUtil.chatImageSize]）。
      */
-    fun loadMessagePic(id: String, onReady: (String?) -> Unit) {
+    fun loadMessagePic(id: String, onReady: (MessageKit.MessagePic?) -> Unit) {
         if (id.isEmpty()) {
             onReady(null)
             return
@@ -138,14 +178,14 @@ class MessageDetailViewModel @Inject constructor(
         }
         viewModelScope.launch(Dispatchers.IO) {
             val url = networkRepo.getMessagePicUrl(id).first().getOrNull()
-            withContext(Dispatchers.Main) {
-                if (url.isNullOrEmpty()) {
-                    onReady(null)
-                } else {
-                    picUrlCache[id] = url
-                    onReady(url)
-                }
+            if (url.isNullOrEmpty()) {
+                withContext(Dispatchers.Main) { onReady(null) }
+                return@launch
             }
+            val size = ImageUtil.loadImageSize(appContext, url)
+            val pic = MessageKit.MessagePic(url, size?.first ?: 0, size?.second ?: 0)
+            picUrlCache[id] = pic
+            withContext(Dispatchers.Main) { onReady(pic) }
         }
     }
 

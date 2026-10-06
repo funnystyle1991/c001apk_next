@@ -1,30 +1,45 @@
 package com.example.c001apk.ui.messagedetail
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.os.CountDownTimer
+import android.view.Gravity
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.core.app.ActivityOptionsCompat
+import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.viewpager2.widget.ViewPager2
+import com.example.c001apk.BuildConfig
 import com.example.c001apk.R
 import com.example.c001apk.databinding.ActivityMessageDetailBinding
 import com.example.c001apk.logic.model.OSSUploadPrepareModel
 import com.example.c001apk.ui.base.BaseActivity
+import com.example.c001apk.ui.feed.reply.emoji.EmojiPagerAdapter
+import com.example.c001apk.util.EmojiUtils
 import com.example.c001apk.util.ImageUtil.getImageDimensionsAndMD5
 import com.example.c001apk.util.ImageUtil.toHex
 import com.example.c001apk.util.MessageKit
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.dp
 import com.example.c001apk.util.ossUpload
+import com.google.android.material.color.MaterialColors
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -62,6 +77,25 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
     private var picType = ""
     private var picMd5: ByteArray? = null
 
+    private val imm by lazy {
+        getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+    }
+
+    /** 表情面板三页（最近 / 默认 / 酷币），页码顺序跟回复页一致，数据表也是同一张 */
+    private val emojiData by lazy { EmojiUtils.emojiMap.toList() }
+    private val recentEmojiList = ArrayList<List<Pair<String, Int>>>()
+    private val emojiList = ArrayList<List<Pair<String, Int>>>()
+    private val coolBList = ArrayList<List<Pair<String, Int>>>()
+    private val emojiPages = listOf(recentEmojiList, emojiList, coolBList)
+
+    init {
+        for (i in 0..3) {
+            emojiList.add(emojiData.subList(i * 27 + 4, (i + 1) * 27 + 4))
+        }
+        coolBList.add(emojiData.subList(112, 139))
+        coolBList.add(emojiData.subList(139, 155))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -98,6 +132,17 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
 
         binding.sendBtn.setOnClickListener { send() }
         binding.imageBtn.setOnClickListener { pickImage() }
+        binding.emojiBtn.setOnClickListener { toggleEmojiPanel() }
+        // 点输入框要收掉表情面板、把键盘让上来。这里不能用 OnClickListener：
+        // 那会把点击整个吞掉，光标定位 / 长按选词全废。OnTouchListener 看一眼就放行。
+        binding.editText.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_DOWN && binding.emojiLayout.isVisible) {
+                hideEmojiPanel()
+                showKeyboard()
+            }
+            false
+        }
+        initEmojiPanel()
         applyReadOnly()
         applyInputBarInsets()
     }
@@ -155,18 +200,28 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
         binding.editText.isVisible = false
         binding.imageBtn.isVisible = false
         binding.sendBtn.isVisible = false
+        binding.emojiBtn.isVisible = false
+        hideEmojiPanel()
         binding.readOnlyTip.isVisible = true
     }
 
     /**
      * 输入栏底部内边距：键盘弹起时抬到键盘上方，平时让开导航栏。
      * 取 max 是为了兼容「系统真的 resize 了窗口」和「只发 ime insets」两种情况，避免双重留白。
+     *
+     * 表情面板开着的时候不一样：面板底边就贴着屏幕底，导航栏那段内边距归它（见下面），
+     * 输入栏只留 6dp，不然两者之间会空出一条导航栏高的缝。
      */
     private fun applyInputBarInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.inputBar) { v, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             val ime = insets.getInsets(WindowInsetsCompat.Type.ime())
-            v.updatePadding(bottom = maxOf(bars.bottom, ime.bottom) + 6.dp)
+            if (binding.emojiLayout.isVisible) {
+                v.updatePadding(bottom = 6.dp)
+                binding.emojiLayout.updatePadding(bottom = bars.bottom)
+            } else {
+                v.updatePadding(bottom = maxOf(bars.bottom, ime.bottom) + 6.dp)
+            }
             insets
         }
     }
@@ -214,6 +269,27 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
                 }
             }
         }
+
+        // 「最近」用过的表情（跟回复页共用一张表）；第一次进来是空的就自动落到「默认」页
+        viewModel.recentEmojiLiveData.observe(this) { list ->
+            if (binding.emojiPanel.currentItem == 0 && recentEmojiList.isNotEmpty()) return@observe
+            recentEmojiList.clear()
+            if (list.isEmpty()) {
+                if (viewModel.isEmojiInit) {
+                    viewModel.isEmojiInit = false
+                    binding.emojiPanel.setCurrentItem(1, false)
+                }
+                recentEmojiList.add(0, emptyList())
+            } else {
+                recentEmojiList.add(
+                    0,
+                    list.map {
+                        Pair(it.data, EmojiUtils.emojiMap[it.data] ?: R.drawable.ic_logo)
+                    }
+                )
+            }
+            binding.emojiPanel.adapter?.notifyItemChanged(0)
+        }
     }
 
     private fun send() {
@@ -222,6 +298,151 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
         if (text.isBlank()) return
         binding.editText.setText("")
         viewModel.sendMessage(text)
+    }
+
+    // ---------------- 表情面板（跟回复页同一套，只是键盘/面板切换是手动接的） ----------------
+
+    /**
+     * 表情键：面板开着就收起来换键盘，没开就抬起面板。
+     * 键盘和面板不同时出现，是两个输入源互相顶掉的经典做法（跟微信一致）。
+     */
+    private fun toggleEmojiPanel() {
+        if (binding.emojiLayout.isVisible) {
+            hideEmojiPanel()
+            showKeyboard()
+        } else {
+            binding.emojiLayout.isVisible = true
+            binding.emojiBtn.setIconResource(R.drawable.ic_keyboard)
+            hideKeyboard()
+            // 面板占了底部，输入栏的内边距要跟着换一套算法
+            ViewCompat.requestApplyInsets(binding.inputBar)
+        }
+    }
+
+    private fun hideEmojiPanel() {
+        if (!binding.emojiLayout.isVisible) return
+        binding.emojiLayout.isVisible = false
+        binding.emojiBtn.setIconResource(R.drawable.ic_emoji)
+        ViewCompat.requestApplyInsets(binding.inputBar)
+    }
+
+    private fun showKeyboard() {
+        binding.editText.requestFocus()
+        imm.showSoftInput(binding.editText, InputMethodManager.SHOW_IMPLICIT)
+    }
+
+    private fun hideKeyboard() {
+        imm.hideSoftInputFromWindow(binding.editText.windowToken, 0)
+    }
+
+    /**
+     * 三页页签 + ViewPager2（代码建 View，跟回复页逐行对齐，改哪边都别忘另一边）。
+     * 区别只有一个：这里的长按清空走 [MessageDetailViewModel.deleteAllEmoji]。
+     */
+    private fun initEmojiPanel() {
+        for (i in 0..2) {
+            binding.indicator.addView(
+                TextView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.MATCH_PARENT
+                    ).apply {
+                        weight = 1f
+                    }
+                    gravity = Gravity.CENTER
+                    text = listOf("最近", "默认", "酷币")[i]
+                    background = getDrawable(R.drawable.selector_bg_trans)
+                    setOnClickListener {
+                        binding.emojiPanel.setCurrentItem(i, false)
+                    }
+                    if (i == 0 && BuildConfig.DEBUG) {
+                        setOnLongClickListener {
+                            viewModel.deleteAllEmoji()
+                            true
+                        }
+                    }
+                }
+            )
+            if (i != 2) {
+                binding.indicator.addView(
+                    View(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            1.dp,
+                            LinearLayout.LayoutParams.MATCH_PARENT
+                        )
+                        setBackgroundColor(
+                            MaterialColors.getColor(
+                                this@MessageDetailActivity,
+                                com.google.android.material.R.attr.colorSurfaceVariant, 0
+                            )
+                        )
+                    }
+                )
+            }
+        }
+        binding.emojiPanel.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                for (i in 0 until binding.indicator.childCount) {
+                    with(binding.indicator.getChildAt(i)) {
+                        if (this is TextView) {
+                            background = getDrawable(
+                                if (i / 2 == position) R.drawable.selector_emoji_indicator_selected
+                                else R.drawable.selector_emoji_indicator
+                            )
+                            setTextColor(
+                                if (i / 2 == position)
+                                    MaterialColors.getColor(
+                                        this@MessageDetailActivity,
+                                        com.google.android.material.R.attr.colorOnPrimary, 0
+                                    )
+                                else
+                                    MaterialColors.getColor(
+                                        this@MessageDetailActivity,
+                                        androidx.appcompat.R.attr.colorControlNormal, 0
+                                    )
+                            )
+                        }
+                    }
+                }
+            }
+        })
+
+        binding.emojiPanel.adapter = EmojiPagerAdapter(
+            emojiPages,
+            onClickEmoji = { emoji ->
+                with(binding.editText) {
+                    if (emoji == "[c001apk]") {
+                        onBackSpace()
+                    } else {
+                        // 面板刚打开时光标可能还没落下来（selectionStart 会是 -1），兜一下
+                        val start = minOf(selectionStart, selectionEnd).coerceAtLeast(0)
+                        val end = maxOf(selectionStart, selectionEnd).coerceAtLeast(0)
+                        editableText.replace(start, end, emoji)
+                        viewModel.updateRecentEmoji(emoji)
+                    }
+                }
+            },
+            onCountStart = {
+                countDownTimer.start()
+            },
+            onCountStop = {
+                countDownTimer.cancel()
+            }
+        )
+    }
+
+    private val countDownTimer: CountDownTimer = object : CountDownTimer(100000, 50) {
+        override fun onTick(millisUntilFinished: Long) {
+            onBackSpace()
+        }
+
+        override fun onFinish() {}
+    }
+
+    private fun onBackSpace() {
+        dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+        ViewCompat.performHapticFeedback(binding.editText, HapticFeedbackConstantsCompat.CONFIRM)
     }
 
 }

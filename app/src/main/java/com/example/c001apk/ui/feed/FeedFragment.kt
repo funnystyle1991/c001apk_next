@@ -724,20 +724,26 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
         }
 
     /**
-     * 顶栏作者行和"动态/图文"标题的一进一出：[progress] 为 0 时只显示标题（作者行在下方一格、
-     * 看不见），为 1 时作者行正好滑到标题的位置。数值跟着滚动走，所以是滑到位而不是瞬切。
+     * 顶栏作者行和"动态/图文"标题的一进一出：[progress] 为 0 时只显示标题（作者行在标题位的
+     * 右下一格、看不见），为 1 时作者行正好落到标题的位置。初末位置不变，中间两轴位移都按
+     * 滚动量等比收敛，所以是沿着一条斜线平移上去，而不是纯垂直地顶上来。
      */
     private fun applyTitleSwitch(progress: Float) {
         val p = progress.coerceIn(0f, 1f)
         val row = binding.titleProfile
         val slide = (if (row.height > 0) row.height else 40.dp).toFloat()
+        // 下移一格 + 右移半格，p 到 1 时同时归零 => 斜着平移到位（右移量压小，
+        // 免得起点时整行最右边的机型文字被屏幕右边裁掉）
         row.translationY = (1f - p) * slide
-        row.alpha = p
-        // INVISIBLE 而不是 GONE：没滑到位之前也不该能点到头像
+        row.translationX = (1f - p) * slide / 2f
+        // 全程不打透明度：滑进来多少就完整露出多少，不做淡入
+        row.alpha = 1f
+        // INVISIBLE 而不是 GONE：没滑到位之前也不该能点到头像；p 为 0 时整行还在顶栏底下
         row.visibility = if (p > 0f) View.VISIBLE else View.INVISIBLE
         toolbarTitleView?.let {
-            it.translationY = -p * it.height
-            it.alpha = 1f - p
+            // 纯位移滑出顶栏（移出自身在顶栏里的整段高度才会被裁掉），标题也不淡
+            it.translationY = -p * (it.top + it.height)
+            it.alpha = 1f
         }
     }
 

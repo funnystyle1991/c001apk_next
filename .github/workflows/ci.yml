@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
   push:
     # main = 稳定线；beta / debug / update = 测试线，互不干扰、可随时回滚
-    branches: [ main, beta, debug, update ]
+    # debug3 = M3E 实验线，只产出 Actions artifact，不发布 Release（见 Publish 步骤的排除条件）
+    branches: [ main, beta, debug, debug3, update ]
     paths-ignore:
       - '**.md'
       - '**.txt'
@@ -135,8 +136,10 @@ jobs:
       #   beta  → beta-latest（Beta 版，prerelease）
       #   debug → debug-latest（测试版，prerelease）
       # update 分支只放更新配置（json），不发布产物。
+      # debug3 是 M3E 实验线，故意不发布：它的渠道会落到 *) → debug-latest，
+      # 会把 debug 分支正常测试包的下载位顶掉。实验包只从 Actions artifact 取。
       - name: Publish to GitHub Releases
-        if: success() && github.event_name == 'push' && github.ref_name != 'update'
+        if: success() && github.event_name == 'push' && github.ref_name != 'update' && github.ref_name != 'debug3'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

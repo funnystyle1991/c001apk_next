@@ -83,7 +83,7 @@ jobs:
         id: buildRelease
         run: |
           set -o pipefail
-          ./gradlew :app:assembleRelease -Pchannel=${{ steps.channel.outputs.channel }} 2>&1 | tee gradle-release.log
+          ./gradlew :app:assembleRelease -Pchannel=${{ steps.channel.outputs.channel }} --stacktrace 2>&1 | tee gradle-release.log
           echo "releaseName=$(ls app/build/outputs/apk/release/*.apk | awk -F '(/|\\.apk)' '{print $6}')" >> $GITHUB_OUTPUT
 
       - name: Upload release
@@ -229,7 +229,7 @@ jobs:
           for f in gradle-release.log gradle-debug.log; do
             if [ -f "$f" ]; then
               echo "::error::logs found: $f ($(wc -c < "$f") bytes)"
-              tail -25 "$f" | while IFS= read -r line; do echo "::error::$line"; done
+              tail -120 "$f" | while IFS= read -r line; do echo "::error::$line"; done
               break
             fi
           done

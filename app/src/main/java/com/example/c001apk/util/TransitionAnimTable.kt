@@ -252,6 +252,66 @@ internal object TransitionAnimTable {
         "parallax_emph_500_lout" -> R.anim.exp_parallax_emph_500_lout
         "parallax_emph_500_lin" -> R.anim.exp_parallax_emph_500_lin
         "parallax_emph_500_rout" -> R.anim.exp_parallax_emph_500_rout
+        "slide_spring_100_rin" -> R.anim.exp_slide_spring_100_rin
+        "slide_spring_100_lin" -> R.anim.exp_slide_spring_100_lin
+        "slide_spring_100_lout" -> R.anim.exp_slide_spring_100_lout
+        "slide_spring_100_rout" -> R.anim.exp_slide_spring_100_rout
+        "fade_spring_100_rin" -> R.anim.exp_fade_spring_100_fin
+        "fade_spring_100_lin" -> R.anim.exp_fade_spring_100_fin
+        "fade_spring_100_lout" -> R.anim.exp_fade_spring_100_fout
+        "fade_spring_100_rout" -> R.anim.exp_fade_spring_100_fout
+        "parallax_spring_100_rin" -> R.anim.exp_parallax_spring_100_rin
+        "parallax_spring_100_lout" -> R.anim.exp_parallax_spring_100_lout
+        "parallax_spring_100_lin" -> R.anim.exp_parallax_spring_100_lin
+        "parallax_spring_100_rout" -> R.anim.exp_parallax_spring_100_rout
+        "slide_spring_200_rin" -> R.anim.exp_slide_spring_200_rin
+        "slide_spring_200_lin" -> R.anim.exp_slide_spring_200_lin
+        "slide_spring_200_lout" -> R.anim.exp_slide_spring_200_lout
+        "slide_spring_200_rout" -> R.anim.exp_slide_spring_200_rout
+        "fade_spring_200_rin" -> R.anim.exp_fade_spring_200_fin
+        "fade_spring_200_lin" -> R.anim.exp_fade_spring_200_fin
+        "fade_spring_200_lout" -> R.anim.exp_fade_spring_200_fout
+        "fade_spring_200_rout" -> R.anim.exp_fade_spring_200_fout
+        "parallax_spring_200_rin" -> R.anim.exp_parallax_spring_200_rin
+        "parallax_spring_200_lout" -> R.anim.exp_parallax_spring_200_lout
+        "parallax_spring_200_lin" -> R.anim.exp_parallax_spring_200_lin
+        "parallax_spring_200_rout" -> R.anim.exp_parallax_spring_200_rout
+        "slide_spring_300_rin" -> R.anim.exp_slide_spring_300_rin
+        "slide_spring_300_lin" -> R.anim.exp_slide_spring_300_lin
+        "slide_spring_300_lout" -> R.anim.exp_slide_spring_300_lout
+        "slide_spring_300_rout" -> R.anim.exp_slide_spring_300_rout
+        "fade_spring_300_rin" -> R.anim.exp_fade_spring_300_fin
+        "fade_spring_300_lin" -> R.anim.exp_fade_spring_300_fin
+        "fade_spring_300_lout" -> R.anim.exp_fade_spring_300_fout
+        "fade_spring_300_rout" -> R.anim.exp_fade_spring_300_fout
+        "parallax_spring_300_rin" -> R.anim.exp_parallax_spring_300_rin
+        "parallax_spring_300_lout" -> R.anim.exp_parallax_spring_300_lout
+        "parallax_spring_300_lin" -> R.anim.exp_parallax_spring_300_lin
+        "parallax_spring_300_rout" -> R.anim.exp_parallax_spring_300_rout
+        "slide_spring_400_rin" -> R.anim.exp_slide_spring_400_rin
+        "slide_spring_400_lin" -> R.anim.exp_slide_spring_400_lin
+        "slide_spring_400_lout" -> R.anim.exp_slide_spring_400_lout
+        "slide_spring_400_rout" -> R.anim.exp_slide_spring_400_rout
+        "fade_spring_400_rin" -> R.anim.exp_fade_spring_400_fin
+        "fade_spring_400_lin" -> R.anim.exp_fade_spring_400_fin
+        "fade_spring_400_lout" -> R.anim.exp_fade_spring_400_fout
+        "fade_spring_400_rout" -> R.anim.exp_fade_spring_400_fout
+        "parallax_spring_400_rin" -> R.anim.exp_parallax_spring_400_rin
+        "parallax_spring_400_lout" -> R.anim.exp_parallax_spring_400_lout
+        "parallax_spring_400_lin" -> R.anim.exp_parallax_spring_400_lin
+        "parallax_spring_400_rout" -> R.anim.exp_parallax_spring_400_rout
+        "slide_spring_500_rin" -> R.anim.exp_slide_spring_500_rin
+        "slide_spring_500_lin" -> R.anim.exp_slide_spring_500_lin
+        "slide_spring_500_lout" -> R.anim.exp_slide_spring_500_lout
+        "slide_spring_500_rout" -> R.anim.exp_slide_spring_500_rout
+        "fade_spring_500_rin" -> R.anim.exp_fade_spring_500_fin
+        "fade_spring_500_lin" -> R.anim.exp_fade_spring_500_fin
+        "fade_spring_500_lout" -> R.anim.exp_fade_spring_500_fout
+        "fade_spring_500_rout" -> R.anim.exp_fade_spring_500_fout
+        "parallax_spring_500_rin" -> R.anim.exp_parallax_spring_500_rin
+        "parallax_spring_500_lout" -> R.anim.exp_parallax_spring_500_lout
+        "parallax_spring_500_lin" -> R.anim.exp_parallax_spring_500_lin
+        "parallax_spring_500_rout" -> R.anim.exp_parallax_spring_500_rout
         else -> 0
     }
 }

@@ -16,81 +16,117 @@
         android:key="appearance"
         android:title="@string/settings_appearance">
 
-        <rikka.material.preference.MaterialSwitchPreference
-            android:defaultValue="true"
-            android:disableDependentsState="true"
-            android:icon="@drawable/outline_palette_24"
-            android:key="followSystemAccent"
-            android:title="@string/settings_system_theme_color" />
-        <rikka.preference.SimpleMenuPreference
-            android:defaultValue="DEFAULT"
-            android:dependency="followSystemAccent"
-            android:entries="@array/color_texts"
-            android:entryValues="@array/color_values"
-            android:icon="@drawable/outline_format_color_fill_24"
-            android:key="themeColor"
-            android:summary="%s"
-            android:title="@string/settings_theme_color" />
-        <rikka.preference.SimpleMenuPreference
-            android:defaultValue="-1"
-            android:entries="@array/theme_texts"
-            android:entryValues="@array/theme_values"
-            android:icon="@drawable/outline_dark_mode_24"
-            android:key="darkTheme"
-            android:summary="%s"
-            android:title="@string/dark_theme" />
-        <rikka.material.preference.MaterialSwitchPreference
-            android:icon="@drawable/outline_invert_colors_24"
-            android:key="blackDarkTheme"
-            android:summary="@string/settings_pure_black_dark_theme_summary"
-            android:title="@string/settings_pure_black_dark_theme" />
-        <Preference
-            android:icon="@drawable/ic_text_fields"
-            android:key="fontScale"
-            android:title="@string/font_scale" />
-        <rikka.material.preference.MaterialSwitchPreference
-            android:defaultValue="true"
-            android:icon="@drawable/ic_emoji"
-            android:key="showEmoji"
-            android:title="@string/show_emoji" />
-        <!-- 2026-10-05：首页工具栏那个位置让给了消息入口，编辑 Tab 挪到这儿 -->
-        <Preference
-            android:icon="@drawable/ic_menu"
-            android:key="editTab"
-            android:summary="@string/edit_tab_summary"
-            android:title="@string/edit_tab" />
-
         <!--
-            水平转场动画实验项（临时脚手架）：
-            三档组合由 tools/gen_transition_anim.py 预先烘成 res/anim/exp_*.xml，
-            运行时按这里的选择查表。手感定下来后，把赢家固化回 right_in / left_out
-            等正式资源，并删掉这三项 + TransitionAnim.kt + 那批 exp_* 资源。
-            改完直接返回即可看到「退出」动画，再进任意二级页看到「进入」动画。
+            2026-10-06：外观屏条目变多之后按用途分组（主题 / 显示 / 布局 / 转场动画），
+            转场那三项再收进一层子菜单，免得一级外观页被实验项撑满。
         -->
-        <rikka.preference.SimpleMenuPreference
-            android:defaultValue="emph"
-            android:entries="@array/anim_curve_texts"
-            android:entryValues="@array/anim_curve_values"
-            android:icon="@drawable/outline_system_update_24"
-            android:key="animCurve"
-            android:summary="%s"
-            android:title="@string/settings_transition_curve" />
-        <rikka.preference.SimpleMenuPreference
-            android:defaultValue="slide"
-            android:entries="@array/anim_type_texts"
-            android:entryValues="@array/anim_type_values"
-            android:icon="@drawable/outline_widgets_24"
-            android:key="animType"
-            android:summary="%s"
-            android:title="@string/settings_transition_type" />
-        <rikka.preference.SimpleMenuPreference
-            android:defaultValue="300"
-            android:entries="@array/anim_speed_texts"
-            android:entryValues="@array/anim_speed_values"
-            android:icon="@drawable/outline_system_update_24"
-            android:key="animDuration"
-            android:summary="%s"
-            android:title="@string/settings_transition_speed" />
+        <PreferenceCategory android:title="@string/settings_theme">
+
+            <rikka.material.preference.MaterialSwitchPreference
+                android:defaultValue="true"
+                android:disableDependentsState="true"
+                android:icon="@drawable/outline_palette_24"
+                android:key="followSystemAccent"
+                android:title="@string/settings_system_theme_color" />
+            <rikka.preference.SimpleMenuPreference
+                android:defaultValue="DEFAULT"
+                android:dependency="followSystemAccent"
+                android:entries="@array/color_texts"
+                android:entryValues="@array/color_values"
+                android:icon="@drawable/outline_format_color_fill_24"
+                android:key="themeColor"
+                android:summary="%s"
+                android:title="@string/settings_theme_color" />
+            <rikka.preference.SimpleMenuPreference
+                android:defaultValue="-1"
+                android:entries="@array/theme_texts"
+                android:entryValues="@array/theme_values"
+                android:icon="@drawable/outline_dark_mode_24"
+                android:key="darkTheme"
+                android:summary="%s"
+                android:title="@string/dark_theme" />
+            <rikka.material.preference.MaterialSwitchPreference
+                android:icon="@drawable/outline_invert_colors_24"
+                android:key="blackDarkTheme"
+                android:summary="@string/settings_pure_black_dark_theme_summary"
+                android:title="@string/settings_pure_black_dark_theme" />
+
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_category_display">
+
+            <Preference
+                android:icon="@drawable/ic_text_fields"
+                android:key="fontScale"
+                android:title="@string/font_scale" />
+            <rikka.material.preference.MaterialSwitchPreference
+                android:defaultValue="true"
+                android:icon="@drawable/ic_emoji"
+                android:key="showEmoji"
+                android:title="@string/show_emoji" />
+            <!-- 2026-10-06：从「推荐流相关」挪过来——它只管深色模式下图片的显示，是外观项 -->
+            <rikka.material.preference.MaterialSwitchPreference
+                android:defaultValue="true"
+                android:icon="@drawable/ic_filter"
+                android:key="isColorFilter"
+                android:title="@string/color_filter_in_dark_mode" />
+
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_category_layout">
+
+            <!-- 2026-10-05：首页工具栏那个位置让给了消息入口，编辑 Tab 挪到这儿 -->
+            <Preference
+                android:icon="@drawable/ic_menu"
+                android:key="editTab"
+                android:summary="@string/edit_tab_summary"
+                android:title="@string/edit_tab" />
+
+        </PreferenceCategory>
+
+        <PreferenceCategory android:title="@string/settings_animation">
+
+            <!--
+                水平转场动画实验项（临时脚手架）：
+                三档组合由 tools/gen_transition_anim.py 预先烘成 res/anim/exp_*.xml，
+                运行时按这里的选择查表。手感定下来后，把赢家固化回 right_in / left_out
+                等正式资源，并删掉这三项 + TransitionAnim.kt + 那批 exp_* 资源。
+                改完直接返回即可看到「退出」动画，再进任意二级页看到「进入」动画。
+            -->
+            <PreferenceScreen
+                android:icon="@drawable/outline_system_update_24"
+                android:key="animation"
+                android:summary="@string/settings_animation_summary"
+                android:title="@string/settings_animation">
+
+                <rikka.preference.SimpleMenuPreference
+                    android:defaultValue="emph"
+                    android:entries="@array/anim_curve_texts"
+                    android:entryValues="@array/anim_curve_values"
+                    android:icon="@drawable/outline_system_update_24"
+                    android:key="animCurve"
+                    android:summary="%s"
+                    android:title="@string/settings_transition_curve" />
+                <rikka.preference.SimpleMenuPreference
+                    android:defaultValue="slide"
+                    android:entries="@array/anim_type_texts"
+                    android:entryValues="@array/anim_type_values"
+                    android:icon="@drawable/outline_widgets_24"
+                    android:key="animType"
+                    android:summary="%s"
+                    android:title="@string/settings_transition_type" />
+                <rikka.preference.SimpleMenuPreference
+                    android:defaultValue="300"
+                    android:entries="@array/anim_speed_texts"
+                    android:entryValues="@array/anim_speed_values"
+                    android:icon="@drawable/outline_system_update_24"
+                    android:key="animDuration"
+                    android:summary="%s"
+                    android:title="@string/settings_transition_speed" />
+
+            </PreferenceScreen>
+
+        </PreferenceCategory>
 
     </PreferenceScreen>
 
@@ -115,11 +151,6 @@
             android:icon="@drawable/ic_block"
             android:key="spamNode"
             android:title="@string/spam_shield_node" />
-        <rikka.material.preference.MaterialSwitchPreference
-            android:defaultValue="true"
-            android:icon="@drawable/ic_filter"
-            android:key="isColorFilter"
-            android:title="@string/color_filter_in_dark_mode" />
         <rikka.material.preference.MaterialSwitchPreference
             android:defaultValue="false"
             android:icon="@drawable/ic_explorer"

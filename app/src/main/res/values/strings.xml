@@ -190,6 +190,10 @@
     <string name="settings_icon_desc">设置</string>
     <string name="settings_advanced">高级</string>
     <string name="settings_appearance">外观</string>
+    <string name="settings_category_display">显示</string>
+    <string name="settings_category_layout">布局</string>
+    <string name="settings_animation">转场动画</string>
+    <string name="settings_animation_summary">切换页面时的曲线、类型与速度</string>
     <string name="settings_privacy">隐私</string>
     <string name="settings_recommendation">推荐流相关</string>
     <string name="settings_other">其他</string>

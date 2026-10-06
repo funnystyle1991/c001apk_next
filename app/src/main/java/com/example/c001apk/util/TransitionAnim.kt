@@ -3,7 +3,13 @@ package com.example.c001apk.util
 import android.app.Activity
 import android.app.ActivityOptions
 import android.content.Context
+import android.graphics.Outline
+import android.view.View
+import android.view.ViewOutlineProvider
+import android.view.animation.Animation
+import android.view.animation.AnimationUtils
 import androidx.core.app.ActivityOptionsCompat
+import java.util.WeakHashMap
 
 /**
  * 水平转场动画的统一入口：把「设置 - 外观」里的曲线 / 类型 / 速度翻译成具体动画资源。
@@ -30,6 +36,16 @@ object TransitionAnim {
 
     /** 曲线：M3 强调（进入 emphasized-decelerate / 退出 emphasized-accelerate） */
     const val CURVE_M3_EMPHASIZED = "emph"
+
+    /**
+     * 曲线：rikkahub 的临界阻尼弹簧近似。
+     *
+     * rikkahub 那边其实没有曲线也没有时长——是 Compose 默认的
+     * `spring(dampingRatio = 1, stiffness = 400)`，渐近收敛，没法用一条贝塞尔等价表达。
+     * 这里取形状最接近的 ease-out-cubic（`cubic-bezier(0.33, 1, 0.68, 1)`，退出取反向
+     * ease-in-cubic），配 400ms 时覆盖到弹簧 99.7% 的位置。
+     */
+    const val CURVE_SPRING = "spring"
 
     /** 类型：水平滑动 */
     const val TYPE_SLIDE = "slide"
@@ -66,22 +82,154 @@ object TransitionAnim {
             ?: TransitionAnimTable.resolve("${TYPE_SLIDE}_${FALLBACK_CURVE}_${FALLBACK_DURATION}_$slot")
     }
 
+    // ------------------------------------------------------------------
+    // 内容级转场：动画作用在 android.R.id.content 上，window 本身不缩放
+    //
+    // 为什么不用 window 动画（overridePendingTransition 直接吃 res/anim）：window 缩放时，
+    // 窗口四周露出的是**本窗口之外的下一层窗口**（可能是桌面或更早的 Activity），暗色 /
+    // 纯黑主题下就是一片黑，改 windowBackground 也救不回来；而且窗口四角是直角，缩放后会
+    // 顶到屏幕圆角外。把同一套 res/anim 挪到内容视图上播，四周露出的是**本窗口自己的
+    // windowBackground**（就是应用背景），圆角也能自己裁。
+    // ------------------------------------------------------------------
+
+    /** 读不到系统屏幕圆角时的兜底圆角（dp） */
+    private const val FALLBACK_CORNER_DP = 28f
+
+    /** 退出动画期间标记，避免 finish() 重入再播一次动画 */
+    private val exiting = WeakHashMap<Activity, Boolean>()
+
+    /** 是否有一个页面正在等下层页归位（返回时置位，由下层页的 onResume 消费） */
+    @Volatile
+    private var reenterPending = false
+
     /**
-     * 打开新页面：新页从右滑入 + 旧页向左滑出。
-     * 传 0 是有意的——`overridePendingTransition(0, 0)` 是关掉转场的标准做法，
-     * 不回退到系统默认动画。
+     * 是否有新页面正在进入。[enterOptions] / [enterOptionsCompat] 都在**旧页侧**调用，
+     * 在那里置位、由新窗口的 onCreate 消费——不必给 intent 塞 extra，也不用改逐个调用点。
      */
-    fun enterOptions(context: Context): ActivityOptions =
-        ActivityOptions.makeCustomAnimation(context, res("rin"), res("lout"))
+    @Volatile
+    private var enterPending = false
+
+    /** 新窗口侧消费：true 表示这次是「点进去」，要播内容进入动画 */
+    fun consumeEnter(): Boolean {
+        val pending = enterPending
+        enterPending = false
+        return pending
+    }
+
+    /**
+     * 打开新页面：**window 不做任何动画**（传 0 而不是 res("rin")），
+     * 新页改在 [BaseActivity]/[BaseViewActivity] 的 onCreate 里播内容进入动画。
+     */
+    fun enterOptions(context: Context): ActivityOptions {
+        enterPending = true
+        return ActivityOptions.makeCustomAnimation(context, 0, 0)
+    }
 
     /** 同 [enterOptions]，给还在用 androidx 兼容 API 的调用点 */
     @Suppress("DEPRECATION")
-    fun enterOptionsCompat(context: Context): ActivityOptionsCompat =
-        ActivityOptionsCompat.makeCustomAnimation(context, res("rin"), res("lout"))
+    fun enterOptionsCompat(context: Context): ActivityOptionsCompat {
+        enterPending = true
+        return ActivityOptionsCompat.makeCustomAnimation(context, 0, 0)
+    }
 
-    /** 关闭当前页：下层页从左滑入 + 当前页向右滑出。放在 Activity.finish() 里调。 */
-    fun applyReturn(activity: Activity) {
-        activity.overridePendingTransition(res("lin"), res("rout"))
+    /** 新页内容从右滑入（进入动画） */
+    fun playEnter(activity: Activity) {
+        animateContent(activity, res("rin"))
+    }
+
+    /** 返回时下层页从 0.7 / 半屏外归位（对应 rikkahub 的 pop 动画） */
+    fun playReenter(activity: Activity) {
+        animateContent(activity, res("lin"))
+    }
+
+    /** 返回时下层页 onResume 消费一次，true 表示要播归位动画 */
+    fun consumeReenter(): Boolean {
+        val pending = reenterPending
+        reenterPending = false
+        return pending
+    }
+
+    /**
+     * 关闭当前页：内容右滑出 + 淡出，**动画播完才真正 finish**（window 全程不动）。
+     *
+     * @return true 表示已经接管收尾，调用方直接 return 即可，不要再自己 finish
+     */
+    fun startExit(activity: Activity): Boolean {
+        val resId = res("rout")
+        if (resId == 0 || activity.isFinishing || exiting.containsKey(activity)) return false
+        val view = contentView(activity) ?: return false
+        val anim = AnimationUtils.loadAnimation(activity, resId) ?: return false
+
+        exiting[activity] = true      // 留在表里直到 Activity 被回收：finish() 重入时直接放行
+        reenterPending = true
+        applyRoundClip(activity, view)
+        anim.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationStart(animation: Animation?) = Unit
+
+            override fun onAnimationRepeat(animation: Animation?) = Unit
+
+            override fun onAnimationEnd(animation: Animation?) {
+                clearRoundClip(view)
+                // 基类的 finish() 会再问一次 startExit()，有标记挡着，走正常 finish；
+                // 再补一次 overridePendingTransition(0, 0) 挡掉系统默认动画。
+                activity.finish()
+                activity.overridePendingTransition(0, 0)
+            }
+        })
+        view.startAnimation(anim)
+        return true
+    }
+
+    /** 取 android.R.id.content —— 所有 Activity 都有，不用给基类加接口 */
+    private fun contentView(activity: Activity): View? =
+        activity.window?.decorView?.findViewById(android.R.id.content)
+
+    private fun animateContent(activity: Activity, resId: Int) {
+        if (resId == 0) return
+        val view = contentView(activity) ?: return
+        val anim = AnimationUtils.loadAnimation(activity, resId) ?: return
+        applyRoundClip(activity, view)
+        anim.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationStart(animation: Animation?) = Unit
+
+            override fun onAnimationRepeat(animation: Animation?) = Unit
+
+            override fun onAnimationEnd(animation: Animation?) {
+                clearRoundClip(view)
+            }
+        })
+        // 等一帧，确保 content 已经布局完（outline 要用到宽高）
+        view.post { view.startAnimation(anim) }
+    }
+
+    /**
+     * 动画期间把内容裁成圆角，免得缩放时四个直角顶在屏幕圆角外。
+     * 只在动画期间开，平时关掉（clipToOutline 常驻会影响性能和阴影）。
+     */
+    private fun applyRoundClip(activity: Activity, view: View) {
+        val radius = screenCornerRadius(activity)
+        view.outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(v: View, outline: Outline) {
+                outline.setRoundRect(0, 0, v.width, v.height, radius)
+            }
+        }
+        view.clipToOutline = true
+    }
+
+    private fun clearRoundClip(view: View) {
+        view.clipToOutline = false
+        view.outlineProvider = ViewOutlineProvider.BACKGROUND
+    }
+
+    /** 优先读系统的屏幕物理圆角，读不到就退回 [FALLBACK_CORNER_DP] */
+    private fun screenCornerRadius(activity: Activity): Float {
+        val res = activity.resources
+        val id = res.getIdentifier("system_screen_rounded_corner_radius", "dimen", "android")
+        if (id > 0) {
+            val radius = res.getDimension(id)
+            if (radius > 0f) return radius
+        }
+        return FALLBACK_CORNER_DP * res.displayMetrics.density
     }
 
     /** FragmentTransaction.setCustomAnimations 的四个参数（0 = 无动画） */

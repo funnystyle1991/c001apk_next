@@ -24,6 +24,9 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         binding = BaseFragmentContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // 转场：动画由内容视图播，window 不参与（见 TransitionAnim 顶部注释）
+        if (TransitionAnim.consumeEnter()) TransitionAnim.playEnter(this)
+
         getSavedData(savedInstanceState)
 
         initData()
@@ -107,8 +110,9 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
     }
 
     override fun finish() {
+        // 内容先滑出，动画结束后 TransitionAnim 会再调一次 finish()，届时标记挡住重入
+        if (TransitionAnim.startExit(this)) return
         super.finish()
-        TransitionAnim.applyReturn(this)
     }
 
 }

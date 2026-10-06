@@ -9,18 +9,29 @@
 
 维度：
   曲线 curve  : linear(M3 线性) / m2(M2 标准 0.4,0,0.2,1) / std(M3 标准) / emph(M3 强调)
+               / spring(rikkahub 的临界阻尼弹簧近似，ease-out-cubic)
   类型 type   : slide(水平滑动) / fade(淡入淡出) / parallax(视差滑动，rikkahub 同款)；
                none(无动画) 由代码直接传 0，不需要资源
   速度 speed  : 进入时长 100/200/300/400/500ms，退出固定 = 进入 - 50ms（对齐 M3 medium2/medium1）
 
+曲线的两个硬事实（别再照名字猜，值是从 material AAR 里挖出来的）：
+  a) m3_sys_motion_easing_{standard,emphasized}_decelerate 在 MDC 里**都是**
+     <decelerateInterpolator/>（= 1-(1-t)^2）；两个 _accelerate 都是 <accelerateInterpolator/>
+     （= t^2）。即 std 与 emph 实际同曲线，也没有 M3 规范里的两段式 emphasized。
+  b) rikkahub 本身既没有曲线也没有时长：它用 Compose 默认的
+     spring(dampingRatio = 1, stiffness = 400)（临界阻尼，m = 1），解析解
+     x(t) = 1 - (1 + 20t)e^(-20t)：200ms 走 91%、300ms 走 98%、约 420ms 收到 1px 内。
+     形状 ≈ ease-out-cubic，所以这里的 spring 档用 cubic-bezier(0.33, 1, 0.68, 1)
+     （退出取反向的 ease-in-cubic），时长配 400ms 最贴。
+
 parallax 的形状取自 rikkahub 的 NavDisplay.transitionSpec（单 Activity Compose）：
   进入  新页 translateX 100% -> 0；旧页 translateX 0 -> -50% + scale 1 -> 0.7 + alpha 1 -> 0
   退出  下层页 translateX -50% -> 0 + scale 0.7 -> 1 + alpha 0 -> 1；当前页 translateX 0 -> 100%
-它本身没有 duration / easing（Compose 默认无回弹 spring），这里仍按本实验的曲线与时长档位走。
 
 产物：
   app/src/main/res/interpolator/exp_m2_standard.xml
-  app/src/main/res/anim/exp_<type>_<curve>_<enter>_<slot>.xml       共 200 个
+  app/src/main/res/interpolator/exp_spring_decelerate.xml / exp_spring_accelerate.xml
+  app/src/main/res/anim/exp_<type>_<curve>_<enter>_<slot>.xml       共 250 个
   app/src/main/java/com/example/c001apk/util/TransitionAnimTable.kt  生成式查表
 
 选定最终方案后：把赢家的曲线/时长固化回 right_in / left_out / left_in / right_out，
@@ -46,6 +57,11 @@ CURVES = {
         "@interpolator/m3_sys_motion_easing_emphasized_decelerate",
         "@interpolator/m3_sys_motion_easing_emphasized_accelerate",
     ),
+    # rikkahub 的弹簧近似：进入 ease-out-cubic，退出反向 ease-in-cubic
+    "spring": (
+        "@interpolator/exp_spring_decelerate",
+        "@interpolator/exp_spring_accelerate",
+    ),
 }
 
 ENTER_DURATIONS = [100, 200, 300, 400, 500]
@@ -61,6 +77,27 @@ M2_STANDARD = """<?xml version="1.0" encoding="utf-8"?>
     android:controlX2="0.2"
     android:controlY1="0.0"
     android:controlY2="1.0" />
+"""
+
+# rikkahub 的 spring(dampingRatio=1, stiffness=400) 近似：
+# 进入 ease-out-cubic，退出取反向的 ease-in-cubic
+SPRING_DECELERATE = """<?xml version="1.0" encoding="utf-8"?>
+<!-- 转场动画实验用：ease-out-cubic cubic-bezier(0.33, 1, 0.68, 1)，
+     近似 rikkahub 的 spring(dampingRatio = 1, stiffness = 400)（生成物，勿手改） -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:controlX1="0.33"
+    android:controlX2="0.68"
+    android:controlY1="1.0"
+    android:controlY2="1.0" />
+"""
+
+SPRING_ACCELERATE = """<?xml version="1.0" encoding="utf-8"?>
+<!-- 转场动画实验用：ease-in-cubic cubic-bezier(0.32, 0, 0.67, 0)（生成物，勿手改） -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:controlX1="0.32"
+    android:controlX2="0.67"
+    android:controlY1="0.0"
+    android:controlY2="0.0" />
 """
 
 SLIDE = """<?xml version="1.0" encoding="utf-8"?>
@@ -183,6 +220,8 @@ def main():
 
     os.makedirs(INTERP_DIR, exist_ok=True)
     write(os.path.join(INTERP_DIR, "exp_m2_standard.xml"), M2_STANDARD)
+    write(os.path.join(INTERP_DIR, "exp_spring_decelerate.xml"), SPRING_DECELERATE)
+    write(os.path.join(INTERP_DIR, "exp_spring_accelerate.xml"), SPRING_ACCELERATE)
 
     entries = []      # (key, resource_name)
     files = []        # (resource_name, content)

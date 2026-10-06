@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：fade / spring / 进入 200ms（退出 150ms） -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="150"
+    android:fromAlpha="1.0"
+    android:interpolator="@interpolator/exp_spring_accelerate"
+    android:toAlpha="0.0" />

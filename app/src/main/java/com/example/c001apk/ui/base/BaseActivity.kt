@@ -24,6 +24,14 @@ abstract class BaseActivity<VB : ViewBinding> : MaterialActivity() {
         @Suppress("UNCHECKED_CAST")
         binding = method.invoke(null, layoutInflater) as VB
         setContentView(binding.root)
+        // 转场：动画由内容视图播，window 不参与（见 TransitionAnim 顶部注释）
+        if (TransitionAnim.consumeEnter()) TransitionAnim.playEnter(this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 从下级页返回时，本页内容从 rikkahub 的「退半屏 + 缩到 0.7」状态归位
+        if (TransitionAnim.consumeReenter()) TransitionAnim.playReenter(this)
     }
 
     override fun attachBaseContext(newBase: Context) {
@@ -48,8 +56,9 @@ abstract class BaseActivity<VB : ViewBinding> : MaterialActivity() {
     }
 
     override fun finish() {
+        // 内容先滑出，动画结束后 TransitionAnim 会再调一次 finish()，届时标记挡住重入
+        if (TransitionAnim.startExit(this)) return
         super.finish()
-        TransitionAnim.applyReturn(this)
     }
 
 }

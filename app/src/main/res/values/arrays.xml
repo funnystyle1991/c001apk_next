@@ -66,8 +66,9 @@
     <string-array name="anim_curve_texts" translatable="false">
         <item>线性（匀速）· 改造前</item>
         <item>M2 标准 (0.4, 0, 0.2, 1)</item>
-        <item>M3 标准</item>
-        <item>M3 强调</item>
+        <item>M3 标准（= M3 强调，同曲线）</item>
+        <item>M3 强调（= M3 标准，同曲线）</item>
+        <item>弹簧（rikkahub 同款）</item>
     </string-array>
 
     <string-array name="anim_curve_values" translatable="false">
@@ -75,6 +76,7 @@
         <item>m2</item>
         <item>std</item>
         <item>emph</item>
+        <item>spring</item>
     </string-array>
 
     <string-array name="anim_type_texts" translatable="false">

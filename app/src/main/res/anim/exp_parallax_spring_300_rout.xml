@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：parallax / spring / 进入 300ms（退出 250ms） -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="250"
+    android:fromXDelta="0"
+    android:interpolator="@interpolator/exp_spring_accelerate"
+    android:toXDelta="100%" />

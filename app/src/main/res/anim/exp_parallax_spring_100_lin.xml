@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：parallax 下层页归位（从左侧半屏 + 0.7 + 透明归位）/ spring / 100ms -->
+<set xmlns:android="http://schemas.android.com/apk/res/android">
+    <translate
+        android:duration="100"
+        android:fromXDelta="-50%"
+        android:interpolator="@interpolator/exp_spring_decelerate"
+        android:toXDelta="0" />
+    <scale
+        android:duration="100"
+        android:fromXScale="0.7"
+        android:fromYScale="0.7"
+        android:interpolator="@interpolator/exp_spring_decelerate"
+        android:pivotX="50%"
+        android:pivotY="50%"
+        android:toXScale="1.0"
+        android:toYScale="1.0" />
+    <alpha
+        android:duration="100"
+        android:fromAlpha="0.0"
+        android:interpolator="@interpolator/exp_spring_decelerate"
+        android:toAlpha="1.0" />
+</set>

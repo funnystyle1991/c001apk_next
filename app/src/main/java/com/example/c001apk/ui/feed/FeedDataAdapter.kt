@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.example.c001apk.BR
 import com.example.c001apk.adapter.ItemListener
+import com.example.c001apk.constant.Constants
 import com.example.c001apk.databinding.ItemFeedArticleImageBinding
 import com.example.c001apk.databinding.ItemFeedArticleShareUrlBinding
 import com.example.c001apk.databinding.ItemFeedArticleTextBinding
@@ -17,10 +18,27 @@ import com.example.c001apk.logic.model.Like
 
 class FeedDataAdapter(
     private val listener: ItemListener,
-    private val feedDataList: List<HomeFeedResponse.Data>?,
-    private val articleList: List<FeedArticleContentBean.Data>?,
+    feedDataList: List<HomeFeedResponse.Data>?,
+    articleList: List<FeedArticleContentBean.Data>?,
 ) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    private var feedDataList: List<HomeFeedResponse.Data>? = feedDataList
+    private var articleList: List<FeedArticleContentBean.Data>? = articleList
+
+    /**
+     * 详情回填：列表项直出首屏时 adapter 拿到的是预览 list 的引用，而 [FeedViewModel.handleFeedData]
+     * 每次都新建 list，不重设这里首屏就永远停在预览数据上。
+     */
+    fun submit(
+        feedDataList: List<HomeFeedResponse.Data>?,
+        articleList: List<FeedArticleContentBean.Data>?,
+    ) {
+        this.feedDataList = feedDataList
+        this.articleList = articleList
+        notifyDataSetChanged()
+    }
+
     class FeedViewHolder(val binding: ItemFeedContentBinding, val listener: ItemListener) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(data: HomeFeedResponse.Data?) {
@@ -35,7 +53,8 @@ class FeedDataAdapter(
             )
             binding.setVariable(
                 BR.followAuthor,
-                data?.userAction?.followAuthor ?: 0
+                // 列表项不下发这个字段（详情才有）：详情回来前当"未知"，按钮位转圈而不是错显"关注"
+                data?.userAction?.followAuthor ?: Constants.FOLLOW_AUTHOR_UNKNOWN
             )
             binding.executePendingBindings()
         }

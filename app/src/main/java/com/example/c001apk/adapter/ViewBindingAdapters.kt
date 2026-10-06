@@ -6,12 +6,14 @@ import android.text.Html
 import android.view.LayoutInflater
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.view.View
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.text.method.LinkMovementMethodCompat
 import androidx.core.view.isVisible
 import androidx.databinding.BindingAdapter
 import com.example.c001apk.R
+import com.example.c001apk.constant.Constants
 import com.example.c001apk.logic.model.FeedArticleContentBean
 import com.example.c001apk.logic.model.HomeFeedResponse
 import com.example.c001apk.util.ImageUtil
@@ -52,9 +54,11 @@ fun setExtraPic(imageView: ImageView, extraPic: String?) {
 
 @BindingAdapter("setFollowText")
 fun setFollowText(textView: TextView, followAuthor: Int) {
+    // 列表项不下发 followAuthor，详情回来前是"未知"：按钮先隐身，让 followLoading 的转圈顶上
+    val unknown = followAuthor == Constants.FOLLOW_AUTHOR_UNKNOWN
     with(PrefManager.isLogin) {
-        textView.isVisible = this
-        if (this) {
+        textView.isVisible = this && !unknown
+        if (this && !unknown) {
             when (followAuthor) {
                 0 -> {
                     textView.text = "关注"
@@ -77,6 +81,11 @@ fun setFollowText(textView: TextView, followAuthor: Int) {
         }
     }
 
+}
+
+@BindingAdapter("followLoading")
+fun followLoading(view: View, followAuthor: Int) {
+    view.isVisible = followAuthor == Constants.FOLLOW_AUTHOR_UNKNOWN
 }
 
 @BindingAdapter("setArticleImage")

@@ -211,6 +211,16 @@ class FeedViewModel @AssistedInject constructor(
 
 
     var feedData: HomeFeedResponse.Data? = null
+
+    /**
+     * 首屏是列表项直出的（详情还没回来）。列表项不下的 `userAction.followAuthor` 等字段
+     * 在 [fetchFeedData] 回来前一律当"未知"，由 UI 转圈占位，不能按默认值渲染。
+     */
+    var isPreview = false
+
+    /** 详情回填后通知 Fragment 换掉首屏列表（adapter 持有的是旧 list 引用） */
+    val feedDataUpdateState = MutableLiveData<Event<Boolean>>()
+
     fun fetchFeedData() {
         viewModelScope.launch(Dispatchers.IO) {
             networkRepo.getFeedContent(id, frid)
@@ -222,8 +232,10 @@ class FeedViewModel @AssistedInject constructor(
                             return@collect
                         } else if (feed.data != null) {
                             feedData = feed.data
+                            isPreview = false
                             handleFeedData()
                             activityState.postValue(LoadingState.LoadingDone)
+                            feedDataUpdateState.postValue(Event(true))
                         }
                     } else {
                         activityState.postValue(LoadingState.LoadingFailed(LOADING_FAILED))
@@ -565,7 +577,9 @@ class FeedViewModel @AssistedInject constructor(
             feedTypeName = data.feedTypeName
             feedType = data.feedType
 
-            if (feedType in listOf("feedArticle", "trade")
+            // 列表项不下发 message_raw_output（Kotlin 侧是 null，不等于字符串 "null"，单看原条件
+            // 会放行并 Gson 出空正文）→ 预览态一律先按普通卡片渲染，等详情回来再升级成图文排版
+            if (!isPreview && feedType in listOf("feedArticle", "trade")
                 && data.messageRawOutput != "null"
             ) {
                 articleMsg =

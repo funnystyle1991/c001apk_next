@@ -73,6 +73,19 @@
             app:setFollowText="@{followAuthor}"
             tools:text="关注" />
 
+        <!-- 关注状态未知（列表项不下发 followAuthor）时就在按钮位转圈，等详情补上 -->
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/followLoading"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:followLoading="@{followAuthor}"
+            app:layout_constraintBottom_toBottomOf="@id/follow"
+            app:layout_constraintEnd_toEndOf="@id/follow"
+            app:layout_constraintTop_toTopOf="@id/follow"
+            app:trackCornerRadius="12dp" />
+
         <TextView
             android:id="@+id/pubDate"
             android:layout_width="wrap_content"
@@ -256,7 +269,7 @@
             android:layout_marginTop="10dp"
             android:background="@drawable/round_corners_12"
             android:foreground="@drawable/selector_bg_12_trans"
-            android:onClick="@{(view) -> listener.onViewFeed(view, data.forwardSourceFeed.id, ``, ``, ``, ``, ``, ``, null, null)}"
+            android:onClick="@{(view) -> listener.onViewFeed(view, data.forwardSourceFeed.id, ``, ``, ``, ``, ``, ``, null, null, null)}"
             android:onLongClick="@{(view) -> listener.onCopyText(view, data.forwardSourceFeed.message)}"
             android:orientation="vertical"
             android:padding="10dp"

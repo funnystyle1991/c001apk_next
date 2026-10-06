@@ -47,7 +47,7 @@
         android:layout_height="wrap_content"
         android:clickable="true"
         android:focusable="true"
-        android:onClick="@{(view) -> listener.onViewFeed(view, id, ``, ``, ``, ``, ``, ``, null, null)}"
+        android:onClick="@{(view) -> listener.onViewFeed(view, id, ``, ``, ``, ``, ``, ``, null, null, null)}"
         android:onLongClick="@{(view) -> listener.onCopyText(view, messageContent)}"
         app:cardBackgroundColor="@color/home_card_background_color"
         app:cardElevation="0dp"

@@ -33,6 +33,7 @@ import com.example.c001apk.adapter.FooterState
 import com.example.c001apk.adapter.HeaderAdapter
 import com.example.c001apk.adapter.ItemListener
 import com.example.c001apk.databinding.FragmentFeedBinding
+import com.example.c001apk.logic.model.HomeFeedResponse
 import com.example.c001apk.logic.model.TotalReplyResponse
 import com.example.c001apk.ui.base.BaseFragment
 import com.example.c001apk.ui.feed.reply.ReplyActivity
@@ -210,6 +211,13 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
     }
 
     private fun initObserve() {
+        viewModel.feedDataUpdateState.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandledOrReturnNull()?.let {
+                // 详情回来了：首屏那批是列表项直出的，adapter 还持有预览 list 的引用，必须换掉
+                feedDataAdapter.submit(viewModel.feedDataList, viewModel.articleList)
+            }
+        }
+
         viewModel.feedUserState.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandledOrReturnNull()?.let {
                 if (it)
@@ -501,7 +509,8 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             message: String?,
             dateline: String?,
             rid: Any?,
-            isViewReply: Any?
+            isViewReply: Any?,
+            feedData: HomeFeedResponse.Data?
         ) {
             super.onViewFeed(
                 view,
@@ -513,7 +522,8 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                 message,
                 dateline,
                 rid,
-                isViewReply
+                isViewReply,
+                feedData
             )
             if (!uid.isNullOrEmpty() && PrefManager.isRecordHistory)
                 viewModel.saveHistory(

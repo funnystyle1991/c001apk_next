@@ -7,6 +7,7 @@ import android.graphics.Outline
 import android.graphics.drawable.ColorDrawable
 import android.view.View
 import android.view.ViewOutlineProvider
+import android.view.ViewTreeObserver
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import androidx.core.app.ActivityOptionsCompat
@@ -285,36 +286,44 @@ object TransitionAnim {
                 clearRoundClip(view)
             }
         })
-        if (view.isLaidOut) {
-            // 已经在屏幕上的页（退场 / 归位）：宽高现成，当场开跑
+        // 圆角裁剪（要读宽高）和百分比位移（宽高为 0 时 `100%` 解析成 0，动画干脆不动）
+        // 都必须在 layout 之后；而一旦等到首帧画完才启动，新页已经先按「终点位置」整屏画过
+        // 一帧——详情页这帧只有底色和骨架，就是那个「先闪一下空白，内容再滑进来」。
+        // 同时满足「已布局」和「尚未绘制」的只有 onPreDraw。
+        runOnFirstFrame(view) {
             applyRoundClip(activity, view)
             view.startAnimation(anim)
             onStarted?.invoke()
+        }
+    }
+
+    /**
+     * 在 [view] 的「下一帧绘制之前」执行 [action]；已经在屏幕上的页（退场 / 归位）直接同步执行。
+     *
+     * 这里有个必须记住的坑：onCreate 阶段 `view.viewTreeObserver` 拿到的是**尚未 attach 时**的
+     * floating observer，它会在 attach 时被 merge 进真正的 observer 然后 `kill()` 掉。若在回调里
+     * 用捕获的那个去 `removeOnPreDrawListener`，此刻 `isAlive` 已经是 false，移除会**静默失败**，
+     * 于是每帧都回调一次、动画被反复重启，画面永远停在第一帧——表现就是整页卡在屏幕外一片空白。
+     * 所以移除时必须重新取一次当前 observer；[consumed] 再兜一层，保证 [action] 只跑一次。
+     */
+    private fun runOnFirstFrame(view: View, action: () -> Unit) {
+        if (view.isLaidOut) {
+            action()
             return
         }
-
-        // 新页这时刚 setContentView，还没 layout，两个坑得一起躲：
-        // 1. 百分比位移要等 layout 完才算得出来（宽高为 0 时 `100%` 解析成 0，动画直接不动）；
-        // 2. 而一旦等到首帧画完之后才启动，content 已经先按「终点位置」整屏画过一帧——
-        //    详情页这帧只有底色和骨架，看着就是「先闪一屏空白，内容再滑进来」。
-        // 做法：先不依赖 layout 把它整个挪到屏幕外面去，等 post 落到首帧之后、宽高有了，
-        // 再抹掉预置位移换成动画，两段首尾相接，既不闪也不会不动。
-        view.translationX = activity.resources.displayMetrics.widthPixels.toFloat()
-        var retries = 0
-        val start: Runnable = object : Runnable {
-            override fun run() {
-                if (view.width == 0 && retries < 5) {
-                    retries++
-                    view.postDelayed(this, 16)
-                    return
-                }
-                view.translationX = 0f
-                applyRoundClip(activity, view)
-                view.startAnimation(anim)
-                onStarted?.invoke()
+        var consumed = false
+        val listener = object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                if (consumed) return true
+                consumed = true
+                val current = view.viewTreeObserver
+                if (current.isAlive) current.removeOnPreDrawListener(this)
+                action()
+                return true
             }
         }
-        view.post(start)
+        val observer = view.viewTreeObserver
+        if (observer.isAlive) observer.addOnPreDrawListener(listener)
     }
 
     /**

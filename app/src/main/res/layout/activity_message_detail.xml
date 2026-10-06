@@ -15,17 +15,31 @@
         app:edgeToEdge="true"
         app:fitsSystemWindowsInsets="end">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolBar"
+        <!--
+            顶部状态栏内边距必须由 AppBarLayout 吃（wrap_content 会把内边距补进高度里），
+            不能直接给固定高的 MaterialToolbar：那样内边距会变成工具栏的 padding，
+            56dp 高度里再扣掉状态栏，标题/返回键就被挤到底边、被下面的分割线切掉。
+        -->
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/appBar"
             android:layout_width="0dp"
-            android:layout_height="?actionBarSize"
+            android:layout_height="wrap_content"
             android:background="@null"
+            android:fitsSystemWindows="false"
             app:fitsSystemWindowsInsets="@integer/internal_fragment_top_insets"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:navigationIcon="@drawable/ic_back"
-            tools:title="对方昵称" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolBar"
+                android:layout_width="match_parent"
+                android:layout_height="?actionBarSize"
+                android:background="@null"
+                app:navigationIcon="@drawable/ic_back"
+                tools:title="对方昵称" />
+
+        </com.google.android.material.appbar.AppBarLayout>
 
         <View
             android:id="@+id/divider"
@@ -34,7 +48,7 @@
             android:background="?attr/colorSurfaceVariant"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/toolBar" />
+            app:layout_constraintTop_toBottomOf="@id/appBar" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerView"

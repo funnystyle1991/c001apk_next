@@ -101,7 +101,7 @@ SPRING_ACCELERATE = """<?xml version="1.0" encoding="utf-8"?>
 """
 
 SLIDE = """<?xml version="1.0" encoding="utf-8"?>
-<!-- 生成物，勿手改：slide / {curve} / 进入 {enter}ms（退出 {exit}ms） -->
+<!-- 生成物，勿手改：slide / {curve} / 进入 {enter}ms（进出两层同曲线同时长） -->
 <translate xmlns:android="http://schemas.android.com/apk/res/android"
     android:duration="{duration}"
     android:fromXDelta="{frm}"
@@ -231,15 +231,21 @@ def main():
             exit_ms = max(EXIT_MIN, enter - EXIT_GAP)
 
             # 水平滑动：四个方向各自需要一份资源
+            #
+            # 两层都是整屏 100% 位移，拼在一起要严丝合缝就必须满足 x_旧 + x_新 ≡ 100%。
+            # 一旦退场吃的是 exit 那套（std 下是 accelerate，且时长 = 进入 - 50ms），
+            # 位移之和在过程中就不是常量了：后半段旧页已经离场、新页还差一截，中间露出的
+            # 正是垫在旧页 DecorView 上的底色——观感就是「先空一块挡住，内容才滑进来」。
+            # 所以 lout / rout 跟对应的 rin / lin 吃同一条曲线、同一个时长。
             for slot in SLOTS:
                 if slot == "rin":
                     frm, to, interp, dur = "100%", "0", enter_interp, enter
                 elif slot == "lin":
                     frm, to, interp, dur = "-100%", "0", enter_interp, enter
                 elif slot == "lout":
-                    frm, to, interp, dur = "0", "-100%", exit_interp, exit_ms
+                    frm, to, interp, dur = "0", "-100%", enter_interp, enter
                 else:
-                    frm, to, interp, dur = "0", "100%", exit_interp, exit_ms
+                    frm, to, interp, dur = "0", "100%", enter_interp, enter
                 name = "exp_slide_%s_%d_%s" % (curve, enter, slot)
                 files.append((name, SLIDE.format(
                     curve=curve, enter=enter, exit=exit_ms,

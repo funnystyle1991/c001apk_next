@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 生成物，勿手改：slide / std / 进入 300ms（退出 250ms） -->
+<!-- 生成物，勿手改：slide / std / 进入 300ms（进出两层同曲线同时长） -->
 <translate xmlns:android="http://schemas.android.com/apk/res/android"
     android:duration="300"
     android:fromXDelta="100%"

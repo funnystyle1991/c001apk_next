@@ -182,46 +182,6 @@ class UserPagerFragment : BasePagerFragment() {
         binding.toolBar.overflowIcon?.mutate()?.setTint(color)
     }
 
-    /** percent 高于它：头部完全不透明（percent = 1 是完全展开） */
-    private val headerOpaquePercent = 0.75f
-
-    /** percent 低于它：头部完全隐藏（percent = 0 是完全收起） */
-    private val headerGonePercent = 0.35f
-
-    /** 当前头部是不是已经收起成不可见（用来只在跨过阈值时切一次 visibility） */
-    private var headerHidden = false
-
-    /**
-     * 下滑时把整块头部（封面 + 头像 + 关注 / 私信 + 昵称 / 认证 / 简介 / 数据 / 装备条）淡出，
-     * 只留折叠后的工具栏标题。
-     *
-     * 头部是 `COLLAPSE_MODE_PARALLAX`、跟着 AppBar 一起往上走，而折叠标题固定在工具栏上，
-     * 不淡出的话两层文字会从彼此下面穿过去——就是「下滑后文字重叠」。
-     * 图标颜色也跟着这条曲线走：头部基本还在时压在封面上用纯白，淡到一半以后
-     * 底下已经是 colorSurface，再用白色就看不见了。
-     */
-    private fun applyHeaderFade(percent: Float) {
-        // 监听器是在 initBar() 里注册的，而 initBar() 比 initUser() 先跑
-        // （BasePagerFragment.onViewCreated 的顺序）。偏移回调要等布局才来，
-        // 实际不会提前触发，这里还是显式挡一下，免得顺序一变就 NPE。
-        if (!::userBinding.isInitialized) return
-
-        val alpha = ((percent - headerGonePercent) / (headerOpaquePercent - headerGonePercent))
-            .coerceIn(0f, 1f)
-        if (userBinding.infoLayout.alpha != alpha) userBinding.infoLayout.alpha = alpha
-
-        // 完全透明后这块仍然吃触摸事件（头像 / 关注 / 装备条都挂着点击），
-        // 会变成「看不见但点得到」，所以跨过阈值时连可见性一起换掉。
-        // INVISIBLE 不影响测量，AppBar 的 totalScrollRange 不会跟着跳。
-        val hidden = alpha == 0f
-        if (hidden != headerHidden) {
-            headerHidden = hidden
-            userBinding.infoLayout.visibility = if (hidden) View.INVISIBLE else View.VISIBLE
-        }
-
-        applyBarIconTint(alpha > 0.5f)
-    }
-
     private fun getMenuTitle(title: CharSequence?): SpannableString {
         val text = title ?: return SpannableString("")
         return SpannableString(text).also {
@@ -256,9 +216,13 @@ class UserPagerFragment : BasePagerFragment() {
 
         // percent: 1 = 完全展开，0 = 完全收起
         // 下滑时把整块头部淡掉、只留折叠后的工具栏标题，顺带决定图标用白还是用主题色
+        // （头部基本还在时压在封面上用纯白，淡到一半以后底下已经是 colorSurface，再用白色就看不见了）
         binding.appBar.addOnOffsetChangedListener(object : AppBarLayoutStateChangeListener() {
             override fun onScroll(percent: Float) {
-                applyHeaderFade(percent)
+                // initBar() 比 initUser() 先跑（BasePagerFragment.onViewCreated 的顺序），
+                // 这时 userBinding 还没有；偏移回调要等布局才来，实际不会提前触发，挡一下更稳
+                val header = if (::userBinding.isInitialized) userBinding.infoLayout else null
+                applyBarIconTint(applyHeaderFade(header, percent) > 0.5f)
             }
         })
 

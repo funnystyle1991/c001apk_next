@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 官方酷安底栏取色：选中品牌青绿，未选中暗色纯白 / 亮色黑（v21 对齐官方截图） -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/coolapk_brand" android:state_checked="true" />
+    <item android:color="@color/nav_unchecked" />
+</selector>

@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import androidx.appcompat.app.AppCompatDelegate
+import com.example.c001apk.constant.Constants
 import com.example.c001apk.ui.others.BugHandlerActivity
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.RiskControlPrompter
@@ -24,6 +25,9 @@ class MyApplication : Application() {
 
         context = applicationContext
 
+        // 老用户一次性切到官方酷安配色（关跟随系统取色 + 主题色回默认）
+        PrefManager.migrateOfficialPalette()
+
         // SSL 校验失败 → 风险环境警告弹窗（跟踪前台 Activity）
         SslErrorPrompter.install(this)
 
@@ -38,6 +42,9 @@ class MyApplication : Application() {
 
         // 图片加载同样走 OkHttp（Mojito 的 Glide 会替换 GlideUrl 加载器），
         // 调试模式下换成不校验证书的客户端；非调试模式传 null = 行为不变
+        // 全屏看图（Mojito）此前用裸 Uri 下载、不带任何请求头，会被 image.coolapk.com
+        // 的 EdgeOne UA 防盗链拦成 567，点大图黑屏；这里补上和 showIMG 相同的酷安 UA
+        GlideImageLoader.headerProvider = { mapOf("User-Agent" to Constants.USER_AGENT) }
         Mojito.initialize(
             GlideImageLoader.with(this, SslVerify.debugImageClientOrNull()),
             SketchImageLoadFactory()

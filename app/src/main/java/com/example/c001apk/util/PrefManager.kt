@@ -12,6 +12,7 @@ object PrefManager {
     private const val PREF_BLACK_DARK_THEME = "black_dark_theme"
     private const val PREF_FOLLOW_SYSTEM_ACCENT = "follow_system_accent"
     private const val PREF_THEME_COLOR = "theme_color"
+    private const val PREF_OFFICIAL_PALETTE = "official_palette_migrated"
     private const val SHOW_EMOJI = "show_emoji"
     private const val UID = "uid"
     private const val NAME = "name"
@@ -34,6 +35,19 @@ object PrefManager {
     var themeColor: String
         get() = pref.getString(PREF_THEME_COLOR, "MATERIAL_DEFAULT")!!
         set(value) = pref.edit().putString(PREF_THEME_COLOR, value).apply()
+
+    /**
+     * 一次性迁移到官方酷安观感：关掉跟随系统取色、主题色回到默认（默认已是官方色板）。
+     * 设置里仍可手动改回去。
+     */
+    fun migrateOfficialPalette() {
+        if (pref.getBoolean(PREF_OFFICIAL_PALETTE, false)) return
+        pref.edit()
+            .putBoolean(PREF_OFFICIAL_PALETTE, true)
+            .putBoolean(PREF_FOLLOW_SYSTEM_ACCENT, false)
+            .putString(PREF_THEME_COLOR, "MATERIAL_DEFAULT")
+            .apply()
+    }
 
     var showEmoji: Boolean
         get() = pref.getBoolean(SHOW_EMOJI, true)

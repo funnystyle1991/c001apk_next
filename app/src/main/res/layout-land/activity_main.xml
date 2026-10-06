@@ -8,22 +8,72 @@
         android:id="@+id/viewPager"
         android:layout_width="0dp"
         android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/bottomNav"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <com.google.android.material.navigationrail.NavigationRailView
-        android:id="@+id/bottomNav"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        app:fitsSystemWindowsInsets="start|top|bottom"
-        app:labelVisibilityMode="selected"
+    <!-- 横屏做成"浮在内容上的居中短卡片"：之前两件事一起翻车——rail 和 viewPager 左右分栏，
+         玻璃底下没有内容可采，整块渲成黑板；rail 的 menuGravity 又是 top，图标全挤在最上面。
+         现在 viewPager 满宽垫底、卡片浮在它上面（和竖屏同款悬浮逻辑），玻璃才采得到背景。
+         外壳给死 84x200dp（两个带标签的 rail 项正好 160dp 上下留白），折射/高光在代码里按 id 配。
+         已删 app:fitsSystemWindowsInsets（该 attr 无 none flag，缺省=0）：悬浮胶囊内部不该吃系统窗
+         inset，否则横屏状态栏高度变成顶部 padding，menuGravity=center 被挤偏，整组 tab 下坠
+         （"主页离上面太远"）。 -->
+    <FrameLayout
+        android:id="@+id/navGlassHost"
+        android:layout_width="84dp"
+        android:layout_height="200dp"
+        android:layout_marginStart="12dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:menu="@menu/nav_menu"
-        app:menuGravity="top" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <View
+            android:id="@+id/navGlass"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- 液态气泡：v19 起横屏也用它，只是改成上下滑（slideLens 纵向分支）；id 必须在，ViewBinding 要用 -->
+        <com.example.c001apk.view.LiquidIndicatorView
+            android:id="@+id/navIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+        <!-- v19：横屏滴不再隐藏，改成上下滑的同一枚液滴（slideLens 纵向分支）。
+             layout_gravity 必须是 top|center_horizontal 而不是 center：动画只动
+             translationY，落位公式按"布局后顶缘在 0"算，center 会把顶缘放到中间、
+             平移量就全错了 -->
+        <FrameLayout
+            android:id="@+id/navLensHost"
+            android:layout_width="84dp"
+            android:layout_height="56dp"
+            android:layout_gravity="top|center_horizontal">
+
+            <View
+                android:id="@+id/navLens"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </FrameLayout>
+
+        <!-- v23：换成可拖拽子类，按住滴上下滑切换 tab（和竖屏同款手势） -->
+        <com.example.c001apk.view.DragNavigationRailView
+            android:id="@+id/bottomNav"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            app:itemActiveIndicatorStyle="@style/NavNoActiveIndicator"
+            app:itemBackground="@android:color/transparent"
+            app:itemIconTint="@color/nav_item_tint"
+            app:itemTextColor="@color/nav_item_tint"
+            app:labelVisibilityMode="labeled"
+            app:menu="@menu/nav_menu"
+            app:menuGravity="center" />
+
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

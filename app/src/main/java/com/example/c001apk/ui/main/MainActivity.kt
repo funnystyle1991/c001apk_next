@@ -1,9 +1,25 @@
 package com.example.c001apk.ui.main
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ValueAnimator
+import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Outline
+import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
+import android.util.Log
+import android.view.Choreographer
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewOutlineProvider
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
-import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
@@ -11,6 +27,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
+import com.example.c001apk.BuildConfig
+import androidx.core.content.ContextCompat
 import com.example.c001apk.R
 import com.example.c001apk.databinding.ActivityMainBinding
 import com.example.c001apk.ui.base.BaseActivity
@@ -21,22 +39,32 @@ import com.example.c001apk.util.ActivityCollector
 import com.example.c001apk.util.CookieUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.UpdateChecker
+import com.example.c001apk.view.DragBottomNavigationView
+import com.example.c001apk.view.DragNavigationRailView
+import com.example.c001apk.view.FrostedGlassDrawable
+import com.example.c001apk.view.GlassLensDrawable
 import com.google.android.material.badge.BadgeDrawable
-import com.google.android.material.behavior.HideBottomViewOnScrollBehavior
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.navigation.NavigationBarView
+import com.hihonor.smartgripkit.SmartGripEventListener
+import com.hihonor.smartgripkit.SmartGripEventManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.min
+import kotlin.math.sin
 
 @AndroidEntryPoint
 class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContainer {
 
     private val viewModel by viewModels<MainViewModel>()
-    private val navViewBehavior by lazy { HideBottomViewOnScrollBehavior<BottomNavigationView>() }
     override var controller: IOnBottomClickListener? = null
     private lateinit var navView: NavigationBarView
     private val isLogin by lazy { PrefManager.isLogin }
+    private var gripListener: SmartGripEventListener? = null
+    private var lensAnim: ValueAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,14 +113,93 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             fixViewPager2Insets(this)
         }
 
-        navView.apply {
-            if (this is BottomNavigationView) {
-                (layoutParams as CoordinatorLayout.LayoutParams).behavior = navViewBehavior
-            }
+        // v12：滚动自动隐藏整个撤掉——官方底栏从不因滚动收起，条一藏"透明玻璃"的感觉
+        // 反而没了。navGlassHost 不再挂 HideBottomViewOnScrollBehavior，永远停在底部
 
+        // 玻璃不再靠库实时采样（这台机器上库的捕获录不满录制区），改成每 50ms 把条后面的
+        // 内容用 viewPager.draw 直接录进缩小的位图，放大回去即模糊：单个 View 直录，
+        // 没有库那套多层捕获的错位问题。
+        // v12 真机判定"不行"+全分辨率对比官方：v12 把条做"太透"了——白页上整条隐形，
+        // 因为官方那条能看见靠的是①一圈柔和投影把物体从页面上"抬"出来 ②条后内容被糊成
+        // 色块（清晰文字直透=没有玻璃）。v13：霜层几乎全不透明（只留 5% 直透）+ 采样退回 /8
+        // 换真糊 + 外壳挂低透明度投影轮廓（outline.alpha 压低，不再重演 v10 的 20% 黑纱）
+        val nightMode = (resources.configuration.uiMode and
+            Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val glassTint = ContextCompat.getColor(this, R.color.nav_glass_tint)
+        val glassStroke = ContextCompat.getColor(this, R.color.nav_glass_stroke)
+        // v20 对齐官方白天（用户截图实测）：条身 FCFCFC≈不透明白、滴 E2E2E2 浅灰。
+        // v23：0xF2 染色把霜压得太死，真机判定"通透度差了点"——染色退到 0xCC，
+        // 让背后内容的色晕多透出一档；霜本身仍 0xF2 全糊，不会回到"清晰文字直透"
+        val barAlpha = 0xCC
+        val radiusPx = 28f * resources.displayMetrics.density
+        binding.navGlass.background = FrostedGlassDrawable().apply {
+            radius = radiusPx
+            tintColor = glassTint and 0x00FFFFFF or (barAlpha shl 24)
+            strokeColor = glassStroke
+            // 0xF2：霜层几乎盖满，条后内容只以"糊掉的色块"出现——官方白天就是这档
+            frostAlpha = 0xF2
+        }
+        // 滴 = 放大镜：官方水滴不是染色胶囊，是把滴后的内容放大 ~1.15 倍折射出来再亮一圈边。
+        // 霜位图由 copyFrost 每周期喂进来，滑动时 offsetX 同步跟位置
+        binding.navLens.background = GlassLensDrawable().apply {
+            radius = radiusPx
+            rimColor = glassStroke
+            // 官方实测滴是实色片不是透明折射：白天 E2E2E2、深色 2E3032（和条近同色，
+            // 靠亮边区分）。0x4D 轻染色会让 /3 清晰图 95% 直透——深色模式下就是抖动+发花。
+            // v23：和条一样退到 0xCC，透出被放大折射的内容
+            tintColor = if (nightMode) (0xCC shl 24) or 0x002E3032
+                        else (0xCC shl 24) or 0x00E2E2E2
+            magnify = 1.15f
+            // 滴和条同糊度：v18 真机判定"左右 tab 通透度不一样"，实测滴内 F4F9FD、
+            // 条身 E9EFED——滴原来把背后内容原样直透，糊度对齐条就匀了
+            frostAlpha = 0xF2
+        }
+        // Z 序与阴影：bottomNav/navLensHost 仍全部 outlineProvider=null（v10 的 ambient
+        // shadow 灰纱坑，滴是透明的更压不住）。投影改由外壳 navGlassHost 一家来投：
+        // 8dp + 圆角轮廓 + outline.alpha 压到 0.3，影子的"量"可控，铺进条内那点也被
+        // 0xF2 霜层盖住，条外那圈就是官方把玻璃"抬"出来的柔和落影
+        val elevPx = resources.displayMetrics.density
+        binding.bottomNav.elevation = 3f * elevPx
+        binding.bottomNav.outlineProvider = null
+        binding.navLensHost.elevation = 2f * elevPx
+        binding.navLensHost.outlineProvider = null
+        binding.navGlassHost.elevation = 8f * elevPx
+        binding.navGlassHost.outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, radiusPx)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) outline.alpha = 0.3f
+            }
+        }
+        // 调试包启动报代号+commit：真机截图一眼能确认装的是哪一轮的玻璃，避免拿旧包判新代码
+        if (BuildConfig.DEV_CHANNEL) {
+            Toast.makeText(this, "glass-v23-clear ${BuildConfig.GIT_SHA}", Toast.LENGTH_LONG).show()
+        }
+        // v19：横屏滴不再藏——Rail 上改成上下滑，和竖屏同一套液滴动画（slideLens 走纵向分支）
+
+        // 官方底栏的液态手感：按住滴能直接拖着走，松手吸附到最近的 tab。
+        // 手势由 bottomNav 拦截（它压在滴上方），这里只负责把坐标变成动画
+        (binding.bottomNav as? DragBottomNavigationView)?.apply {
+            onDragMove = { dragLensTo(it) }
+            onDragEnd = { settleLensTo(it) }
+            onDragCancel = {
+                settleLensTo(binding.navLensHost.translationX + binding.navLensHost.width / 2f)
+            }
+        }
+        // v23：横屏轨道同款拖拽，轴换成 Y（DragNavigationRailView 只报坐标，落位仍在 Activity）
+        (binding.bottomNav as? DragNavigationRailView)?.apply {
+            onDragMove = { dragLensToY(it) }
+            onDragEnd = { settleLensToY(it) }
+            onDragCancel = {
+                settleLensToY(binding.navLensHost.translationY + binding.navLensHost.height / 2f)
+            }
+        }
+
+        navView.apply {
             setOnItemSelectedListener {
                 when (it.itemId) {
                     R.id.navigation_home -> {
+                        slideIndicator(0)
+                        slideLens(0)
                         if (binding.viewPager.currentItem == 0)
                             controller?.onReturnTop()
                         else
@@ -100,6 +207,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                     }
 
                     R.id.navigation_mine -> {
+                        slideIndicator(1)
+                        slideLens(1)
                         binding.viewPager.setCurrentItem(1, true)
                         if (CookieUtil.badge != 0) {
                             navView.removeBadge(R.id.navigation_mine)
@@ -111,9 +220,295 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             setOnClickListener { /*Do nothing*/ }
             if (this is BottomNavigationView) {
                 fixBottomNavigationViewInsets(this)
+            } else {
+                fixNavigationRailInsets(this)
             }
         }
 
+        // 液态选中气泡：官方底栏没有实色泡，只有玻璃镜片——用 20% 品牌青绿当镜片底色
+        binding.navIndicator.gooColor =
+            MaterialColors.getColor(this, R.color.nav_goo, 0x33009487)
+        binding.navGlass.post {
+            if (navView is BottomNavigationView) {
+                navItemCenter(0)?.let { (x, y) ->
+                    binding.navIndicator.placeAt(x, y)
+                    placeLensAt(x)
+                }
+            } else {
+                railItemCenterY(0)?.let { placeLensAtY(it) }
+            }
+        }
+
+        registerGripFollow()
+    }
+
+    /**
+     * 荣耀随心握：单手握持时把底栏整条靠向那只手，双手/平放回到正中。
+     *
+     * SDK 内部要碰荣耀框架的隐藏类，非荣耀机型连静态初始化都过不去，
+     * 所以每个入口都按 Throwable 兜住——兜住就是底栏一直居中，不影响任何人。
+     */
+    private fun registerGripFollow() {
+        // 横屏是竖排 NavigationRail，往左右靠没有意义
+        if (navView !is BottomNavigationView) return
+        val support = try {
+            SmartGripEventManager.getSmartGripSupportState(this)
+        } catch (t: Throwable) {
+            Log.i("MainActivity", "grip follow unavailable: ${t.javaClass.simpleName}")
+            return
+        }
+        if (support != SmartGripEventManager.SMART_GRIP_SUPPORT) {
+            Log.i("MainActivity", "grip follow off, supportState=$support")
+            return
+        }
+        val listener = object : SmartGripEventListener() {
+            override fun onSmartGripEventChanged(state: Int) {
+                // 回调来自 binder 线程，改 View 得回主线程
+                runOnUiThread { shiftBarToGrip(state) }
+            }
+        }
+        val ok = try {
+            gripListener = listener
+            SmartGripEventManager.registerSmartGripMotionListener(this, listener)
+        } catch (t: Throwable) {
+            Log.e("MainActivity", "registerSmartGripMotionListener failed", t)
+            gripListener = null
+            false
+        }
+        Log.i("MainActivity", "grip follow registered=$ok")
+    }
+
+    private fun shiftBarToGrip(state: Int) {
+        val bar = binding.navGlassHost
+        val screenWidth = (bar.parent as? View)?.width ?: return
+        val marginStart = (bar.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart?.toFloat() ?: return
+        if (bar.width == 0 || screenWidth == 0) return
+        // 居中时左右留白相等，靠到某一侧就是把外侧那份留白让出来
+        val max = (screenWidth - bar.width) / 2f - marginStart
+        val target = when (state) {
+            SmartGripEventManager.GRIP_STATE_LEFT_HAND -> -max
+            SmartGripEventManager.GRIP_STATE_RIGHT_HAND -> max
+            else -> 0f
+        }
+        if (bar.translationX == target) return
+        bar.animate().translationX(target).setDuration(300)
+            .setInterpolator(DecelerateInterpolator(1.6f)).start()
+    }
+
+    private fun placeLensAt(cx: Float) {
+        val lens = binding.navLensHost
+        lens.scaleX = 1f
+        lens.scaleY = 1f
+        lens.translationX = clampLensX(cx - lens.width / 2f, 1f)
+        syncLensOffset()
+    }
+
+    /**
+     * 按当前横向拉伸量钳制平移：滴的可视边缘（含缩放外扩）不许越出条的两端。
+     * 出界那块采不到背景会渲染成黑，就是"边缘缺一块"的另一种成因。
+     */
+    private fun clampLensX(x: Float, scaleX: Float): Float {
+        val lens = binding.navLensHost
+        val barW = binding.navGlassHost.width.toFloat()
+        val w = lens.width.toFloat()
+        if (barW == 0f || w == 0f) return x
+        val bulge = (scaleX - 1f) * w / 2f
+        val minX = bulge
+        val maxX = barW - w - bulge
+        return if (minX <= maxX) x.coerceIn(minX, maxX) else (barW - w) / 2f
+    }
+
+    /**
+     * 滴滑动：下面整套是库自己 LiquidBottomTabs 玻璃滴的算法，不再自己发明。
+     * 只动 translationX / scaleX / scaleY：改 layoutParams 会 requestLayout，
+     * FrameLayout 每次 layout 都按 gravity 把滴的 x 重置回左缘，动画就废了（真机翻车点）。
+     */
+    private fun slideLens(index: Int) {
+        val lens = binding.navLensHost
+        if (lens.visibility != View.VISIBLE) return
+        if (navView !is BottomNavigationView) {
+            slideLensVertical(index)
+            return
+        }
+        val target = navItemCenter(index)?.first ?: return
+        val baseW = lens.width.toFloat()
+        if (baseW == 0f) return
+        val from = lens.translationX + baseW / 2f
+        val dist = target - from
+        lensAnim?.cancel()
+        if (abs(dist) < 0.5f) {
+            placeLensAt(target)
+            return
+        }
+        // 跨得越远拉得越长（上限 35%），纵向等体积压缩；sin 让鼓胀中间最大、两头归零。
+        // 库的滴按 tab 宽 3 倍归一，我们只有 2 个 tab、行程短，照抄的话鼓胀只有 17%，
+        // 在深色条上根本看不出来，所以这里按"行程/滴宽"归一
+        val stretch = 0.35f * (abs(dist) / baseW).coerceAtMost(1f)
+        val overshoot = OvershootInterpolator(1.1f)
+        lensAnim = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 400
+            addUpdateListener {
+                val t = it.animatedValue as Float
+                val s = sin(PI.toFloat() * min(t * 1.15f, 1f))
+                val sx = 1f + stretch * s
+                lens.scaleX = sx
+                lens.scaleY = 1f - stretch * 0.55f * s
+                lens.translationX =
+                    clampLensX(from + dist * overshoot.getInterpolation(t) - baseW / 2f, sx)
+                syncLensOffset()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                private var canceled = false
+                override fun onAnimationCancel(animation: Animator) {
+                    canceled = true
+                }
+
+                override fun onAnimationEnd(animation: Animator) {
+                    // cancel() 也会走到这里：中途重定向时不能落位，
+                    // 否则滴瞬移到新目标、新动画又因距离为 0 而根本不播
+                    if (!canceled) placeLensAt(target)
+                }
+            })
+            start()
+        }
+    }
+
+    /**
+     * 横屏 Rail 的 cell 不是均分条高的（menuGravity=center 悬空、cell 高≈rail 宽），
+     * 竖屏那套 barW*(i+0.5)/n 公式套不上，直接读实际布局出来的 cell 子 View 中心。
+     * childCount 校验兜住"child 0 不是菜单容器"的误读——那种情况宁可不滑。
+     */
+    private fun railItemCenterY(index: Int): Float? {
+        val menu = navView.getChildAt(0) as? ViewGroup ?: return null
+        if (menu.childCount != navView.menu.size()) return null
+        val item = menu.getChildAt(index) ?: return null
+        if (item.height == 0) return null
+        return navView.top + menu.top + item.top + item.height / 2f
+    }
+
+    /** 纵向落位：和 placeLensAt 同款，只是动 translationY */
+    private fun placeLensAtY(cy: Float) {
+        val lens = binding.navLensHost
+        lens.scaleX = 1f
+        lens.scaleY = 1f
+        lens.translationY = clampLensY(cy - lens.height / 2f, 1f)
+        syncLensOffset()
+    }
+
+    private fun clampLensY(y: Float, scaleY: Float): Float {
+        val lens = binding.navLensHost
+        val barH = binding.navGlassHost.height.toFloat()
+        val h = lens.height.toFloat()
+        if (barH == 0f || h == 0f) return y
+        val bulge = (scaleY - 1f) * h / 2f
+        val minY = bulge
+        val maxY = barH - h - bulge
+        return if (minY <= maxY) y.coerceIn(minY, maxY) else (barH - h) / 2f
+    }
+
+    /** 横屏滴上下滑：鼓胀改沿纵向（scaleY 拉长、scaleX 等体积压窄），其余同竖屏那套 */
+    private fun slideLensVertical(index: Int) {
+        val lens = binding.navLensHost
+        val target = railItemCenterY(index) ?: return
+        val baseH = lens.height.toFloat()
+        if (baseH == 0f) return
+        val from = lens.translationY + baseH / 2f
+        val dist = target - from
+        lensAnim?.cancel()
+        if (abs(dist) < 0.5f) {
+            placeLensAtY(target)
+            return
+        }
+        val stretch = 0.35f * (abs(dist) / baseH).coerceAtMost(1f)
+        val overshoot = OvershootInterpolator(1.1f)
+        lensAnim = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 400
+            addUpdateListener {
+                val t = it.animatedValue as Float
+                val s = sin(PI.toFloat() * min(t * 1.15f, 1f))
+                val sy = 1f + stretch * s
+                lens.scaleY = sy
+                lens.scaleX = 1f - stretch * 0.55f * s
+                lens.translationY =
+                    clampLensY(from + dist * overshoot.getInterpolation(t) - baseH / 2f, sy)
+                syncLensOffset()
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                private var canceled = false
+                override fun onAnimationCancel(animation: Animator) {
+                    canceled = true
+                }
+
+                override fun onAnimationEnd(animation: Animator) {
+                    if (!canceled) placeLensAtY(target)
+                }
+            })
+            start()
+        }
+    }
+
+    /** 按住滴拖：鼓起一点跟手，气泡同点跟随，两者是一套液体 */
+    private fun dragLensTo(x: Float) {
+        val lens = binding.navLensHost
+        if (lens.visibility != View.VISIBLE) return
+        lensAnim?.cancel()
+        lens.scaleX = 1.06f
+        lens.scaleY = 1.06f
+        lens.translationX = clampLensX(x - lens.width / 2f, 1.06f)
+        syncLensOffset()
+        binding.navIndicator.dragTo(x)
+    }
+
+    /** 松手吸附到最近的 tab；走 selectedItemId 就和点击完全同一条路径（切页/角标都跟着） */
+    private fun settleLensTo(x: Float) {
+        var best = 0
+        var bestDist = Float.MAX_VALUE
+        for (i in 0 until navView.menu.size()) {
+            val center = navItemCenter(i)?.first ?: return
+            val d = abs(center - x)
+            if (d < bestDist) {
+                bestDist = d
+                best = i
+            }
+        }
+        selectSettledTab(best)
+    }
+
+    /** 横屏滴上下拖：dragLensTo 的纵向镜像（鼓起不挑轴，两轴同倍） */
+    private fun dragLensToY(y: Float) {
+        val lens = binding.navLensHost
+        if (lens.visibility != View.VISIBLE) return
+        lensAnim?.cancel()
+        lens.scaleX = 1.06f
+        lens.scaleY = 1.06f
+        lens.translationY = clampLensY(y - lens.height / 2f, 1.06f)
+        syncLensOffset()
+    }
+
+    /** 松手吸附到纵向最近的 tab cell（railItemCenterY 读实际布局，不套均分公式） */
+    private fun settleLensToY(y: Float) {
+        var best = -1
+        var bestDist = Float.MAX_VALUE
+        for (i in 0 until navView.menu.size()) {
+            val center = railItemCenterY(i) ?: return
+            val d = abs(center - y)
+            if (d < bestDist) {
+                bestDist = d
+                best = i
+            }
+        }
+        if (best < 0) return
+        selectSettledTab(best)
+    }
+
+    private fun selectSettledTab(best: Int) {
+        val id = navView.menu.getItem(best).itemId
+        if (navView.selectedItemId != id) {
+            navView.selectedItemId = id
+        } else {
+            slideIndicator(best)
+            slideLens(best)
+        }
     }
 
     private fun initObserve() {
@@ -184,35 +579,52 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         }
     }
 
-    fun showNavigationView() {
-        if (binding.bottomNav is BottomNavigationView) {
-            if (navViewBehavior.isScrolledDown)
-                navViewBehavior.slideUp(binding.bottomNav as BottomNavigationView, true)
-        }
-    }
+    // v12：官方底栏不随滚动收起，自动隐藏撤掉。这些方法仍有十余处 Fragment 滚动回调
+    // 调用点，保留签名改成空操作
+    fun showNavigationView() = Unit
 
-    fun hideNavigationView() {
-        if (binding.bottomNav is BottomNavigationView) {
-            if (navViewBehavior.isScrolledUp)
-                navViewBehavior.slideDown(binding.bottomNav as BottomNavigationView, true)
-        }
-    }
+    fun hideNavigationView() = Unit
 
     // from LibChecker
     /**
-     * 覆盖掉 BottomNavigationView 内部的 OnApplyWindowInsetsListener 并避免其被软键盘顶起来
-     * @see BottomNavigationView.applyWindowInsets
+     * 覆盖掉 BottomNavigationView 内部的 OnApplyWindowInsetsListener 并避免其被软键盘顶起来。
+     * inset 不再垫进底栏内部（那会把胶囊撑成一条黑板），改由玻璃容器的 margin 悬浮让位。
      */
     private fun fixBottomNavigationViewInsets(view: BottomNavigationView) {
         ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
-            // 这里不直接使用 windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            // 因为它的结果可能受到 insets 传播链上层某环节的影响，出现了错误的 navigationBarsInsets
-            val navigationBarsInsets =
-                ViewCompat.getRootWindowInsets(view)
-                    ?.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.updatePadding(bottom = navigationBarsInsets?.bottom ?: 0)
+            view.updatePadding(bottom = 0)
             windowInsets
         }
+    }
+
+    /**
+     * 横屏 rail 同款坑同款补法：v17 只删了 XML 属性，Material 的 NavigationRailView 还留着
+     * 自己注册的内部 inset 监听，把横屏状态栏高度垫成顶部 padding——像素实测整组 tab 下坠
+     * ~50dp（上间隙 62dp vs 下间隙 23dp）。悬浮胶囊四周都不该吃系统窗 inset，直接清零。
+     */
+    private fun fixNavigationRailInsets(view: View) {
+        ViewCompat.setOnApplyWindowInsetsListener(view) { _, windowInsets ->
+            view.updatePadding(left = 0, top = 0, right = 0, bottom = 0)
+            windowInsets
+        }
+    }
+
+    /**
+     * tab 中心（相对 navGlass）。不再从 NavigationBarView 的内部 View 树里取：
+     * 那条路要 getChildAt(0) 正好是菜单容器才拿得到，一旦拿不到就是 null，
+     * 调用方 `?: return` 静默退出，真机上表现成"点一下直接跳过去、没有滑动也没有拉伸"。
+     * 两个 tab 等宽分布，几何中心 barW×(i+0.5)/n 与实测位置一致，且与 Material 版本无关。
+     */
+    private fun navItemCenter(index: Int): Pair<Float, Float>? {
+        val bar = binding.navGlass
+        if (navView !is BottomNavigationView) return null
+        if (bar.width == 0 || bar.height == 0) return null
+        val count = navView.menu.size().coerceAtLeast(1).toFloat()
+        return (bar.width * (index + 0.5f) / count) to bar.height / 2f
+    }
+
+    private fun slideIndicator(index: Int) {
+        navItemCenter(index)?.let { (x, y) -> binding.navIndicator.slideTo(x, y) }
     }
 
     private fun fixViewPager2Insets(view: ViewPager2) {
@@ -224,11 +636,23 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
 
     override fun onDestroy() {
         super.onDestroy()
+        frostRunning = false
+        Choreographer.getInstance().removeFrameCallback(frostFrameCallback)
+        gripListener?.let { listener ->
+            try {
+                SmartGripEventManager.unregisterSmartGripMotionListener(this, listener)
+            } catch (t: Throwable) {
+                Log.e("MainActivity", "unregisterSmartGripMotionListener failed", t)
+            }
+        }
+        gripListener = null
         ActivityCollector.removeActivity(this)
     }
 
     override fun onResume() {
         super.onResume()
+        frostRunning = true
+        Choreographer.getInstance().postFrameCallback(frostFrameCallback)
         if (!viewModel.isInit && isLogin) {
             with(System.currentTimeMillis()) {
                 if (this - viewModel.lastCheck >= 5 * 60 * 1000) {
@@ -236,6 +660,91 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                     viewModel.onCheckCount()
                 }
             }
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        frostRunning = false
+        Choreographer.getInstance().removeFrameCallback(frostFrameCallback)
+    }
+
+    // 霜玻璃：周期把条后面的内容录进小位图，放大模糊交给背景 Drawable
+    private var frostBmp: Bitmap? = null
+    private var lensFrostBmp: Bitmap? = null
+    // v16：官方顺是因为它每帧在 GPU 上直接采样已合成画面（零拷贝、和 vsync 同相）；
+    // 我们只能在主线程把内容重画进小位图。50ms Handler 和 vsync 不同相，刷新间隔
+    // 忽长忽短——残余"卡顿感"正是这个。改成 Choreographer 每个 vsync 采一帧，
+    // 并按实测耗时自适应降帧（>6ms 跳一帧≈30fps），保证不跟滚动抢主线程
+    private var frostRunning = false
+    private var frostSkipNext = false
+    private val frostFrameCallback = object : Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (!frostRunning) return
+            if (frostSkipNext) {
+                frostSkipNext = false
+            } else {
+                val t0 = SystemClock.elapsedRealtimeNanos()
+                copyFrost()
+                if (SystemClock.elapsedRealtimeNanos() - t0 > 6_000_000) frostSkipNext = true
+            }
+            Choreographer.getInstance().postFrameCallback(this)
+        }
+    }
+
+    private fun copyFrost() {
+        val host = binding.navGlassHost
+        val w = host.width
+        val h = host.height
+        if (w < 16 || h < 16) return
+        val loc = IntArray(2)
+        host.getLocationInWindow(loc)
+        val srcLoc = IntArray(2)
+        binding.viewPager.getLocationInWindow(srcLoc)
+        // /8 + 霜 0xF2：官方条后是"糊成色块"不是"清晰直透"，v12 的 /4 太锐了
+        val dw = (w / 8).coerceAtLeast(4)
+        val dh = (h / 8).coerceAtLeast(4)
+        var bmp = frostBmp
+        if (bmp == null || bmp.width != dw || bmp.height != dh) {
+            bmp?.recycle()
+            bmp = Bitmap.createBitmap(dw, dh, Bitmap.Config.ARGB_8888)
+            frostBmp = bmp
+        }
+        captureStrip(bmp, w, h, loc, srcLoc)
+        (binding.navGlass.background as? FrostedGlassDrawable)?.setBitmap(bmp)
+        // v14：滴单独 /3 高清采样。官方的滴比条"更清楚"（折射把内容放大且保留细节），
+        // v13 滴复用条的 /8 糊图放大 1.15x，渲成一坨白浆——就是"没啥变化"的观感来源
+        val lw = (w / 3).coerceAtLeast(8)
+        val lh = (h / 3).coerceAtLeast(8)
+        var lbmp = lensFrostBmp
+        if (lbmp == null || lbmp.width != lw || lbmp.height != lh) {
+            lbmp?.recycle()
+            lbmp = Bitmap.createBitmap(lw, lh, Bitmap.Config.ARGB_8888)
+            lensFrostBmp = lbmp
+        }
+        captureStrip(lbmp, w, h, loc, srcLoc)
+        (binding.navLens.background as? GlassLensDrawable)?.apply {
+            hostWidthPx = w.toFloat()
+            hostHeightPx = h.toFloat()
+            vertical = navView !is BottomNavigationView
+            offsetX = binding.navLensHost.x
+            offsetY = binding.navLensHost.y
+            setBitmap(lbmp)
+        }
+    }
+
+    private fun captureStrip(bmp: Bitmap, w: Int, h: Int, loc: IntArray, srcLoc: IntArray) {
+        val canvas = Canvas(bmp)
+        canvas.scale(bmp.width.toFloat() / w, bmp.height.toFloat() / h)
+        canvas.translate((srcLoc[0] - loc[0]).toFloat(), (srcLoc[1] - loc[1]).toFloat())
+        binding.viewPager.draw(canvas)
+    }
+
+    /** 霜位图 50ms 一刷，滴滑动/拖拽时每帧还要把自己在条内的位置报给放大镜（比刷新更频繁） */
+    private fun syncLensOffset() {
+        val lens = binding.navLensHost
+        (binding.navLens.background as? GlassLensDrawable)?.apply {
+            if (vertical) offsetY = lens.y else offsetX = lens.x
         }
     }
 

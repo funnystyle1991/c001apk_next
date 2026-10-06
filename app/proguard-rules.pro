@@ -211,3 +211,14 @@
 -keep class com.alibaba.sdk.android.oss.** { *; }
 -dontwarn okio.**
 -dontwarn org.apache.commons.codec.binary.**
+
+# 荣耀随心握 SDK 引用的 HWExtDeviceManager / SystemPropertiesEx / HwFoldScreenManagerEx
+# 都是荣耀框架里的隐藏类，compileSdk 34 的 android.jar 没有，R8 会报 Missing class；
+# 真机上由系统提供，非荣耀机型走不到那条分支
+-dontwarn com.hihonor.android.**
+# 但只 dontwarn 会留下坑：R8 不认识那条继承链，就把 SDK 里 HWExtDeviceEventListener
+# 匿名子类的 onDeviceDataChanged 一起改名了，框架按原名派发 → 正式版 AbstractMethodError。
+# 框架回调全凭方法名匹配，所以 SDK 整个包连成员一起 keep，不许改名不许删。
+-keep class com.hihonor.smartgripkit.** { *; }
+# 我们自己给 SmartGripEventListener 写的匿名子类同理（这个父类在包内，R8 认得，按继承匹配即可）
+-keep class * extends com.hihonor.smartgripkit.SmartGripEventListener { *; }

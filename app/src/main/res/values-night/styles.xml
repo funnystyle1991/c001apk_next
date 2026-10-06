@@ -39,5 +39,22 @@
     <style name="ThemeOverlay.MaterialBrown" parent="ThemeOverlay.Dark.MaterialBrown"/>
     <style name="ThemeOverlay.MaterialBlueGrey" parent="ThemeOverlay.Dark.MaterialBlueGrey"/>
     <style name="ThemeOverlay.MaterialSakura" parent="ThemeOverlay.Dark.MaterialSakura"/>
-    <style name="ThemeOverlay.MaterialDefault" parent="ThemeOverlay.Dark.MaterialDefault"/>
+    <!-- 暗色官方酷安色板：值走 @color 引用，在 values-night/colors.xml 里解析 -->
+    <style name="ThemeOverlay.MaterialDefault" parent="ThemeOverlay.Dark.MaterialDefault">
+        <item name="android:colorBackground">@color/bg_page</item>
+        <item name="colorOnBackground">@color/text_on_surface</item>
+        <item name="colorSurface">@color/bg_surface</item>
+        <item name="colorOnSurface">@color/text_on_surface</item>
+        <item name="colorSurfaceVariant">@color/bg_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="colorPrimary">@color/coolapk_brand</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/container</item>
+        <item name="colorOnPrimaryContainer">@color/on_container</item>
+        <item name="colorSecondary">@color/coolapk_brand</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/container</item>
+        <item name="colorOnSecondaryContainer">@color/on_container</item>
+    </style>
 </resources>

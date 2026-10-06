@@ -37,5 +37,23 @@
     <style name="ThemeOverlay.MaterialBrown" parent="ThemeOverlay.Light.MaterialBrown"/>
     <style name="ThemeOverlay.MaterialBlueGrey" parent="ThemeOverlay.Light.MaterialBlueGrey"/>
     <style name="ThemeOverlay.MaterialSakura" parent="ThemeOverlay.Light.MaterialSakura"/>
-    <style name="ThemeOverlay.MaterialDefault" parent="ThemeOverlay.Light.MaterialDefault"/>
+    <!-- 默认主题色 = 官方酷安固定色板（品牌青绿 + 中性灰），不用 Material 默认蓝。
+         值全走 @color 引用，亮/暗各自在 values / values-night 的 colors.xml 里解析 -->
+    <style name="ThemeOverlay.MaterialDefault" parent="ThemeOverlay.Light.MaterialDefault">
+        <item name="android:colorBackground">@color/bg_page</item>
+        <item name="colorOnBackground">@color/text_on_surface</item>
+        <item name="colorSurface">@color/bg_surface</item>
+        <item name="colorOnSurface">@color/text_on_surface</item>
+        <item name="colorSurfaceVariant">@color/bg_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/outline</item>
+        <item name="colorPrimary">@color/coolapk_brand</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/container</item>
+        <item name="colorOnPrimaryContainer">@color/on_container</item>
+        <item name="colorSecondary">@color/coolapk_brand</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondaryContainer">@color/container</item>
+        <item name="colorOnSecondaryContainer">@color/on_container</item>
+    </style>
 </resources>

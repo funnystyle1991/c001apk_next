@@ -8,15 +8,63 @@
         android:id="@+id/viewPager"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground"
         android:orientation="horizontal" />
 
-    <com.google.android.material.bottomnavigation.BottomNavigationView
-        android:id="@+id/bottomNav"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:labelVisibilityMode="selected"
+    <!-- 190dp 而不是满宽：单手握持时整条要能靠到那一侧，满宽条往一边挪就会被屏幕切掉圆头。
+         这层外壳存在的意义是"折射只作用于玻璃本身"：RenderEffect 会连孩子一起改，
+         所以图标、气泡全部挪到玻璃外面同级摆放，滚动隐藏行为也挂在这层（它必须是
+         CoordinatorLayout 的直接子 View） -->
+    <FrameLayout
+        android:id="@+id/navGlassHost"
+        android:layout_width="190dp"
+        android:layout_height="56dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="16dp"
         app:layout_anchor="@id/viewPager"
-        app:layout_anchorGravity="bottom"
-        app:menu="@menu/nav_menu" />
+        app:layout_anchorGravity="bottom|center_horizontal">
+
+        <!-- 玻璃本体：半透明圆角矩形，染色和高光边在代码里按昼夜设置 -->
+        <View
+            android:id="@+id/navGlass"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- 液态选中气泡：官方底栏没有实心圆泡（水滴本身就是指示器），v6 真机判定圆泡多余，藏掉 -->
+        <com.example.c001apk.view.LiquidIndicatorView
+            android:id="@+id/navIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_gravity="center_vertical"
+            android:visibility="gone" />
+
+        <!-- 跟着选中 tab 走的那枚玻璃滴，可以按住拖着换页。84dp：tab 中心离条左缘只有 47.5dp -->
+        <FrameLayout
+            android:id="@+id/navLensHost"
+            android:layout_width="84dp"
+            android:layout_height="56dp"
+            android:layout_gravity="center_vertical">
+
+            <View
+                android:id="@+id/navLens"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+        </FrameLayout>
+
+        <!-- 必须是最后一个孩子：图标不被任何玻璃盖住，同时由它统一收手势（含拖拽玻璃滴） -->
+        <com.example.c001apk.view.DragBottomNavigationView
+            android:id="@+id/bottomNav"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@android:color/transparent"
+            app:itemActiveIndicatorStyle="@style/NavNoActiveIndicator"
+            app:itemBackground="@android:color/transparent"
+            app:itemIconTint="@color/nav_item_tint"
+            app:itemTextColor="@color/nav_item_tint"
+            app:labelVisibilityMode="unlabeled"
+            app:menu="@menu/nav_menu" />
+
+    </FrameLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

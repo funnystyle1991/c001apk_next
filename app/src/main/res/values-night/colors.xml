@@ -3,4 +3,17 @@
     <color name="cover">#0DFFFFFF</color>
     <color name="advanced_menu_item_text_not_checked">#ECECEC</color>
     <color name="advanced_menu_item_text_checked">#232323</color>
+    <!-- 官方酷安暗色取色：页面 #101010、卡片 #121212；
+         底栏玻璃 v22 按官方深色截图实测改 #2F2F2F（比卡片亮一档，透 ~15% 内容色晕） -->
+    <color name="nav_unchecked">#FFFFFF</color>
+    <color name="nav_glass_tint">#2F2F2F</color>
+    <color name="nav_glass_stroke">#33FFFFFF</color>
+    <color name="bg_page">#101010</color>
+    <color name="bg_surface">#121212</color>
+    <color name="bg_surface_variant">#1E1E1E</color>
+    <color name="text_on_surface">#FFFFFF</color>
+    <color name="text_secondary">#999999</color>
+    <color name="outline">#33FFFFFF</color>
+    <color name="container">#1F1F1F</color>
+    <color name="on_container">#E6E6E6</color>
 </resources>

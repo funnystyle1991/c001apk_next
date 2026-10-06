@@ -11,4 +11,23 @@
     <color name="search_rank_1">#F5455C</color>
     <color name="search_rank_2">#FF9500</color>
     <color name="search_rank_3">#FFC107</color>
+    <!-- 官方酷安取色（暗色底栏视频帧：选中图标众数色），全站品牌色 -->
+    <color name="coolapk_brand">#009487</color>
+    <color name="coolapk_brand_deep">#13998A</color>
+    <color name="coolapk_brand_light">#5EBDB4</color>
+    <!-- 底栏：不跟主题走，永远官方配色 -->
+    <color name="nav_unchecked">#000000</color>
+    <color name="nav_glass_tint">#FFFFFF</color>
+    <!-- 发丝边：浅色霜玻璃用亮发丝提边，暗色黑胶囊用亮发丝 -->
+    <color name="nav_glass_stroke">#66FFFFFF</color>
+    <color name="nav_goo">#33009487</color>
+    <!-- 默认主题色板（仿官方中性灰） -->
+    <color name="bg_page">#F5F5F5</color>
+    <color name="bg_surface">#FFFFFF</color>
+    <color name="bg_surface_variant">#EEEEEE</color>
+    <color name="text_on_surface">#212121</color>
+    <color name="text_secondary">#666666</color>
+    <color name="outline">#1F000000</color>
+    <color name="container">#E0F2F0</color>
+    <color name="on_container">#004D40</color>
 </resources>

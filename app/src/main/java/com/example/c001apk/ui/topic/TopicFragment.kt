@@ -221,6 +221,10 @@ class TopicFragment : BasePagerFragment() {
         headerBinding.stats.text = stats.joinToString(" · ")
         headerBinding.stats.isVisible = stats.isNotEmpty()
 
+        // 简介放头部里（不放工具栏 subtitle：见 initBar 的注释）
+        headerBinding.intro.text = header.intro.orEmpty()
+        headerBinding.intro.isVisible = !header.intro.isNullOrEmpty()
+
         val avatars = header.avatars.take(3)
         listOf(headerBinding.avatar1, headerBinding.avatar2, headerBinding.avatar3)
             .forEachIndexed { index, imageView ->
@@ -294,7 +298,10 @@ class TopicFragment : BasePagerFragment() {
                 0
             )
         )
-        viewModel.subtitle?.let { binding.toolBar.subtitle = it }
+        // 简介不放工具栏 subtitle：CollapsingToolbarLayout 会把工具栏的 subtitle 收进
+        // 自己的折叠文字，并按「展开态」画在头部下沿（Material 1.14 的
+        // updateTitleFromToolbarIfNeeded），于是那行字直接压在头部卡片上。
+        // 现在简介画在头部卡片里（item_topic_header 的 intro），跟着头部一起淡出。
 
         // percent: 1 = 完全展开，0 = 完全收起
         binding.appBar.addOnOffsetChangedListener(object : AppBarLayoutStateChangeListener() {

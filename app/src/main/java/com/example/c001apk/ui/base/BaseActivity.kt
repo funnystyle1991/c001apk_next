@@ -43,6 +43,12 @@ abstract class BaseActivity<VB : ViewBinding> : MaterialActivity() {
     /**
      * 窗口在 theme 里是透明的（转场缩放 / 滑动时要能看见下层页），所以页面底色得由内容
      * 视图自己带；否则四周透出的是下层窗口甚至桌面。
+     *
+     * 关键是**什么时候解析**：rikkax 的 MaterialActivity 把「配色 / 夜间」overlay apply 到
+     * theme 上的时机晚于 onCreate（在 [onPostCreate]），所以这里不能只靠 onCreate 那一次
+     * ——那时读到的还是亮色 colorSurface，暗色模式下页面底色会一直停在浅色（详情页顶栏
+     * 是 `android:background="@null"`，会把这条错误底色直接暴露在状态栏区域）。
+     * 幂等，重复调用只是重设一次背景色。
      */
     private fun applyPageBackground() {
         if (!pageBackground) return
@@ -50,6 +56,12 @@ abstract class BaseActivity<VB : ViewBinding> : MaterialActivity() {
         content.setBackgroundColor(
             MaterialColors.getColor(content, com.google.android.material.R.attr.colorSurface)
         )
+    }
+
+    override fun onPostCreate(savedInstanceState: Bundle?) {
+        super.onPostCreate(savedInstanceState)
+        // 此时主题 overlay 已经落定，重解析一次才是当前明暗下的真色
+        applyPageBackground()
     }
 
     override fun onResume() {
@@ -77,6 +89,9 @@ abstract class BaseActivity<VB : ViewBinding> : MaterialActivity() {
         if (!ThemeUtils.isSystemAccent)
             theme.applyStyle(ThemeUtils.colorThemeStyleRes, true)
         theme.applyStyle(ThemeUtils.getNightThemeStyleRes(this), true) //blackDarkMode
+        // overlay 刚落定，把页面底色跟着刷成新明暗下的 colorSurface（content 还没建就跳过，
+        // onPostCreate 会兜底）
+        applyPageBackground()
     }
 
     override fun finish() {

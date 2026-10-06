@@ -285,9 +285,8 @@ class AboutActivity : AbsAboutActivity() {
     }
 
     override fun finish() {
-        // 内容先滑出，动画结束后 TransitionAnim 会再调一次 finish()，届时标记挡住重入
-        if (TransitionAnim.startExit(this)) return
         super.finish()
+        TransitionAnim.applyReturn(this)
     }
 
 }

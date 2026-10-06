@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.res.Resources
 import android.graphics.Color
 import android.os.Bundle
-import android.view.View
 import androidx.core.view.isVisible
 import com.example.c001apk.R
 import com.google.android.material.color.MaterialColors
@@ -27,9 +26,6 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         setContentView(binding.root)
 
         applyPageBackground()
-        // 转场：slide / none 由系统播 window 动画；其余类型才由内容视图播（见 TransitionAnim.useWindowAnim）
-        TransitionAnim.register(this, pageBackground)
-        if (TransitionAnim.consumeEnter()) TransitionAnim.playEnter(this)
 
         getSavedData(savedInstanceState)
 
@@ -38,29 +34,28 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         initError()
     }
 
-    override fun onDestroy() {
-        TransitionAnim.unregister(this)
-        super.onDestroy()
-    }
-
-    /** 是否由内容视图自带页面底色；本身就是半透明浮层的页面置 false */
+    /** 是否给窗口上页面底色；本身就是半透明浮层的页面置 false */
     protected open val pageBackground: Boolean = true
 
     /**
-     * 窗口在 theme 里是透明的（转场缩放 / 滑动时要能看见下层页），所以页面底色得由内容
-     * 视图自己带；否则四周透出的是下层窗口甚至桌面。
+     * 页面底色由**窗口**提供（不再是 `android.R.id.content`）：转场动画作用在整个 window
+     * surface 上，窗口必须不透明（见 themes.xml 的 `Theme.C001apk`），底色也就得由窗口自己带。
      *
      * 关键是**什么时候解析**：rikkax 的 MaterialActivity 把「配色 / 夜间」overlay apply 到
      * theme 上的时机晚于 onCreate（在 [onPostCreate]），所以这里不能只靠 onCreate 那一次
      * ——那时读到的还是亮色 colorSurface，暗色模式下页面底色会一直停在浅色（详情页顶栏
      * 是 `android:background="@null"`，会把这条错误底色直接暴露在状态栏区域）。
      * 幂等，重复调用只是重设一次背景色。
+     *
+     * 用 `peekDecorView()` 而不是 `window.decorView`：后者会把 DecorView 立刻创建出来，
+     * 而 [onApplyUserThemeResource] 正是在 DecorView 创建过程中回调的，读它会把这条路径
+     * 递归进去。Decor 还没建就跳过，[onPostCreate] 会兜底。
      */
     private fun applyPageBackground() {
         if (!pageBackground) return
-        val content = window.findViewById<View>(android.R.id.content) ?: return
-        content.setBackgroundColor(
-            MaterialColors.getColor(content, com.google.android.material.R.attr.colorSurface)
+        val decor = window.peekDecorView() ?: return
+        decor.setBackgroundColor(
+            MaterialColors.getColor(decor, com.google.android.material.R.attr.colorSurface)
         )
     }
 
@@ -143,17 +138,14 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         if (!ThemeUtils.isSystemAccent)
             theme.applyStyle(ThemeUtils.colorThemeStyleRes, true)
         theme.applyStyle(ThemeUtils.getNightThemeStyleRes(this), true) //blackDarkMode
-        // overlay 刚落定，把页面底色跟着刷成新明暗下的 colorSurface（content 还没建就跳过，
+        // overlay 刚落定，把页面底色跟着刷成新明暗下的 colorSurface（Decor 还没建就跳过，
         // onPostCreate 会兜底）
         applyPageBackground()
     }
 
     override fun finish() {
-        // 内容先滑出，动画结束后 TransitionAnim 会再调一次 finish()，届时标记挡住重入
-        if (TransitionAnim.startExit(this)) return
         super.finish()
-        // window 级模式（slide / none）的返回动画：系统合成器驱动，免疫主线程卡顿
-        TransitionAnim.applyWindowExit(this)
+        TransitionAnim.applyReturn(this)
     }
 
 }

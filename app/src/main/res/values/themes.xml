@@ -34,13 +34,18 @@
         -->
         <item name="toolbarStyle">@style/Widget.C001apk.Toolbar</item>
         <!--
-          转场要「两层同框」：push 时旧页退半屏 + 缩到 0.7，pop 时上层滑走露出下层，
-          都要求窗口本身透明，否则上层窗口把下层挡死，内容级动画只能在自家背景上动。
-          窗口透明之后页面底色由 android.R.id.content 自带
-          （BaseActivity / BaseViewActivity 的 applyPageBackground），不会再透出桌面。
+          窗口必须**不透明**：转场动画交给系统在 window surface 上播
+          （`ActivityOptions.makeCustomAnimation` / `overridePendingTransition`），
+          不透明窗口才能走系统转场的快路径。一旦 `windowIsTranslucent=true`，窗口退化成
+          逐帧透明合成，重页面（详情页首帧 85~200ms）上就是「一卡一卡」——这两行是
+          093148bf 为内容级动画加的，2026-10-06 按实测已撤掉，
+          排查全文见 tools/DEBUG_transition_anim.md。
+
+          窗口底色 = 页面底色（colorSurface）：全屏窗口的四角由系统按屏幕物理圆角自动裁，
+          不需要应用自己 clipToOutline。半透明浮层页（回复页）走 @style/AppThemeTranslucent，
+          不受这里影响。
         -->
-        <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
     </style>
 
     <!-- API<29：形态继承 M3E 工具栏，只改背景色 -->

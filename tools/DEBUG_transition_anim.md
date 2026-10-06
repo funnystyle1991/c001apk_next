@@ -1,10 +1,11 @@
 # 水平转场动画排查记录（slide / std / 400ms）
 
 > 用途：把「进入转场下层页到底有没有播动画」这条排查链路固化下来，后续不必重跑实验。
-> 状态：**已定位并修复**。
+> 状态：**已定位并修复，但 §5 的修法后来又被整体推翻过一次——先读 §9**。
 > 根因：`slide` 也被挪进了内容级动画，而内容级动画由**应用主线程**驱动，重页面首帧卡顿会把
 > 动画帧整个吞掉；`Animation` 又是墙钟驱动，下一帧画出来进度已到头 → 「一帧滑走 / 一帧白屏」。
-> 修法：纯位移的 `slide` 回到 **window 级**（由系统合成器驱动）。详见 §0.5 / §5 / §8。
+> 最终修法：**整个转场回到 window 级 + 窗口不透明**（即回到 `6c2ce299` 的写法），
+> 不是 §5 那种「只把 slide 挪回 window 级」的混合方案。详见 §9。
 
 ---
 
@@ -326,4 +327,51 @@ adb shell "screenrecord --time-limit 8 --bit-rate 20000000 /sdcard/t.mp4"
 | 10 | `read_lints` 三个文件 | 0 diagnostic（注意本机无 SDK，属假绿灯，真正验证交 CI） |
 
 更新前的设备侧实验（t2~t7、gfxinfo A/B、反解位移）见 §4，那是收敛到「驱动方式」这个结论的依据。
+
+---
+
+## 9. 结论修正（2026-10-06 晚）：整体回退到 window 级，关键是**窗口不透明**
+
+§5 那版只把 `slide` / `none` 挪回 window 级、`fade` / `parallax` 留内容级，并且**保留了
+`093148bf` 加在 `Theme.C001apk` 上的 `windowIsTranslucent=true` + 透明 `windowBackground`**。
+用户实测：**比原来更糟，变成「一卡一卡」**。
+
+### 9.1 三次实测的完整对照
+
+| 版本 | 驱动方式 | 窗口 | 实测观感 |
+|---|---|---|---|
+| `6c2ce299`（用户指定要保留的写法） | 全 window 级 | **不透明** | 顺 |
+| `7aa7642a`（§5 改动之前） | 全内容级 | 透明 | 一帧滑走 / 一帧白屏（重页面） |
+| `e4ed53e0`（§5 那版） | slide/none → window，其余内容级 | **透明** | 一卡一卡 |
+
+三行唯一的变量组合说明：**window 级动画要顺，前提是窗口不透明**。`windowIsTranslucent=true`
+会让转场退化成逐帧透明合成，拿不到不透明窗口那条快路径——这一条比「谁驱动动画」还关键，
+§5 的判据（只看会不会露出窗口之外）漏掉了它。
+
+### 9.2 最终落法
+
+- `TransitionAnim.kt`：只留 `enterOptions` / `enterOptionsCompat`（恒传 `res("rin")` / `res("lout")`）、
+  `applyReturn`（`overridePendingTransition(res("lin"), res("rout"))`）、`fragment*`。
+  内容级那套（`register` / `playEnter` / `playReenter` / `consumeEnter` / `consumeReenter` /
+  `startExit` / `applyWindowExit` / `refreshBackdrops` / `animateContent` / `runOnFirstFrame` /
+  `applyRoundClip` / 页面栈）**全部删掉**。
+- 两个基类：删掉 `register` / `consumeEnter` / `playEnter` / `unregister` / `consumeReenter` /
+  `playReenter` / `onDestroy`；`finish()` = `super.finish()` + `applyReturn(this)`。
+- `Theme.C001apk`：**删掉** `windowIsTranslucent=true` + 透明 `windowBackground`，改成
+  `android:windowBackground = ?attr/colorSurface`。
+
+### 9.3 「背景」和「圆角」在 window 级下怎么落
+
+- **背景**：窗口底色就是页面底色（上面那个 `windowBackground`），页面根的 `@null` 背景直接透出它。
+  代码侧由 `applyPageBackground()` 二次刷新（`peekDecorView()` 取 Decor、设 `colorSurface`），
+  兜住 rikkax 的 overlay 晚于 onCreate 生效、导致暗色下底色停在浅色的问题——**这条保留**。
+  注意它现在作用在 **DecorView** 上，不再是 `android.R.id.content`。
+- **圆角**：全屏窗口的四角由系统按屏幕物理圆角自动裁，应用不用 `clipToOutline`。
+  **`parallax` 缩放旧窗口时窗口不再全屏，四角就是直角**——这是这套写法的固有代价；
+  要圆角就只能回到「内容级 + 透明窗口」，而那条路已被实测否决。用户当前档位是 `slide`，不受影响。
+
+### 9.4 验收提醒
+
+- window 级动画的前提就是「页面照旧卡、动画照样顺」，**不要**再用 `gfxinfo` 的 Janky 百分比验收。
+- 别为了「统一实现」把纯位移挪回内容级，也别为了「圆角 / 垫底色」把窗口改回透明。
 

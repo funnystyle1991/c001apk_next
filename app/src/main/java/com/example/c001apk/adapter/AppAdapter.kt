@@ -280,7 +280,7 @@ class AppAdapter(
                     binding.followBtn.setTextColor(
                         MaterialColors.getColor(
                             itemView.context,
-                            com.google.android.material.R.attr.colorPrimary,
+                            androidx.appcompat.R.attr.colorPrimary,
                             0
                         )
                     )
@@ -458,7 +458,7 @@ class AppAdapter(
                     )
                     textSize = 14f
                     setTextColor(
-                        MaterialColors.getColor(context, com.google.android.material.R.attr.colorPrimary, 0)
+                        MaterialColors.getColor(context, androidx.appcompat.R.attr.colorPrimary, 0)
                     )
                     text = row.price?.let { "¥$it" }.orEmpty()
                 }
@@ -889,7 +889,7 @@ class AppAdapter(
                             holder.binding.followBtn.setTextColor(
                                 MaterialColors.getColor(
                                     holder.itemView.context,
-                                    com.google.android.material.R.attr.colorPrimary,
+                                    androidx.appcompat.R.attr.colorPrimary,
                                     0
                                 )
                             )

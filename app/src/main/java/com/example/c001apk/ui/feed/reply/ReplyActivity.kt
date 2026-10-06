@@ -303,7 +303,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                         setBackgroundColor(
                             MaterialColors.getColor(
                                 this,
-                                com.google.android.material.R.attr.colorPrimary,
+                                androidx.appcompat.R.attr.colorPrimary,
                                 0
                             )
                         )
@@ -410,7 +410,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                 binding.captchaText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         this,
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -611,7 +611,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                                 else
                                     MaterialColors.getColor(
                                         this@ReplyActivity,
-                                        com.google.android.material.R.attr.colorControlNormal, 0
+                                        androidx.appcompat.R.attr.colorControlNormal, 0
                                     )
                             )
                         }
@@ -659,7 +659,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
             highlightColor = ColorUtils.setAlphaComponent(
                 MaterialColors.getColor(
                     this@ReplyActivity,
-                    com.google.android.material.R.attr.colorPrimaryDark,
+                    androidx.appcompat.R.attr.colorPrimaryDark,
                     0
                 ), 128
             )
@@ -672,7 +672,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                     binding.publish.setTextColor(
                         MaterialColors.getColor(
                             this@ReplyActivity,
-                            com.google.android.material.R.attr.colorPrimary,
+                            androidx.appcompat.R.attr.colorPrimary,
                             0
                         )
                     )
@@ -729,7 +729,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         this,
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )

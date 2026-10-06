@@ -153,7 +153,7 @@ class TopicFragment : BasePagerFragment() {
     private fun bindFollowBtn(followed: Boolean) {
         val header = headerBinding ?: return
         val accent = MaterialColors.getColor(
-            requireContext(), com.google.android.material.R.attr.colorPrimary, 0
+            requireContext(), androidx.appcompat.R.attr.colorPrimary, 0
         )
         val onAccent = MaterialColors.getColor(
             requireContext(), com.google.android.material.R.attr.colorOnPrimary, 0

@@ -94,7 +94,7 @@ class FeedVoteFragment : BaseFragment<FragmentFeedVoteBinding>() {
             setColorSchemeColors(
                 MaterialColors.getColor(
                     requireContext(),
-                    com.google.android.material.R.attr.colorPrimary,
+                    androidx.appcompat.R.attr.colorPrimary,
                     0
                 )
             )

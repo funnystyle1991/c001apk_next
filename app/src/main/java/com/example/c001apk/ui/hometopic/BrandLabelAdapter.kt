@@ -54,7 +54,7 @@ class BrandLabelAdapter(
         if (selectedPosition == position) {
             val color = MaterialColors.getColor(
                 holder.itemView.context,
-                com.google.android.material.R.attr.colorPrimary,
+                androidx.appcompat.R.attr.colorPrimary,
                 0
             )
             holder.title.setTextColor(color)
@@ -66,7 +66,7 @@ class BrandLabelAdapter(
             holder.title.setTextColor(
                 MaterialColors.getColor(
                     holder.itemView.context,
-                    com.google.android.material.R.attr.colorControlNormal,
+                    androidx.appcompat.R.attr.colorControlNormal,
                     0
                 )
             )

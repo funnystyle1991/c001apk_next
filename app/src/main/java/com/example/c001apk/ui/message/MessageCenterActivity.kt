@@ -116,7 +116,7 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
             setColorSchemeColors(
                 MaterialColors.getColor(
                     this@MessageCenterActivity,
-                    com.google.android.material.R.attr.colorPrimary,
+                    androidx.appcompat.R.attr.colorPrimary,
                     0
                 )
             )

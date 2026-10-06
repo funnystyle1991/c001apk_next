@@ -189,7 +189,7 @@ class UserPagerFragment : BasePagerFragment() {
                 ForegroundColorSpan(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorControlNormal,
+                        androidx.appcompat.R.attr.colorControlNormal,
                         0
                     )
                 ),

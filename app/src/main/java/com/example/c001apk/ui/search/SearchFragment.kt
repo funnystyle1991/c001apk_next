@@ -204,7 +204,7 @@ class SearchFragment : BaseFragment<FragmentSearchBinding>(), IOnItemClickListen
     private fun updateHotTabColors(selected: Int) {
         val selectedColor = MaterialColors.getColor(
             binding.hotTabLayout,
-            com.google.android.material.R.attr.colorPrimary,
+            androidx.appcompat.R.attr.colorPrimary,
             0
         )
         val normalColor = MaterialColors.getColor(
@@ -252,7 +252,7 @@ class SearchFragment : BaseFragment<FragmentSearchBinding>(), IOnItemClickListen
             highlightColor = ColorUtils.setAlphaComponent(
                 MaterialColors.getColor(
                     requireContext(),
-                    com.google.android.material.R.attr.colorPrimaryDark,
+                    androidx.appcompat.R.attr.colorPrimaryDark,
                     0
                 ), 128
             )

@@ -32,8 +32,10 @@ object SpannableStringBuilderUtil {
         text: String,
         size: Float,
         imgList: List<String>?,
-        showMoreReply: (() -> Unit)? = null,
-        linkAsChip: Boolean = false
+        // 注意：新参数一律加在这两个之前。showMoreReply 必须留在最后，
+        // FeedReplyAdapter 是用尾随 lambda 调它的（尾随 lambda 只会绑到最后一个参数上）。
+        linkAsChip: Boolean = false,
+        showMoreReply: (() -> Unit)? = null
     ): SpannableStringBuilder {
         // 代码块复制按钮的占位符可能在文本被二次渲染时残留，先剔除
         val src = text.replace(PLACEHOLDER, "")

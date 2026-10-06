@@ -44,12 +44,14 @@
         android:visibility="gone"
         tools:visibility="visible">
 
+        <!-- trackStopIndicatorSize=0dp：同 fragment_mine.xml，M3E 样式默认会在轨道末端点一个光点 -->
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/progress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:max="100"
-            app:trackCornerRadius="4dp" />
+            app:trackCornerRadius="4dp"
+            app:trackStopIndicatorSize="0dp" />
 
         <LinearLayout
             android:layout_width="match_parent"

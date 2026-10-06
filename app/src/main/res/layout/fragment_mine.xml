@@ -126,6 +126,12 @@
                         tools:ignore="NestedWeights"
                         tools:text="500/1000" />
 
+                    <!--
+                        等级进度条。trackStopIndicatorSize 必须显式关掉：M3E 的
+                        linearProgressIndicatorStyle（见 themes_m3e.xml）会给轨道末端画一个
+                        "停止指示点"，直径 min(尺寸, 轨道厚度)=5dp、颜色亮，在这条 5dp 细轨上
+                        就是末端一个跟进度无关的光点。组件默认值是 0（不画），别把这个覆盖删了。
+                    -->
                     <com.google.android.material.progressindicator.LinearProgressIndicator
                         android:id="@+id/progress"
                         android:layout_width="0dp"
@@ -137,6 +143,7 @@
                         app:layout_constraintStart_toEndOf="@id/avatar"
                         app:layout_constraintTop_toBottomOf="@id/level"
                         app:trackCornerRadius="20dp"
+                        app:trackStopIndicatorSize="0dp"
                         app:trackThickness="5dp"
                         tools:max="1000"
                         tools:progress="500" />

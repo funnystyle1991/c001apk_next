@@ -111,18 +111,30 @@
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="15sp"
                     android:visibility="@{MessageKit.hasPic(data) ? View.GONE : View.VISIBLE}"
+                    app:linkAsChip="true"
                     tools:text="在吗" />
 
                 <!--
                     图片消息正文是空的，这一行换成图片。地址不能直接用 message_pic（CDN 要 auth_key），
                     得先问 showImage 换签名地址，换完由 adapter 塞进来（见 MessageDetailAdapter）。
+
+                    宽高：adapter 量到图片真实像素时会按比例把 layoutParams 定死（量到了就不跳）；
+                    量不到时这里必须自己能撑住 —— adjustViewBounds=true + wrap_content + 上限，
+                    让 ImageView 直接跟着解码出来的位图比例走。**别写死方形尺寸**，
+                    否则一量不到就退成方块（之前就是这么坏的）。
+                    点一下由 adapter 交给 ImageUtil.startChatBigImgViewSimple 全屏看。
                 -->
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/picLeft"
-                    android:layout_width="180dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:adjustViewBounds="true"
-                    android:minHeight="60dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:maxHeight="260dp"
+                    android:maxWidth="220dp"
+                    android:minHeight="72dp"
+                    android:minWidth="72dp"
                     android:scaleType="fitCenter"
                     android:visibility="@{MessageKit.hasPic(data) ? View.VISIBLE : View.GONE}"
                     app:shapeAppearance="@style/chatImageStyle"
@@ -168,14 +180,21 @@
                     android:textColor="?attr/colorOnPrimaryContainer"
                     android:textSize="15sp"
                     android:visibility="@{MessageKit.hasPic(data) ? View.GONE : View.VISIBLE}"
+                    app:linkAsChip="true"
                     tools:text="在的" />
 
+                <!-- 尺寸与点击行为同 picLeft：能定死就按图片比例定死，定不死靠 adjustViewBounds 自己撑 -->
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/picRight"
-                    android:layout_width="180dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:adjustViewBounds="true"
-                    android:minHeight="60dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:maxHeight="260dp"
+                    android:maxWidth="220dp"
+                    android:minHeight="72dp"
+                    android:minWidth="72dp"
                     android:scaleType="fitCenter"
                     android:visibility="@{MessageKit.hasPic(data) ? View.VISIBLE : View.GONE}"
                     app:shapeAppearance="@style/chatImageStyle"

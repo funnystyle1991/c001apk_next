@@ -42,6 +42,21 @@
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp" />
 
+        <!--
+            话题 / 机型简介。原先塞在工具栏的 subtitle 里，而 CollapsingToolbarLayout
+            会把工具栏的 subtitle 收进自己的折叠文字、按展开态画在头部下方，
+            于是这行字直接压在头部卡片上（两块文字重叠）。
+        -->
+        <TextView
+            android:id="@+id/intro"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp" />
+
         <LinearLayout
             android:id="@+id/followRow"
             android:layout_width="wrap_content"

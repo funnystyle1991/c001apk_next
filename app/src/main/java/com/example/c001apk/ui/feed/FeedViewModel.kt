@@ -73,6 +73,12 @@ class FeedViewModel @AssistedInject constructor(
 
     var feedDataList: MutableList<HomeFeedResponse.Data>? = null
     var articleList: MutableList<FeedArticleContentBean.Data>? = null
+
+    /**
+     * 图文详情的头部项数据（作者行 + 封面）在 adapter 里的位置和 [feedDataList] 的首项等价：
+     * 动态把作者行并进内容卡，图文则单独铺一项在最上面。非图文时为 null。
+     */
+    var articleHeader: HomeFeedResponse.Data? = null
     var articleMsg: String? = null
     var articleDateLine: Long? = null
     private val feedTopReplyList = ArrayList<TotalReplyResponse.Data>()
@@ -89,8 +95,10 @@ class FeedViewModel @AssistedInject constructor(
                         if (response.message != null) {
                             toastText.postValue(Event(response.message))
                         } else {
-                            feedDataList?.getOrNull(0)?.userAction?.followAuthor =
-                                if (followAuthor == 1) 0 else 1
+                            val newState = if (followAuthor == 1) 0 else 1
+                            feedDataList?.getOrNull(0)?.userAction?.followAuthor = newState
+                            // 图文没有 feedDataList，作者行挂在 articleHeader（同一份 feedData）上
+                            feedData?.userAction?.followAuthor = newState
                             feedUserState.postValue(Event(true))
                         }
                     } else {
@@ -131,16 +139,28 @@ class FeedViewModel @AssistedInject constructor(
     }
 
     fun fetchFeedReply() {
+        // 详情和评论首屏是并发发的：详情页"列表项直出首屏"那条路径里 Activity 不等详情就先建了
+        // Fragment，于是评论请求和详情请求同时在飞。而 isRefreshing / isLoadMore 是**共用**的分页
+        // 标志，只要半路有人把它俩清掉（详情请求曾经就会，见 fetchFeedData），评论回来时就判到自己
+        // "既不是刷新也不是加载更多"，整批数据被丢掉——表现是进页面评论区空着，下拉刷新才有。
+        // 起请求时把这次的意图固定下来，回调里不再读共享标志，谁清都不影响这一批数据。
+        val isRefreshRequest = isRefreshing
+        val isLoadMoreRequest = isLoadMore
         viewModelScope.launch(Dispatchers.IO) {
             networkRepo.getFeedContentReply(
                 id, listType, page, firstItem, lastItem, discussMode,
                 feedType.toString(), blockStatus, fromFeedAuthor
             )
                 .onStart {
-                    if (isLoadMore)
+                    if (isLoadMoreRequest)
                         footerState.postValue(FooterState.Loading)
                 }
                 .collect { result ->
+                    // 复位放在最前面，别放尾部：下面每个 return@collect 都是一个出口，
+                    // 漏掉一次（接口回 message 那种）isRefreshing 就永远卡在 true，
+                    // loadMore 的守卫一直被挡住 —— 滚到底再也不会加载，只能下拉刷新
+                    isRefreshing = false
+                    isLoadMore = false
                     val feedReplyList = feedReplyData.value?.toMutableList() ?: ArrayList()
                     val data = result.getOrNull()
                     if (data != null) {
@@ -151,12 +171,12 @@ class FeedViewModel @AssistedInject constructor(
                             if (firstItem == null)
                                 firstItem = data.data.first().id
                             lastItem = data.data.last().id
-                            if (isRefreshing) {
+                            if (isRefreshRequest) {
                                 feedReplyList.clear()
                                 if (listType == "lastupdate_desc" && feedTopReplyList.isNotEmpty())
                                     feedReplyList.addAll(feedTopReplyList)
                             }
-                            if (isRefreshing || isLoadMore) {
+                            if (isRefreshRequest || isLoadMoreRequest) {
                                 data.data.forEach { reply ->
                                     if (reply.entityType == "feed_reply") {
                                         if (listType == "lastupdate_desc"
@@ -195,7 +215,7 @@ class FeedViewModel @AssistedInject constructor(
                             footerState.postValue(FooterState.LoadingDone)
                         } else if (data.data?.isEmpty() == true) {
                             isEnd = true
-                            if (isRefreshing)
+                            if (isRefreshRequest)
                                 feedReplyData.postValue(emptyList())
                             footerState.postValue(FooterState.LoadingEnd(LOADING_END))
                         }
@@ -203,18 +223,30 @@ class FeedViewModel @AssistedInject constructor(
                         footerState.postValue(FooterState.LoadingError(LOADING_FAILED))
                         result.exceptionOrNull()?.printStackTrace()
                     }
-                    isRefreshing = false
-                    isLoadMore = false
                 }
         }
     }
 
 
     var feedData: HomeFeedResponse.Data? = null
+
+    /**
+     * 首屏是列表项直出的（详情还没回来）。列表项不下的 `userAction.followAuthor` 等字段
+     * 在 [fetchFeedData] 回来前一律当"未知"，由 UI 转圈占位，不能按默认值渲染。
+     */
+    var isPreview = false
+
+    /** 详情回填后通知 Fragment 换掉首屏列表（adapter 持有的是旧 list 引用） */
+    val feedDataUpdateState = MutableLiveData<Event<Boolean>>()
+
     fun fetchFeedData() {
         viewModelScope.launch(Dispatchers.IO) {
             networkRepo.getFeedContent(id, frid)
                 .collect { result ->
+                    // 这一支**不动** isRefreshing / isLoadMore：它俩是评论分页的标志，详情请求跟分页
+                    // 没关系。而详情和评论首屏是并发发的（列表项直出首屏那条路径），详情回来顺手把
+                    // 标志清掉，评论请求就会判到自己"既不是刷新也不是加载更多"整批丢掉；预取那类
+                    // 守卫也会误判成"没人在请求"而重复发一页
                     val feed = result.getOrNull()
                     if (feed != null) {
                         if (feed.message != null) {
@@ -222,15 +254,15 @@ class FeedViewModel @AssistedInject constructor(
                             return@collect
                         } else if (feed.data != null) {
                             feedData = feed.data
+                            isPreview = false
                             handleFeedData()
                             activityState.postValue(LoadingState.LoadingDone)
+                            feedDataUpdateState.postValue(Event(true))
                         }
                     } else {
                         activityState.postValue(LoadingState.LoadingFailed(LOADING_FAILED))
                         result.exceptionOrNull()?.printStackTrace()
                     }
-                    isRefreshing = false
-                    isLoadMore = false
                 }
         }
     }
@@ -398,6 +430,11 @@ class FeedViewModel @AssistedInject constructor(
                     if (data != null) {
                         if (data.message != null) {
                             footerState.postValue(FooterState.LoadingError(data.message))
+                            // 左选项那一支本来是"接着发右选项、由右选项收尾"把标志收掉的，
+                            // 这里不再往下走，就得自己收：漏掉的话 isRefreshing 永远为真，
+                            // loadMore 的守卫一直被挡，滚到底再也不会加载
+                            isRefreshing = false
+                            isLoadMore = false
                             return@collect
                         } else if (!data.data.isNullOrEmpty()) {
                             if (isRefreshing) {
@@ -451,6 +488,9 @@ class FeedViewModel @AssistedInject constructor(
                     if (data != null) {
                         if (data.message != null) {
                             footerState.postValue(FooterState.LoadingError(data.message))
+                            // 同 fetchVoteCommentType0：这条出口不补标志，翻页就再也发不出去了
+                            isRefreshing = false
+                            isLoadMore = false
                             return@collect
                         } else if (!data.data.isNullOrEmpty()) {
                             lastItem = data.data.last().id
@@ -495,6 +535,9 @@ class FeedViewModel @AssistedInject constructor(
                     if (data != null) {
                         if (data.message != null) {
                             footerState.postValue(FooterState.LoadingError(data.message))
+                            // 同 fetchVoteCommentType0：这条出口不补标志，答主列表就再也翻不动了
+                            isRefreshing = false
+                            isLoadMore = false
                             return@collect
                         } else if (!data.data.isNullOrEmpty()) {
                             lastItem = data.data.last().id
@@ -565,23 +608,20 @@ class FeedViewModel @AssistedInject constructor(
             feedTypeName = data.feedTypeName
             feedType = data.feedType
 
+            // 列表项不下发 message_raw_output（Kotlin 侧是 null，不等于字符串 "null"，单看原条件
+            // 会放行并 Gson 出空正文）→ 预览态不解析正文，但排版照图文铺（作者行 + 封面 + 标题），
+            // 详情回来只在其下补正文，首屏不会先出卡片再整块换成图文。
             if (feedType in listOf("feedArticle", "trade")
-                && data.messageRawOutput != "null"
+                && (isPreview || data.messageRawOutput != "null")
             ) {
                 articleMsg =
                     if ((data.message?.length ?: 0) > 150)
                         data.message?.substring(0, 150)
                     else data.message
                 articleDateLine = data.dateline
+                // 作者行和封面在头部项里（见 FeedDataAdapter.ArticleHeaderViewHolder），
+                // 所以正文列表从标题开始
                 articleList = ArrayList<FeedArticleContentBean.Data>().also {
-                    if (data.messageCover?.isNotEmpty() == true) {
-                        it.add(
-                            FeedArticleContentBean.Data(
-                                "image", null, data.messageCover,
-                                null, null, null, null
-                            )
-                        )
-                    }
                     if (data.messageTitle?.isNotEmpty() == true) {
                         it.add(
                             FeedArticleContentBean.Data(
@@ -590,20 +630,32 @@ class FeedViewModel @AssistedInject constructor(
                             )
                         )
                     }
-                    val feedRaw = """{"data":${data.messageRawOutput}}"""
-                    val feedJson: FeedArticleContentBean = Gson().fromJson(
-                        feedRaw, FeedArticleContentBean::class.java
-                    )
-                    feedJson.data?.forEach { item ->
-                        if (item.type in listOf("text", "image", "shareUrl"))
-                            it.add(item)
+                    if (!isPreview) {
+                        val feedRaw = """{"data":${data.messageRawOutput}}"""
+                        val feedJson: FeedArticleContentBean = Gson().fromJson(
+                            feedRaw, FeedArticleContentBean::class.java
+                        )
+                        feedJson.data?.forEach { item ->
+                            if (item.type in listOf("text", "image", "shareUrl"))
+                                it.add(item)
+                        }
                     }
-                    itemCount = it.size + 1
+                    // HeaderAdapter(1) + 图文头部项(1) + 正文块
+                    itemCount = it.size + 2
                 }
+                articleHeader = data
+                // 分支必须互斥：两条分支共用一个 adapter，而 FeedDataAdapter.getItemCount 在
+                // 两边同时非空时返回 0。预览态和详情回填都走这一支，feedDataList 不清掉就会让
+                // 图文整块变 0 高度、只剩评论区
+                feedDataList = null
             } else {
                 feedDataList = ArrayList<HomeFeedResponse.Data>().also {
                     it.add(data)
                 }
+                articleList = null
+                articleHeader = null
+                // HeaderAdapter(1) + 内容卡(1)
+                itemCount = 2
             }
             if (!data.topReplyRows.isNullOrEmpty()) {
                 isTop = true

@@ -35,6 +35,7 @@ import com.example.c001apk.util.CacheDataManager
 import com.example.c001apk.util.IntentUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.SzlmIdPrompt
+import com.example.c001apk.util.TransitionAnim
 import com.example.c001apk.util.doOnMainThreadIdle
 import com.example.c001apk.util.setBottomPaddingSpace
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -115,6 +116,9 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             return when (key) {
                 "darkTheme" -> PrefManager.darkTheme.toString()
                 "themeColor" -> PrefManager.themeColor
+                "animCurve" -> PrefManager.animCurve
+                "animType" -> PrefManager.animType
+                "animDuration" -> PrefManager.animDuration.toString()
                 else -> throw IllegalArgumentException("Invalid key: $key")
             }
         }
@@ -123,6 +127,11 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             when (key) {
                 "darkTheme" -> PrefManager.darkTheme = value?.toInt() ?: 0
                 "themeColor" -> PrefManager.themeColor = value ?: "MATERIAL_DEFAULT"
+                "animCurve" -> PrefManager.animCurve =
+                    value ?: TransitionAnim.CURVE_M3_EMPHASIZED
+
+                "animType" -> PrefManager.animType = value ?: TransitionAnim.TYPE_SLIDE
+                "animDuration" -> PrefManager.animDuration = value?.toIntOrNull() ?: 300
                 else -> throw IllegalArgumentException("Invalid key: $key")
             }
         }

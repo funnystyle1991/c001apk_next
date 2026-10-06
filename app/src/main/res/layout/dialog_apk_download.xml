@@ -44,12 +44,16 @@
         android:visibility="gone"
         tools:visibility="visible">
 
+        <!-- 同 fragment_mine.xml：间隙 0 + 内侧圆角 0 让指示器与轨道连成一条，并去掉末端停止指示点 -->
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/progress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:max="100"
-            app:trackCornerRadius="4dp" />
+            app:indicatorTrackGapSize="0dp"
+            app:trackCornerRadius="4dp"
+            app:trackInnerCornerRadius="0dp"
+            app:trackStopIndicatorSize="0dp" />
 
         <LinearLayout
             android:layout_width="match_parent"

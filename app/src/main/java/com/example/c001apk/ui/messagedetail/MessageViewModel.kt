@@ -93,7 +93,10 @@ class MessageViewModel @AssistedInject constructor(
             when (type) {
                 "atMe" -> url = "/v6/notification/atMeList"
                 "atCommentMe" -> url = "/v6/notification/atCommentMeList"
-                "feedLike" -> url = "/v6/notification/feedLikeList"
+                // 「我收到的赞」也换到 V18 那条流：老接口下发的正文是**被赞的动态**、
+                // 点赞人藏在 likeUsername 里，渲染侧漏读一处，整页就显示成「我自己的动态」；
+                // V18 的 likeList 把点赞人直接放在 from_* 上（NetworkRepo 负责归一化）。
+                "feedLike" -> url = NotificationV18Kit.LIKE_URL
                 "contactsFollow" -> url = "/v6/notification/contactsFollowList"
                 // 「我的回复」（别人回复我的评论）走官方现在在用的 V18 统一通知流：
                 // 老 /v6/notification/list 一页 20 条里 15 条是小秘书、而且一条
@@ -124,6 +127,10 @@ class MessageViewModel @AssistedInject constructor(
                                 loadingState.postValue(LoadingState.LoadingError(feed.message))
                             else
                                 footerState.postValue(FooterState.LoadingError(feed.message))
+                            // 这条出口在尾部复位之前就 return 了，接口一回错误信息，
+                            // isRefreshing 就永远是真的、翻页再也发不出去（同 FeedViewModel）
+                            isRefreshing = false
+                            isLoadMore = false
                             return@collect
                         } else if (!feed.data.isNullOrEmpty()) {
                             lastItem = feed.data.last().id

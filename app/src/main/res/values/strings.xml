@@ -22,6 +22,10 @@
     <string name="dark_theme">深色主题</string>
     <string name="settings_pure_black_dark_theme">纯黑主题</string>
     <string name="settings_pure_black_dark_theme_summary">当深色主题启用时使用纯黑主题</string>
+    <!-- 水平转场动画实验项（临时脚手架，见 util/TransitionAnim.kt） -->
+    <string name="settings_transition_curve">转场曲线</string>
+    <string name="settings_transition_type">转场类型</string>
+    <string name="settings_transition_speed">转场速度</string>
     <string name="dark_theme_off">总是关闭</string>
     <string name="dark_theme_on">总是开启</string>
     <string name="follow_system">跟随系统</string>
@@ -88,6 +92,17 @@
     <string name="about_view_source_code"><![CDATA[在 %1$s 查看源码]]></string>
     <string name="others">其他</string>
     <string name="about_open_source">开放源代码许可证</string>
+    <string name="about_update">更新</string>
+    <string name="about_build_time">编译于 %1$s</string>
+    <string name="about_predecessor">前辈</string>
+    <string name="about_maintainer">维护者</string>
+    <string name="about_role_developer_designer">开发者 / 设计者</string>
+    <string name="about_role_developer_collaborator">开发者 / 协作者</string>
+    <string name="about_role_maintainer">当前维护者</string>
+    <string name="about_source_code_url" translatable="false">https://github.com/kongwufang/c001apk_next</string>
+    <string name="about_checking_update">正在检查更新…</string>
+    <string name="about_check_update_failed">检查更新失败，请稍后再试</string>
+    <string name="about_is_latest">已是最新版本</string>
     <string name="replyAndForward">回复并转发</string>
     <string name="customToken">自定义Token</string>
     <string name="xAppToken">X-App-Token</string>
@@ -178,14 +193,16 @@
     <string name="type_vote">投票</string>
     <string name="check_user_info">查看用户资料</string>
     <string name="check_stable_update">检查应用正式版更新</string>
-    <string name="check_beta_update">检查应用 Beta 版更新</string>
     <string name="check_update_now_stable">立即检查正式版更新</string>
-    <string name="check_update_now_beta">立即检查 Beta 版更新</string>
 
     <!-- 2026-09-18 重构：底栏重排 + 设置分组（一级菜单 + 二级详情页） -->
     <string name="settings_icon_desc">设置</string>
     <string name="settings_advanced">高级</string>
     <string name="settings_appearance">外观</string>
+    <string name="settings_category_display">显示</string>
+    <string name="settings_category_layout">布局</string>
+    <string name="settings_animation">转场动画</string>
+    <string name="settings_animation_summary">切换页面时的曲线、类型与速度</string>
     <string name="settings_privacy">隐私</string>
     <string name="settings_recommendation">推荐流相关</string>
     <string name="settings_other">其他</string>

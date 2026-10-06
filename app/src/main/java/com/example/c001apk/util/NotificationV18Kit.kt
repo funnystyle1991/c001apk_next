@@ -30,6 +30,17 @@ object NotificationV18Kit {
     const val ENTITY_TYPE = "notificationV18"
 
     /**
+     * 「我收到的赞」端点，同一家族的另一条流。
+     *
+     * 它跟 [URL] 不同：这条**只回 `feed_like` 一类**（抓包 20/20 条都是），所以不用过滤；
+     * 但字段是另一套 —— 谁点的赞在 `from_uid` / `from_username` / `fromUserAvatar` 上，
+     * 被赞的是哪条动态只给到 `target_id` 和它的封面 `addition_info`，动态正文一个字都没有。
+     * 老接口 `/v6/notification/feedLikeList` 那边正好相反：正文给的是动态内容，
+     * 点赞人藏在 `likeUsername` 里，所以渲染侧一直在显示「我赞了我自己的动态」。
+     */
+    const val LIKE_URL = "/v6/notificationV18/likeList"
+
+    /**
      * 「回复我的」两种类型。
      *
      * V18 是混排流，还会夹带 `atme`（@你的动态）和 `notify_system` / `notify_activity`
@@ -84,6 +95,39 @@ object NotificationV18Kit {
         json.addProperty("fromuid", data.fromUid.orEmpty())
         json.addProperty("type", data.noteType)
         json.addProperty("note", note)
+        return gson.fromJson(json, MessageResponse.Data::class.java)
+    }
+
+    /**
+     * 把 likeList 条目归一化成渲染模型。
+     *
+     * 这一页要的是「谁给我点的赞」，所以把 `from_*` 搬进老模型里点赞人那组字段
+     * （`likeUid` / `likeUsername` / `likeAvatar` / `likeTime`），并且把 `username` / `userAvatar`
+     * 也一起指过去 —— 老接口这两组是分开的（`username` 是被赞动态的作者、`likeUsername`
+     * 才是点赞人），渲染侧只要漏掉一处，显示的就是动态作者，也就是自己。
+     *
+     * `id` 必须补：这份模型里它是非空 String，而 V18 条目根本没有这个键，只有 `entityId`
+     * （服务端主键，形如 `feed-74184314-1585363`，列表 diff 和未读账本都拿它当 key）。
+     * Gson 反射填进来的是 null，谁先调 `data.id.isBlank()` 谁就是 NPE。
+     */
+    fun toLikeMessage(data: MessageResponse.Data): MessageResponse.Data {
+        val fromUid = data.fromUid.orEmpty()
+        val fromName = data.fromUsername.orEmpty()
+        val avatar = data.fromUserAvatar.orEmpty()
+        val json = gson.toJsonTree(data).asJsonObject
+        json.addProperty("id", data.entityId.orEmpty())
+        json.addProperty("fromuid", fromUid)
+        json.addProperty("type", data.noteType)
+        json.addProperty("likeUid", fromUid)
+        json.addProperty("likeUsername", fromName)
+        json.addProperty("likeAvatar", avatar)
+        json.addProperty("likeTime", data.dateline)
+        json.addProperty("username", fromName)
+        json.addProperty("userAvatar", avatar)
+        // 黑名单是按 uid 静默的，这一页该静默的是点赞人（老接口这里给的是动态作者）
+        json.addProperty("uid", fromUid)
+        json.addProperty("fid", data.targetId?.toString().orEmpty())
+        json.addProperty("pic", data.additionInfo)
         return gson.fromJson(json, MessageResponse.Data::class.java)
     }
 }

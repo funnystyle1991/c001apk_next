@@ -6,6 +6,8 @@ data class TopicHeader(
     val title: String?,
     val hotNum: String?,
     val commentNum: String?,
+    /** 话题 / 机型简介，没有就整行不显示 */
+    val intro: String?,
     val followNum: String?,
     val avatars: List<String>,
 )

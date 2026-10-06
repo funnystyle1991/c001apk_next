@@ -61,6 +61,15 @@ data class MessageResponse(
         @SerializedName("noteTypeTitle") val noteTypeTitle: String? = null,
         @SerializedName("from_uid") val fromUid: String? = null,
         /**
+         * V18 的发送者昵称。老接口写 `fromusername`（没有下划线），V18 是下划线写法，
+         * 两个键不是一回事，所以单独声明。
+         */
+        @SerializedName("from_username") val fromUsername: String? = null,
+        /** V18 通知的目标对象。我收到的赞里是被赞的动态（`target_type=feed`）、值就是动态 id */
+        @SerializedName("target_id") val targetId: Long? = null,
+        /** V18 的附加图：我收到的赞里是被赞动态的封面图 */
+        @SerializedName("addition_info") val additionInfo: String? = null,
+        /**
          * 通知条目的细分类型：`notify_xms`（酷安小秘书）/ `feed_reply` / `rating_reply` …
          * 只有 `/v6/notification/` 下的接口会下发，私信会话不返回。
          */

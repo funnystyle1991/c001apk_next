@@ -130,4 +130,10 @@ object MessageKit {
             else Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT).toString()
         return text.replace('\n', ' ').trim()
     }
+    /**
+     * 气泡里的一张图片：`showImage` 换来的签名地址 + 图片原始像素宽高。
+     * 宽高是给 `ImageUtil.chatImageSize` 算气泡占位用的（之前死宽 180dp，横竖图都一个样）。
+     * 量不出来时给 0，那边会退成正方形占位。
+     */
+    data class MessagePic(val url: String, val width: Int, val height: Int)
 }

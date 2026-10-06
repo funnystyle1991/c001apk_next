@@ -23,12 +23,14 @@ import org.json.JSONObject
  * 升级信息走自建接口（顺带给服务端做匿名访问统计）：
  *
  *   GET https://service.houlangs.cn/c001apk/
- *   请求头 X-Union-Id：本机随机生成并落盘的匿名统计 ID（见 [PrefManager.updateUnionId]）
+ *   请求头 X-App-userradomid：本应用自造的随机用户 ID（见 [PrefManager.userRandomId]）。
+ *   值不再拿数字联盟 DUID（那玩意能反查到具体设备），是本机随机生成、
+ *   与账号设备都无关的 `useradomid`；服务端据此统计活跃设备 / 用户量。
  *
- * 一次请求同时返回三段（服务端：仓库 _rev/update_files/index.php）：
+ * 一次请求同时返回两段（服务端：仓库 _rev/update_files/index.php）：
  * {
  *   "code": 0, "message": "ok", "time": 1789806080,
- *   "stable": { 正式版 }, "beta": { Beta 版 }, "org": { 关于页按钮 }
+ *   "stable": { 正式版 }, "org": { 关于页按钮 }
  * }
  *
  * 单段 JSON 格式：
@@ -44,10 +46,13 @@ import org.json.JSONObject
  *
  * versionCode 大于当前 BuildConfig.VERSION_CODE 才算有更新；
  * 下载一律跳转外部浏览器打开，不在应用内下载。
+ *
+ * 只查**正式版**：Beta 通道连同开关、Preference 一起删了（2026-10-07），
+ * 服务端响应里的 beta 段即使还在也不会被读到。
  */
 object UpdateChecker {
 
-    /** 自建更新接口；stable / beta / org 都在同一次响应里，不用分别请求 */
+    /** 自建更新接口；stable / org 都在同一次响应里，不用分别请求 */
     const val BASE_URL = "https://service.houlangs.cn/c001apk/"
 
     /**
@@ -61,9 +66,6 @@ object UpdateChecker {
 
     /** 每个进程只做一次启动时自动检查（Activity 重建不会重复弹窗） */
     var checkedThisSession = false
-
-    const val CHANNEL_STABLE = "stable"
-    const val CHANNEL_BETA = "beta"
 
     data class DownloadLine(val name: String, val url: String)
 
@@ -122,25 +124,25 @@ object UpdateChecker {
         ).filter { it.second.isNotEmpty() }
     }.getOrDefault(emptyList())
 
-    /** 自建接口一次响应里的三段 JSON（原样留着，按渠道各取所需） */
+    /** 自建接口一次响应里的各段 JSON（原样留着，按需取用） */
     private class Snapshot(
         val stable: String?,
-        val beta: String?,
         val org: String?,
         val at: Long,
     )
 
     private const val CACHE_TTL = 60_000L
 
-    /** 同一份响应 60 秒内复用：启动时先查正式版再查 Beta，只会打一次接口 */
+    /** 同一份响应 60 秒内复用：启动时自动查一次、用户点「立即检查」再查一次，只会打一次接口 */
     @Volatile
     private var cached: Snapshot? = null
 
     /**
-     * 拉取自建接口并拆成 stable / beta / org 三段；失败返回 null
+     * 拉取自建接口并拆成 stable / org 两段；失败返回 null
      * （调用方按「没有更新」「没有按钮」处理，不弹错误框）。
      *
-     * X-Union-Id 传 [PrefManager.updateUnionId]（本机随机 32 位 hex），服务端据此统计设备数。
+     * X-App-userradomid 传 [PrefManager.userRandomId]（本机随机 32 位 hex、首启生成后不变），
+     * 服务端据此统计活跃设备 / 用户量。
      */
     private suspend fun loadSnapshot(): Snapshot? = withContext(Dispatchers.IO) {
         cached?.takeIf { System.currentTimeMillis() - it.at < CACHE_TTL }
@@ -148,7 +150,7 @@ object UpdateChecker {
         runCatching {
             val builder = Request.Builder()
                 .url(BASE_URL)
-                .header("X-Union-Id", PrefManager.updateUnionId)
+                .header("X-App-userradomid", PrefManager.userRandomId)
                 .header("User-Agent", userAgent)
             installHeaders().forEach { (name, value) -> builder.header(name, value) }
             val request = builder.build()
@@ -159,7 +161,6 @@ object UpdateChecker {
             val obj = JSONObject(body)
             Snapshot(
                 stable = obj.optJSONObject("stable")?.toString(),
-                beta = obj.optJSONObject("beta")?.toString(),
                 org = obj.optJSONObject("org")?.toString(),
                 at = System.currentTimeMillis(),
             ).also { cached = it }
@@ -167,13 +168,11 @@ object UpdateChecker {
     }
 
     /**
-     * 查某个渠道（[CHANNEL_STABLE] / [CHANNEL_BETA]）的更新信息。
-     * 接口不通或该段缺失时返回 null。
+     * 查正式版的更新信息。接口不通或该段缺失时返回 null。
      */
-    suspend fun fetchUpdate(channel: String): UpdateInfo? {
+    suspend fun fetchUpdate(): UpdateInfo? {
         val snapshot = loadSnapshot() ?: return null
-        val json = if (channel == CHANNEL_BETA) snapshot.beta else snapshot.stable
-        return json?.let { parse(it) }
+        return snapshot.stable?.let { parse(it) }
     }
 
     fun parse(json: String): UpdateInfo? = runCatching {
@@ -235,16 +234,13 @@ object UpdateChecker {
     /**
      * 更新弹窗：展示更新日志，多线路时可选择线路后跳外部浏览器下载。
      *
-     * @param channel [CHANNEL_STABLE] / [CHANNEL_BETA]，「不再提示」会关掉对应开关
      * @param onIgnored 「不再提示」后的回调（用来刷新界面上的开关状态，可空）
      */
     fun showUpdateDialog(
         context: Context,
         info: UpdateInfo,
-        channel: String,
         onIgnored: (() -> Unit)? = null
     ) {
-        val isBeta = channel == CHANNEL_BETA
         val scrollView = ScrollView(context)
         val textView = TextView(context).apply {
             text = info.changelog.ifBlank { "无更新日志" }
@@ -255,12 +251,11 @@ object UpdateChecker {
         scrollView.addView(textView)
 
         MaterialAlertDialogBuilder(context).apply {
-            setTitle("发现新版本${if (isBeta) "（Beta）" else ""} ${info.versionName}")
+            setTitle("发现新版本 ${info.versionName}")
             setView(scrollView)
             setNegativeButton(android.R.string.cancel, null)
             setNeutralButton("不再提示") { _, _ ->
-                if (isBeta) PrefManager.isCheckUpdateBeta = false
-                else PrefManager.isCheckUpdateStable = false
+                PrefManager.isCheckUpdateStable = false
                 onIgnored?.invoke()
             }
             setPositiveButton("下载") { _, _ ->

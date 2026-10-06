@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
   push:
     # main = 稳定线；beta / debug / update = 测试线，互不干扰、可随时回滚
-    branches: [ main, beta, debug, update ]
+    # debug3 / debug4 = 实验线，只产出 Actions artifact，不发布 Release（见 Publish 步骤的排除条件）
+    branches: [ main, beta, debug, debug3, debug4, update ]
     paths-ignore:
       - '**.md'
       - '**.txt'
@@ -48,7 +49,7 @@ jobs:
             echo KEY_ALIAS='${{ secrets.KEY_ALIAS }}' >> local.properties
             echo KEY_PASSWORD='${{ secrets.KEY_PASSWORD }}' >> local.properties
           else
-            echo "::warning::未配置 SIGN_KEYSTORE_BASE64，release 将退回 debug 签名（仅供测试，不可作为正式版分发）"
+            echo "::waning::未配置 SIGN_KEYSTORE_BASE64，release 将退回 debug 签名（仅供测试，不可作为正式版分发）"
           fi
 
       # 注意：不要钉死补丁号（如 v4.0.2），GitHub 会把废弃的旧版本直接判失败
@@ -82,7 +83,7 @@ jobs:
         id: buildRelease
         run: |
           set -o pipefail
-          ./gradlew :app:assembleRelease -Pchannel=${{ steps.channel.outputs.channel }} 2>&1 | tee gradle-release.log
+          ./gradlew :app:assembleRelease -Pchannel=${{ steps.channel.outputs.channel }} --stacktrace 2>&1 | tee gradle-release.log
           echo "releaseName=$(ls app/build/outputs/apk/release/*.apk | awk -F '(/|\\.apk)' '{print $6}')" >> $GITHUB_OUTPUT
 
       - name: Upload release
@@ -106,7 +107,7 @@ jobs:
             "$BT/apksigner" verify --print-certs "$APK" | tee /tmp/certs.txt
             echo "::notice::$(basename "$APK") 签名证书 SHA-256 = $(grep -m1 'certificate SHA-256 digest' /tmp/certs.txt | sed 's/.*digest: //')"
           else
-            echo "::warning::未找到 apksigner，跳过签名校验"
+            echo "::waning::未找到 apksigner，跳过签名校验"
           fi
 
       - name: Upload mappings
@@ -135,8 +136,10 @@ jobs:
       #   beta  → beta-latest（Beta 版，prerelease）
       #   debug → debug-latest（测试版，prerelease）
       # update 分支只放更新配置（json），不发布产物。
+      # debug3 / debug4 是实验线，故意不发布：它们的渠道会落到 *) → debug-latest，
+      # 会把 debug 分支正常测试包的下载位顶掉。实验包只从 Actions artifact 取。
       - name: Publish to GitHub Releases
-        if: success() && github.event_name == 'push' && github.ref_name != 'update'
+        if: success() && github.event_name == 'push' && github.ref_name != 'update' && github.ref_name != 'debug3' && github.ref_name != 'debug4'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -197,7 +200,7 @@ jobs:
           ok=0
           for i in 1 2 3 4 5; do
             if gh release upload "$TAG" "${FILES[@]}" --clobber; then ok=1; break; fi
-            echo "::warning::发布 ${TAG} 上传失败（第 ${i} 次），5 秒后重试"
+            echo "::waning::发布 ${TAG} 上传失败（第 ${i} 次），5 秒后重试"
             sleep 5
           done
           if [ "$ok" != 1 ]; then
@@ -226,7 +229,7 @@ jobs:
           for f in gradle-release.log gradle-debug.log; do
             if [ -f "$f" ]; then
               echo "::error::logs found: $f ($(wc -c < "$f") bytes)"
-              tail -25 "$f" | while IFS= read -r line; do echo "::error::$line"; done
+              tail -120 "$f" | while IFS= read -r line; do echo "::error::$line"; done
               break
             fi
           done

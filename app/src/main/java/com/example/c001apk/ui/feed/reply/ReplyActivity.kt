@@ -51,6 +51,7 @@ import com.example.c001apk.util.EmojiUtils
 import com.example.c001apk.util.ImageUtil.getImageDimensionsAndMD5
 import com.example.c001apk.util.ImageUtil.showIMG
 import com.example.c001apk.util.ImageUtil.toHex
+import com.example.c001apk.util.TransitionAnim
 import com.example.c001apk.util.dp
 import com.example.c001apk.util.makeToast
 import com.example.c001apk.util.ossUpload
@@ -92,6 +93,9 @@ import java.util.UUID
 class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
     View.OnClickListener, OnTouchListener, SmoothInputLayout.OnVisibilityChangeListener,
     SmoothInputLayout.OnKeyboardChangeListener {
+
+    /** 回复页是半透明浮层（AppThemeTranslucent），底色由布局自己定，别盖页面底色 */
+    override val pageBackground = false
 
     private val viewModel by viewModels<ReplyViewModel>()
     private val type: String? by lazy { intent.getStringExtra("type") }
@@ -303,7 +307,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                         setBackgroundColor(
                             MaterialColors.getColor(
                                 this,
-                                com.google.android.material.R.attr.colorPrimary,
+                                androidx.appcompat.R.attr.colorPrimary,
                                 0
                             )
                         )
@@ -410,7 +414,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                 binding.captchaText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         this,
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -611,7 +615,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                                 else
                                     MaterialColors.getColor(
                                         this@ReplyActivity,
-                                        com.google.android.material.R.attr.colorControlNormal, 0
+                                        androidx.appcompat.R.attr.colorControlNormal, 0
                                     )
                             )
                         }
@@ -659,7 +663,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
             highlightColor = ColorUtils.setAlphaComponent(
                 MaterialColors.getColor(
                     this@ReplyActivity,
-                    com.google.android.material.R.attr.colorPrimaryDark,
+                    androidx.appcompat.R.attr.colorPrimaryDark,
                     0
                 ), 128
             )
@@ -672,7 +676,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                     binding.publish.setTextColor(
                         MaterialColors.getColor(
                             this@ReplyActivity,
-                            com.google.android.material.R.attr.colorPrimary,
+                            androidx.appcompat.R.attr.colorPrimary,
                             0
                         )
                     )
@@ -729,7 +733,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
                 editText.highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         this,
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )
@@ -893,9 +897,7 @@ class ReplyActivity : BaseActivity<ActivityReplyBinding>(),
     private fun launchAtTopic(type: String) {
         val intent = Intent(this, AtTopicActivity::class.java)
         intent.putExtra("type", type)
-        val options = ActivityOptionsCompat.makeCustomAnimation(
-            this, R.anim.right_in, R.anim.left_out
-        )
+        val options = TransitionAnim.enterOptionsCompat(this)
         atTopicResultLauncher.launch(intent, options)
     }
 

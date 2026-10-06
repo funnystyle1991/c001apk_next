@@ -61,7 +61,7 @@ class MessageCenterViewModel @Inject constructor(
         "atMe" to "/v6/notification/atMeList",
         "atCommentMe" to "/v6/notification/atCommentMeList",
         "commentMe" to NotificationV18Kit.URL,
-        "feedLike" to "/v6/notification/feedLikeList",
+        "feedLike" to NotificationV18Kit.LIKE_URL,
         "contactsFollow" to "/v6/notification/contactsFollowList",
     )
 

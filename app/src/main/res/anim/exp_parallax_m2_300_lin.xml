@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：parallax 下层页归位（从左侧半屏归位，纯位移）/ m2 / 300ms -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="300"
+    android:fromXDelta="-50%"
+    android:interpolator="@interpolator/exp_m2_standard"
+    android:toXDelta="0" />

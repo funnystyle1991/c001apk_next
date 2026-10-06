@@ -116,7 +116,7 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
             setColorSchemeColors(
                 MaterialColors.getColor(
                     this@MessageCenterActivity,
-                    com.google.android.material.R.attr.colorPrimary,
+                    androidx.appcompat.R.attr.colorPrimary,
                     0
                 )
             )
@@ -192,7 +192,8 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
             message: String?,
             dateline: String?,
             rid: Any?,
-            isViewReply: Any?
+            isViewReply: Any?,
+            feedData: Any?
         ) {
             super.onViewFeed(
                 view,
@@ -204,7 +205,8 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
                 message,
                 dateline,
                 rid,
-                isViewReply
+                isViewReply,
+                feedData
             )
             if (!uid.isNullOrEmpty() && PrefManager.isRecordHistory)
                 viewModel.saveHistory(

@@ -73,7 +73,8 @@ abstract class BaseAppViewModel(
             message: String?,
             dateline: String?,
             rid: Any?,
-            isViewReply: Any?
+            isViewReply: Any?,
+            feedData: Any?
         ) {
             super.onViewFeed(
                 view,
@@ -85,7 +86,8 @@ abstract class BaseAppViewModel(
                 message,
                 dateline,
                 rid,
-                isViewReply
+                isViewReply,
+                feedData
             )
             viewModelScope.launch(Dispatchers.IO) {
                 if (!uid.isNullOrEmpty() && PrefManager.isRecordHistory)

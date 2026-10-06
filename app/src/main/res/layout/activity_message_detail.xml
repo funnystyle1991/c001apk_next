@@ -15,17 +15,31 @@
         app:edgeToEdge="true"
         app:fitsSystemWindowsInsets="end">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/toolBar"
+        <!--
+            顶部状态栏内边距必须由 AppBarLayout 吃（wrap_content 会把内边距补进高度里），
+            不能直接给固定高的 MaterialToolbar：那样内边距会变成工具栏的 padding，
+            56dp 高度里再扣掉状态栏，标题/返回键就被挤到底边、被下面的分割线切掉。
+        -->
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/appBar"
             android:layout_width="0dp"
-            android:layout_height="?actionBarSize"
+            android:layout_height="wrap_content"
             android:background="@null"
+            android:fitsSystemWindows="false"
             app:fitsSystemWindowsInsets="@integer/internal_fragment_top_insets"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:navigationIcon="@drawable/ic_back"
-            tools:title="对方昵称" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolBar"
+                android:layout_width="match_parent"
+                android:layout_height="?actionBarSize"
+                android:background="@null"
+                app:navigationIcon="@drawable/ic_back"
+                tools:title="对方昵称" />
+
+        </com.google.android.material.appbar.AppBarLayout>
 
         <View
             android:id="@+id/divider"
@@ -34,7 +48,7 @@
             android:background="?attr/colorSurfaceVariant"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/toolBar" />
+            app:layout_constraintTop_toBottomOf="@id/appBar" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerView"
@@ -59,7 +73,7 @@
             android:paddingTop="6dp"
             android:paddingEnd="6dp"
             android:paddingBottom="6dp"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/emojiLayout"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent">
 
@@ -75,6 +89,15 @@
                 android:maxLines="4"
                 android:minHeight="44dp"
                 android:textSize="15sp"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/emojiBtn"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="表情"
+                app:icon="@drawable/ic_emoji"
                 tools:ignore="HardcodedText" />
 
             <com.google.android.material.button.MaterialButton
@@ -114,6 +137,52 @@
                 tools:visibility="visible" />
 
         </LinearLayout>
+
+        <!--
+            表情面板，跟回复页同一套（最近 / 默认 / 酷币 三页，见 MessageDetailActivity.initEmojiPanel）。
+            高度写死 288dp：键盘和面板不会同时出现（点输入框或点表情键互相顶掉），
+            所以不用像回复页那样跟键盘高度对齐；面板开着时它自己吃导航栏内边距，
+            输入栏只留 6dp（见 applyInputBarInsets）。
+        -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/emojiLayout"
+            android:layout_width="0dp"
+            android:layout_height="288dp"
+            android:background="?attr/colorSurface"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:visibility="visible">
+
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/emojiPanel"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                app:layout_constraintBottom_toTopOf="@id/line2"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <View
+                android:id="@+id/line2"
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:background="?attr/colorSurfaceVariant"
+                app:layout_constraintBottom_toTopOf="@id/indicator"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <LinearLayout
+                android:id="@+id/indicator"
+                android:layout_width="match_parent"
+                android:layout_height="41dp"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

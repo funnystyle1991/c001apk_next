@@ -189,7 +189,7 @@ class UserPagerFragment : BasePagerFragment() {
                 ForegroundColorSpan(
                     MaterialColors.getColor(
                         requireContext(),
-                        com.google.android.material.R.attr.colorControlNormal,
+                        androidx.appcompat.R.attr.colorControlNormal,
                         0
                     )
                 ),
@@ -215,10 +215,14 @@ class UserPagerFragment : BasePagerFragment() {
         )
 
         // percent: 1 = 完全展开，0 = 完全收起
-        // 展开时返回键 / 搜索 / 更多都压在封面图上，统一纯白；收起后一起换回主题色
+        // 下滑时把整块头部淡掉、只留折叠后的工具栏标题，顺带决定图标用白还是用主题色
+        // （头部基本还在时压在封面上用纯白，淡到一半以后底下已经是 colorSurface，再用白色就看不见了）
         binding.appBar.addOnOffsetChangedListener(object : AppBarLayoutStateChangeListener() {
             override fun onScroll(percent: Float) {
-                applyBarIconTint(percent > 0f)
+                // initBar() 比 initUser() 先跑（BasePagerFragment.onViewCreated 的顺序），
+                // 这时 userBinding 还没有；偏移回调要等布局才来，实际不会提前触发，挡一下更稳
+                val header = if (::userBinding.isInitialized) userBinding.infoLayout else null
+                applyBarIconTint(applyHeaderFade(header, percent) > 0.5f)
             }
         })
 

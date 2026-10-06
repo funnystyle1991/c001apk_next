@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  卡片底色：与页面底（colorSurface）拉开一档，让滚动与页面转场时能看出内容块在动。
+  原来是 ?attr/elevationOverlayColor 叠 5% alpha，实测与页面底几乎同色（#FAF8FF vs 近同色），
+  整页没有任何层次，转场滑动时只有图标文字在挪。
+  现在对齐 rikkahub 的角色分配：页面底 = surface，卡片/顶栏 = surfaceContainer。
+  纯黑主题由 ThemeOverlay.Black 把这一档压回近黑。
+-->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:alpha="0.05" android:color="?attr/elevationOverlayColor" />
+    <item android:color="?attr/colorSurfaceContainer" />
 </selector>

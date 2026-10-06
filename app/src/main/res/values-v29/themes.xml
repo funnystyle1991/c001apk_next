@@ -7,4 +7,13 @@
     <item name="android:enforceStatusBarContrast">false</item>
   </style>
 
+  <!--
+    API≥29 的链路上 Platform.Theme.C001apk 直接继承 DayNight.Rikka，不经过 Theme.C001apk.M3E，
+    所以工具栏形态要用原生 M3 的那套（默认 values/ 里用的是 M3E 版），只把背景换成
+    colorSurfaceContainer 以和低版本保持一致。同名资源在这里覆盖。
+  -->
+  <style name="Widget.C001apk.Toolbar" parent="Widget.Material3.Toolbar">
+    <item name="android:background">?attr/colorSurfaceContainer</item>
+  </style>
+
 </resources>

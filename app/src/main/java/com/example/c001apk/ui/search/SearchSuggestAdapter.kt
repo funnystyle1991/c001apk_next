@@ -58,7 +58,7 @@ class SearchSuggestAdapter(
 
         val accent = MaterialColors.getColor(
             holder.title,
-            com.google.android.material.R.attr.colorPrimary,
+            androidx.appcompat.R.attr.colorPrimary,
             0
         )
         holder.icon.setImageResource(if (isUserItem) R.drawable.ic_account else R.drawable.ic_search)

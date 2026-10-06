@@ -77,21 +77,35 @@ class MessageContentAdapter(
         RecyclerView.ViewHolder(binding.root) {
         var id: String = ""
 
+        /**
+         * 「我收到的赞」要点进去的那条动态。
+         *
+         * 这一页的条目 id 是点赞记录的主键（`feed-<动态id>-<点赞人uid>`），拿去开动态会开错；
+         * 被赞的动态 id 在归一化时落到了 `fid`（V18 的 `target_id`，见 [NotificationV18Kit.toLikeMessage]）。
+         */
+        var fid: String = ""
+
         init {
-            if (type != "feedLike") {
-                itemView.setOnClickListener {
-                    IntentUtil.startActivity<FeedActivity>(itemView.context) {
-                        putExtra("id", id)
-                    }
+            itemView.setOnClickListener {
+                val target = if (type == "feedLike") fid else id
+                if (target.isBlank()) return@setOnClickListener
+                IntentUtil.startActivity<FeedActivity>(itemView.context) {
+                    putExtra("id", target)
                 }
             }
         }
 
         fun bind(data: MessageResponse.Data) {
             id = data.id
+            fid = data.fid.orEmpty()
             binding.setVariable(BR.type, type)
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.listener, listener)
+            // 布局里「是不是我收到的赞」的判定走这个 Boolean。布局里原来直接写
+            // `type == `feedLike``，那是引用比较：type 是从 Intent 来的运行时字符串、
+            // 没被 intern，跟字面量永远不是同一个对象，三元表达式恒走 else 分支，
+            // 于是「我收到的赞」页面把动态作者（自己）当成了点赞人。
+            binding.setVariable(BR.isFeedLike, type == "feedLike")
 
             binding.executePendingBindings()
         }

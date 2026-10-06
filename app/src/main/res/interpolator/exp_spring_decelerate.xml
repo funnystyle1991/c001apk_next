@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 转场动画实验用：ease-out-cubic cubic-bezier(0.33, 1, 0.68, 1)，
+     近似 rikkahub 的 spring(dampingRatio = 1, stiffness = 400)（生成物，勿手改） -->
+<pathInterpolator xmlns:android="http://schemas.android.com/apk/res/android"
+    android:controlX1="0.33"
+    android:controlX2="0.68"
+    android:controlY1="1.0"
+    android:controlY2="1.0" />

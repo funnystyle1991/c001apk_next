@@ -74,12 +74,20 @@ val verTag = releaseProps.getProperty("VERSION_NAME").trim()
 val channel = (findProperty("channel") as String?)?.takeIf { it.isNotBlank() } ?: "release"
 // versionName 统一前缀（与仓库同名）：c001apk_next-V1.0.1-release
 val apkPrefix = "c001apk_next"
+// 打包时刻，关于页显示用。固定按北京时间打：CI 跑在 UTC，不锁时区的话
+// 装机后会看到「编译于 04:12」这种跟本机钟点对不上的值。
+val buildTime = java.time.format.DateTimeFormatter
+    .ofPattern("yyyy-MM-dd HH:mm")
+    .withZone(java.time.ZoneId.of("Asia/Shanghai"))
+    .format(java.time.Instant.now())
 
 android {
     // 注意：namespace 决定 R / ViewBinding / DataBinding 生成类的包名，
     // 源码里全是 import com.example.c001apk.R / com.example.c001apk.databinding.*，不能跟着改名
     namespace = "com.example.c001apk"
-    compileSdk = 34
+    // compileSdk 35：material 1.14 传递依赖 androidx.core 1.16，其 AAR metadata 要求编译目标 >= 35
+    // targetSdk 仍留在 34，避免 Android 15 强制 edge-to-edge 改变既有窗口行为（实验分支先只对齐编译目标）
+    compileSdk = 35
 
     defaultConfig {
         // 包名同样保持不变：改 applicationId 等于换一个 App，老用户无法覆盖安装
@@ -89,6 +97,9 @@ android {
         versionCode = verCode
         // 完整 versionName = 前缀-版本号-渠道，渠道后缀由 buildTypes.versionNameSuffix 追加
         versionName = "$apkPrefix-$verTag"
+
+        // 关于页显示「编译于 …」；纯展示字段，不参与逻辑
+        buildConfigField("String", "BUILD_TIME", "\"$buildTime\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -203,7 +214,6 @@ dependencies {
     implementation(project(":GlideImageLoader"))
     implementation(libs.appcenter.analytics)
     implementation(libs.appcenter.crashes)
-    implementation(libs.drakeet.about)
     implementation(libs.jbcrypt)
     implementation(libs.jsoup)
     implementation(libs.markwon.core)

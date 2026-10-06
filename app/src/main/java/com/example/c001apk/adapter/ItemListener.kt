@@ -3,6 +3,7 @@ package com.example.c001apk.adapter
 import android.view.View
 import android.widget.ImageView
 import android.widget.Toast
+import com.example.c001apk.logic.model.HomeFeedResponse
 import com.example.c001apk.ui.app.AppActivity
 import com.example.c001apk.ui.coolpic.CoolPicActivity
 import com.example.c001apk.ui.feed.FeedActivity
@@ -141,9 +142,19 @@ interface ItemListener {
         }
     }
 
+    /**
+     * [feedData] 只有 `item_home_feed` 这类手上真有整条动态的入口才传，详情页拿它先出首屏，
+     * 再静默请求详情补全。列表不下的字段（`userAction.followAuthor`、`message_raw_output`、
+     * `topReplyRows`）就靠这次补全，期间由 [FeedActivity] 侧转圈占位。
+     *
+     * 类型必须是 `Any?` 而不是 `HomeFeedResponse.Data?`：databinding 里没有整条动态的入口
+     * 只能写 `null` 字面量，会被推断成 `java.lang.Object`，声明成具体类型会直接
+     * "cannot find method onViewFeed" 编译失败。
+     */
     fun onViewFeed(
         view: View, id: String?, uid: String?, username: String?, userAvatar: String?,
-        deviceTitle: String?, message: String?, dateline: String?, rid: Any?, isViewReply: Any?
+        deviceTitle: String?, message: String?, dateline: String?, rid: Any?, isViewReply: Any?,
+        feedData: Any? = null
     ) {
         IntentUtil.startActivity<FeedActivity>(view.context) {
             putExtra("id", id)
@@ -152,6 +163,9 @@ interface ItemListener {
             }
             isViewReply?.let {
                 putExtra("viewReply", it as Boolean)
+            }
+            (feedData as? HomeFeedResponse.Data)?.let {
+                putExtra("feedData", it)
             }
         }
     }

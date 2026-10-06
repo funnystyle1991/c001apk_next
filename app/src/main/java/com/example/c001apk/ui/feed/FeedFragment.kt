@@ -725,17 +725,17 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
 
     /**
      * 顶栏作者行和"动态/图文"标题的一进一出：[progress] 为 0 时只显示标题（作者行在标题位的
-     * 右下一格、看不见），为 1 时作者行正好落到标题的位置。初末位置不变，中间两轴位移都按
-     * 滚动量等比收敛，所以是沿着一条斜线平移上去，而不是纯垂直地顶上来。
+     * 左下一格、看不见），为 1 时作者行正好落到标题的位置。初末两个位置固定，两轴位移按同一个
+     * 进度线性收敛，所以是沿着两点之间的直线平移过来，而不是纯垂直地顶上来。
      */
     private fun applyTitleSwitch(progress: Float) {
         val p = progress.coerceIn(0f, 1f)
         val row = binding.titleProfile
         val slide = (if (row.height > 0) row.height else 40.dp).toFloat()
-        // 下移一格 + 右移半格，p 到 1 时同时归零 => 斜着平移到位（右移量压小，
-        // 免得起点时整行最右边的机型文字被屏幕右边裁掉）
+        // 起点是终点的左下角：顶栏这行被左边的返回按钮顶着、整体往右缩了一段，而内容里
+        // 那一行是贴着内容左边缘的。两轴按同一个 p 线性收敛 => 沿这条直线平移过去
         row.translationY = (1f - p) * slide
-        row.translationX = (1f - p) * slide / 2f
+        row.translationX = (1f - p) * titleSwitchOffsetX
         // 全程不打透明度：滑进来多少就完整露出多少，不做淡入
         row.alpha = 1f
         // INVISIBLE 而不是 GONE：没滑到位之前也不该能点到头像；p 为 0 时整行还在顶栏底下
@@ -767,6 +767,29 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                 ?.findViewById<View>(R.id.pubDate)
                 ?.bottom
             return (authorRowBottom?.takeIf { it > 0 } ?: 40.dp).toFloat()
+        }
+
+    /**
+     * 顶栏作者行起点的水平偏移（负值，起点在终点的左边）：终点那行是顶栏里的子 View，
+     * 排布时被左边的返回按钮挤到它右边，而起点（内容里那一行）是贴着内容左边缘的。
+     * 两处的水平差就是这条斜线的横向分量，直接量实际布局，别写死某个 dp。
+     * 量不到就退回 -24dp（差不多一个返回按钮的宽度）。
+     */
+    private val titleSwitchOffsetX: Float
+        get() {
+            val row = binding.titleProfile
+            val rowLoc = IntArray(2)
+            row.getLocationOnScreen(rowLoc)
+            // getLocationOnScreen 带上了当前的 translationX，量静态位置要把它扣掉
+            val endLeft = rowLoc[0] - row.translationX
+            val startAvatar = binding.recyclerView.layoutManager
+                ?.findViewByPosition(1)
+                ?.findViewById<View>(R.id.avatar)
+                ?: return -24.dp.toFloat()
+            val startLoc = IntArray(2)
+            startAvatar.getLocationOnScreen(startLoc)
+            val dx = startLoc[0] - endLeft
+            return if (dx < 0f) dx else -24.dp.toFloat()
         }
 
     override fun onDestroy() {

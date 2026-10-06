@@ -288,6 +288,15 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
 
     @SuppressLint("SetTextI18n")
     private fun initView(height: Int) {
+        // 作者行滑进顶栏之前，有半截还在顶栏下边；CoordinatorLayout 里 contentLayout 是后添加的、
+        // 默认画在 appBar 之上，不把 appBar 提到最前，那半截就被上面的列表盖住了
+        binding.root.bringChildToFront(binding.appBar)
+        // 顶栏不裁子 View 之后，标题滑出顶栏的那一截得靠 topMask 压住，所以它要画在 appBar 之上；
+        // 高度取"顶栏内容区以上的空白"（一般是状态栏那一带），没有空白就保持 0
+        binding.topMask.layoutParams = binding.topMask.layoutParams.apply {
+            this.height = binding.appBar.top + binding.toolBar.top
+        }
+        binding.root.bringChildToFront(binding.topMask)
         feedDataAdapter = FeedDataAdapter(
             ItemClickListener(),
             viewModel.feedDataList,
@@ -358,6 +367,9 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
 
     private fun initToolBar() {
         binding.toolBar.apply {
+            // 导航键是 setNavigationIcon 运行时 addSystemView 挂上去的，默认画在 titleProfile 之上；
+            // 作者行滑进来的半路正好从返回键那一带过，不把它提到最前就会被键压着
+            bringChildToFront(binding.titleProfile)
             title = viewModel.feedTypeName
             setNavigationIcon(R.drawable.ic_back)
             setNavigationOnClickListener {

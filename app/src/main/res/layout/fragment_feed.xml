@@ -48,13 +48,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@null"
+            android:clipChildren="false"
             android:fitsSystemWindows="false"
             app:fitsSystemWindowsInsets="@integer/internal_fragment_top_insets">
 
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/toolBar"
                 android:layout_width="match_parent"
-                android:layout_height="?attr/actionBarSize">
+                android:layout_height="?attr/actionBarSize"
+                android:clipChildren="false">
 
                 <androidx.constraintlayout.widget.ConstraintLayout
                     android:id="@+id/titleProfile"
@@ -287,6 +289,17 @@
         <include
             android:id="@+id/errorLayout"
             layout="@layout/item_error_layout" />
+
+        <!-- 作者行要能整块滑到顶栏下边去，所以顶栏那一支设了 clipChildren=false，
+             标题滑出顶栏的那一截就没人裁了 —— 用这块跟"顶栏上方空白"等高的底片把它压住。
+             顶栏上方本来没有空白时它是 0 高，等于没有。 -->
+        <View
+            android:id="@+id/topMask"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:background="?android:windowBackground"
+            android:clickable="false"
+            android:focusable="false" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

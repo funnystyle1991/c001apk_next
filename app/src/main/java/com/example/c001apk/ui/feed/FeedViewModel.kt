@@ -430,6 +430,11 @@ class FeedViewModel @AssistedInject constructor(
                     if (data != null) {
                         if (data.message != null) {
                             footerState.postValue(FooterState.LoadingError(data.message))
+                            // 左选项那一支本来是"接着发右选项、由右选项收尾"把标志收掉的，
+                            // 这里不再往下走，就得自己收：漏掉的话 isRefreshing 永远为真，
+                            // loadMore 的守卫一直被挡，滚到底再也不会加载
+                            isRefreshing = false
+                            isLoadMore = false
                             return@collect
                         } else if (!data.data.isNullOrEmpty()) {
                             if (isRefreshing) {
@@ -483,6 +488,9 @@ class FeedViewModel @AssistedInject constructor(
                     if (data != null) {
                         if (data.message != null) {
                             footerState.postValue(FooterState.LoadingError(data.message))
+                            // 同 fetchVoteCommentType0：这条出口不补标志，翻页就再也发不出去了
+                            isRefreshing = false
+                            isLoadMore = false
                             return@collect
                         } else if (!data.data.isNullOrEmpty()) {
                             lastItem = data.data.last().id
@@ -527,6 +535,9 @@ class FeedViewModel @AssistedInject constructor(
                     if (data != null) {
                         if (data.message != null) {
                             footerState.postValue(FooterState.LoadingError(data.message))
+                            // 同 fetchVoteCommentType0：这条出口不补标志，答主列表就再也翻不动了
+                            isRefreshing = false
+                            isLoadMore = false
                             return@collect
                         } else if (!data.data.isNullOrEmpty()) {
                             lastItem = data.data.last().id

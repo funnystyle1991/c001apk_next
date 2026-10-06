@@ -730,12 +730,19 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
         }
     }
 
+    /**
+     * 内容里那一行被顶掉多少：量的是 **item1** 的 top 从静态位置往下走了多少。
+     * 静止时它是正的（上面还有头部/内边距那一段），这段不能算进进度——原来对第一个可见 item 取
+     * `abs(top)`，静止时 top 就等于那段正距离，进度开局直接顶到 1：作者行钉在顶栏落点、列表里那行
+     * 被藏掉，看着就是"卡在上边下不来"。
+     */
     private val scrollYDistance: Int
         get() {
-            val firstVisibleChildView =
-                if (isPortrait) mLayoutManager.findViewByPosition(firstVisibleItemPosition)
-                else sLayoutManager.findViewByPosition(firstVisibleItemPosition)
-            return abs(firstVisibleChildView?.top ?: 0)
+            val item =
+                if (isPortrait) mLayoutManager.findViewByPosition(1)
+                else sLayoutManager.findViewByPosition(1)
+            val top = item?.top ?: return 0
+            return if (top < 0) -top else 0
         }
 
     /**

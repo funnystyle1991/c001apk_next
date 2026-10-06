@@ -157,6 +157,13 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
         viewModel.refresh()
     }
 
+    override fun onStop() {
+        super.onStop()
+        // 离开本页才把「已展示」落进已读账本：页内宫格红点要保持显示（用户要求 —— 一进来
+        // 就刷新掉，等于看不出哪一类有新消息），离页后红点和首页角标才按账本抵消
+        if (isLogin) viewModel.commitSeen()
+    }
+
     override fun onResume() {
         super.onResume()
         // 从分类页（@我 / 评论 / 赞 / 关注）回来时，那边已经把看过的条目记成已读，

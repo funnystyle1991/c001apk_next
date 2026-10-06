@@ -31,8 +31,10 @@ import javax.inject.Inject
  * 所以这里的「未读」口径是**该分类最新的 N 条、去掉本机已经看过的**，
  * N 就是服务端该分类未读数——与 coolapk-desktop 的 `notificationSeen.ts` 完全一致。
  *
- * 展示过的条目当场记进本机账本（[MessageCenterSeenStore]）：既不会再出现在列表里，
- * 也会把宫格红点抵掉（看过就消，而不是等 16 天前的旧通知一直挂在下面）。
+ * 展示过的条目在**离开本页时**记进本机账本（[MessageCenterSeenStore]，见 [commitSeen]）：
+ * 既不会再出现在列表里，也会把宫格红点抵掉（看过就消，而不是等 16 天前的旧通知一直挂在下面）。
+ * 落账刻意推迟到 onStop，而不是展示的那一刻 —— 否则宫格红点会在列表铺好的同一帧消失，
+ * 用户看不出哪一类有新消息。
  */
 @HiltViewModel
 class MessageCenterViewModel @Inject constructor(
@@ -92,6 +94,18 @@ class MessageCenterViewModel @Inject constructor(
     /** 已经拉到的未读条目（按时间倒序），对外展示的是它的前 [shown] 条 */
     private val pool = mutableListOf<MessageCenterAdapter.Item>()
     private var shown = 0
+
+    /**
+     * 「展示即已读」的待落账队列：分类 → 本页展示过的条目 id。
+     *
+     * 不在这里当场记账，是因为宫格红点读的就是这份账本：一进来就记，红点会跟着列表
+     * 铺好的那一帧当场消失（用户要求「至少在离开本页之前保持显示」）。
+     * 真正落账在 [commitSeen]，由页面 onStop 调。
+     */
+    private val pendingSeen = mutableMapOf<String, MutableSet<String>>()
+
+    /** [pendingSeen] 在 IO 线程写、主线程（onStop）读，得自己护住 */
+    private val seenLock = Any()
 
     /** 下拉刷新：重新读各分类未读数，从头攒一份未读列表 */
     fun refresh() {
@@ -230,10 +244,11 @@ class MessageCenterViewModel @Inject constructor(
             return
         }
 
-        // 展示即已读：记进本机账本，宫格红点跟着抵消
-        next.drop(shown).groupBy { it.category }.forEach { (category, items) ->
-            val added = MessageCenterSeenStore.markSeen(category, items.map { it.data.id })
-            MessageCenterSeenStore.addSeenCount(category, added)
+        // 展示即已读：先攒进待落账队列，宫格红点等离开本页再抵消（见 [commitSeen]）
+        synchronized(seenLock) {
+            next.drop(shown).forEach { item ->
+                pendingSeen.getOrPut(item.category) { mutableSetOf() }.add(item.data.id)
+            }
         }
 
         shown = next.size
@@ -242,6 +257,24 @@ class MessageCenterViewModel @Inject constructor(
         footerState.postValue(FooterState.LoadingDone)
         isRefreshing = false
         isLoadMore = false
+    }
+
+    /**
+     * 把本页展示过的条目落进本机账本（宫格红点、首页角标、下次进本页的未读列表都读它）。
+     *
+     * 由页面 onStop 调，而不是展示时当场调：用户要求「至少在离开消息中心之前，
+     * 红点保持显示」，进去一帧就消掉会看不出哪一类有新消息。
+     */
+    fun commitSeen() {
+        val pending = synchronized(seenLock) {
+            val copy = pendingSeen.toMap()
+            pendingSeen.clear()
+            copy
+        }
+        pending.forEach { (category, ids) ->
+            val added = MessageCenterSeenStore.markSeen(category, ids.toList())
+            MessageCenterSeenStore.addSeenCount(category, added)
+        }
     }
 
     /** 拉一次 checkCount：写 CookieUtil（宫格红点）并返回各分类未读数 */
@@ -294,6 +327,9 @@ class MessageCenterViewModel @Inject constructor(
         val removed = list.removeAt(position)
         // 池子里也摘掉，免得下一次刷新前又被当成未读
         pool.removeAll { it.category == removed.category && it.data.id == removed.data.id }
+        // 服务端已经删了这条，别在待落账队列里留着（留着会把本机抵消数抬高、
+        // 连带把还没看的那几条也抵没了）
+        synchronized(seenLock) { pendingSeen[removed.category]?.remove(removed.data.id) }
         if (shown > 0) shown--
         messageData.postValue(list)
     }

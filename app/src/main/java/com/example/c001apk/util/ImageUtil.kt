@@ -27,6 +27,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.load.model.LazyHeaders
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import com.bumptech.glide.load.resource.bitmap.FitCenter
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
 import com.bumptech.glide.request.transition.Transition
 import com.example.c001apk.R
@@ -59,6 +60,10 @@ import java.security.MessageDigest
 
 
 object ImageUtil {
+
+    /** 私信气泡图片的显示上限（dp）。量到真实像素时由 [chatImageSize] 用，量不到时当取图的目标框用。 */
+    private const val CHAT_MAX_WIDTH_DP = 220f
+    private const val CHAT_MAX_HEIGHT_DP = 260f
 
     private var filename = ""
     private lateinit var imagesDir: File
@@ -114,11 +119,21 @@ object ImageUtil {
             LazyHeaders.Builder().addHeader("User-Agent", USER_AGENT).build()
         )
         val request = Glide.with(view).load(newUrl)
-        // 气泡按图片真实比例定死了宽高（见 [chatImageSize]），这里按同一个尺寸取图，
-        // 免得 Glide 按 ImageView 的当前尺寸(可能还是占位的 72dp)降采样后又被放大糊掉
-        if (width > 0 && height > 0) request.override(width, height)
+        if (width > 0 && height > 0) {
+            // 气泡按图片真实比例算好了尺寸（见 [chatImageSize]），按同一个尺寸取图，
+            // 免得 Glide 按 ImageView 的当前尺寸(可能还是占位的 72dp)降采样后又被放大糊掉
+            request.override(width, height).transform(CenterCrop())
+        } else {
+            // 没量到尺寸（CDN 那边解不出宽高）时**不能**瞎给方形：只给一个上限框 +
+            // FitCenter，位图会保持自身比例缩放到框内（FitCenter 的输出就是等比缩放后的
+            // 尺寸，不是框的尺寸），布局里的 adjustViewBounds 再跟着这个位图定气泡大小。
+            val density = view.resources.displayMetrics.density
+            request.override(
+                (CHAT_MAX_WIDTH_DP * density).toInt(),
+                (CHAT_MAX_HEIGHT_DP * density).toInt()
+            ).transform(FitCenter())
+        }
         request
-            .transform(CenterCrop())
             .transition(withCrossFade())
             .diskCacheStrategy(DiskCacheStrategy.ALL)
             .skipMemoryCache(false)
@@ -157,17 +172,26 @@ object ImageUtil {
      * 算私信气泡里的图片该显示多大（px）。
      *
      * 之前的写法是死宽 180dp + CenterCrop，横图竖图都挤成同一条，这里改成按比例：
-     * 宽度铺到 220dp 封顶、高度 260dp 封顶，小图不拉到满宽（按原始像素 1:1），
-     * 极端比例（细长条 / 全景）先夹到 0.6~2.2 免得气泡被拉成一根面条。
+     * 宽度铺到 220dp 封顶、高度 260dp 封顶，比 220dp 还窄的小图不放大（原始像素 1:1）。
+     * 极端比例（细长条 / 全景）先夹到 0.6~2.2，免得气泡被拉成一根面条（配合 CenterCrop 裁切）。
+     *
+     * 单位说明：入参 imgWidth/imgHeight 是**原始像素**，返回的也是 px。
+     * （之前这里写的是 `minOf(imgWidth / density, maxWidth)` —— 拿"像素除密度"得到的 dp
+     * 去跟 px 的 maxWidth 比，量纲混了，结果所有图都偏小，一并修掉。）
+     *
+     * 宽高有一边 <= 0（没量出来）时返回 72dp 的方形占位，调用方**不要**拿它当结果用
+     * ——[MessageDetailAdapter] 只在量到真实像素时才按这个尺寸定死气泡，量不到就走
+     * layout 里的 adjustViewBounds。
      */
     fun chatImageSize(context: Context, imgWidth: Int, imgHeight: Int): Pair<Int, Int> {
         val density = context.resources.displayMetrics.density
-        val maxWidth = 220f * density
-        val maxHeight = 260f * density
+        val maxWidth = CHAT_MAX_WIDTH_DP * density
+        val maxHeight = CHAT_MAX_HEIGHT_DP * density
         val minWidth = 72f * density
         if (imgWidth <= 0 || imgHeight <= 0) return minWidth.toInt() to minWidth.toInt()
         val ratio = (imgWidth.toFloat() / imgHeight.toFloat()).coerceIn(0.6f, 2.2f)
-        var width = minOf(imgWidth / density, maxWidth)
+        // 只比像素：小图不放大，大图压到 220dp
+        var width = minOf(imgWidth.toFloat(), maxWidth)
         var height = width / ratio
         if (height > maxHeight) {
             height = maxHeight

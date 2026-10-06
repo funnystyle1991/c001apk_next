@@ -55,17 +55,30 @@ class MessageDetailAdapter(
             view.setImageDrawable(null)
             // 复用过来时上一条消息的点击监听可能还在，先摘掉，免得点空图点开上一张
             view.setOnClickListener(null)
+            // 上一条消息定死的宽高也不能留下来，否则新图先按旧比例显示一帧
+            view.layoutParams = view.layoutParams.apply {
+                width = ViewGroup.LayoutParams.WRAP_CONTENT
+                height = ViewGroup.LayoutParams.WRAP_CONTENT
+            }
             if (id.isEmpty()) return
             loadPic(id) { pic ->
                 if (view.tag == id && pic != null) {
-                    // 按图片真实比例定气泡里的占位尺寸，再按同一个尺寸取图（不再死宽 180dp）
-                    val (width, height) =
-                        ImageUtil.chatImageSize(view.context, pic.width, pic.height)
-                    view.layoutParams = view.layoutParams.apply {
-                        this.width = width
-                        this.height = height
+                    if (pic.width > 0 && pic.height > 0) {
+                        // 量到了原始像素：按真实比例把占位尺寸定死，再按同一尺寸取图。
+                        // 占位尺寸先定下来，图片回来时不会带着列表再跳一下。
+                        val (width, height) =
+                            ImageUtil.chatImageSize(view.context, pic.width, pic.height)
+                        view.layoutParams = view.layoutParams.apply {
+                            this.width = width
+                            this.height = height
+                        }
+                        ImageUtil.showChatIMG(view, pic.url, width, height)
+                    } else {
+                        // 没量出来（CDN 那边解不出宽高）时**不要**塞方形占位：
+                        // 交回 wrap_content，让 layout 的 adjustViewBounds 跟着实际
+                        // 解码出来的位图走，怎么算都是图片自己的比例。
+                        ImageUtil.showChatIMG(view, pic.url)
                     }
-                    ImageUtil.showChatIMG(view, pic.url, width, height)
                     // 点一下全屏看大图（long click 存图由 Mojito 那侧接管）
                     view.setOnClickListener {
                         ImageUtil.startChatBigImgViewSimple(view, pic.url)

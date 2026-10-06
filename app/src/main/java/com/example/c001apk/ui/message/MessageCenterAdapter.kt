@@ -50,6 +50,9 @@ class MessageCenterAdapter(
             binding.setVariable(BR.type, category)
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.listener, listener)
+            // 同分类页：布局里的分类判定读这个 Boolean（布局里写 `type == `feedLike``
+            // 是引用比较，恒 false）
+            binding.setVariable(BR.isFeedLike, category == "feedLike")
             binding.executePendingBindings()
 
             // 分类页里 @我 / @我的评论 点进动态详情；「我收到的赞」的 id 是点赞记录 id，

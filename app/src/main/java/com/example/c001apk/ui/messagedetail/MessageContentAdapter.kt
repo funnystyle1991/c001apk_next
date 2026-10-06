@@ -92,6 +92,11 @@ class MessageContentAdapter(
             binding.setVariable(BR.type, type)
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.listener, listener)
+            // 布局里「是不是我收到的赞」的判定走这个 Boolean。布局里原来直接写
+            // `type == `feedLike``，那是引用比较：type 是从 Intent 来的运行时字符串、
+            // 没被 intern，跟字面量永远不是同一个对象，三元表达式恒走 else 分支，
+            // 于是「我收到的赞」页面把动态作者（自己）当成了点赞人。
+            binding.setVariable(BR.isFeedLike, type == "feedLike")
 
             binding.executePendingBindings()
         }

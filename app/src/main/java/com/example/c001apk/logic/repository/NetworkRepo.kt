@@ -288,21 +288,29 @@ class NetworkRepo @Inject constructor(
     /**
      * 一页通知。
      *
-     * `url` 是 V18 通知流时多走一道归一化：它跟老接口的键名和正文形状不同，而且是混排流
-     * （夹带 @我 / 系统 / 活动消息），这里只留「回复我的」两类（见 [NotificationV18Kit]）。
-     * 两个调用方（消息中心的汇总列表、「我的回复」分类页）都从这儿过，免得各自判一遍。
+     * V18 的两条流（[NotificationV18Kit.URL] 通知流、[NotificationV18Kit.LIKE_URL] 我收到的赞）
+     * 都要多走一道归一化：键名和正文形状跟老接口不同，调用方按老模型读字段。
+     * 通知流是混排（夹带 @我 / 系统 / 活动消息），只留「回复我的」两类；赞列表整页都是
+     * `feed_like`，不用过滤。调用方（消息中心的汇总列表、各个分类页）都从这儿过，
+     * 免得各自判一遍。
      */
     suspend fun getMessage(url: String, page: Int, lastItem: String?) = fire {
         val response = apiService.getMessage(url, page, lastItem).await()
-        val data = if (url == NotificationV18Kit.URL)
-            response.data
-                ?.filter { NotificationV18Kit.isReplyType(it.noteType) }
-                ?.map { NotificationV18Kit.toMessage(it) }
-                // V18 的成功响应只有 data、没有 status / message。真把 null 透上去，
-                // 调用方会落在「既不 LoadingDone 也不 Failed」的空档里（老接口靠 message 兜底），
-                // 所以这里统一按「本页没有内容」处理，让它正常走到翻页结束。
-                ?: emptyList()
-        else response.data
+        val data = when (url) {
+            NotificationV18Kit.URL ->
+                response.data
+                    ?.filter { NotificationV18Kit.isReplyType(it.noteType) }
+                    ?.map { NotificationV18Kit.toMessage(it) }
+                    // V18 的成功响应只有 data、没有 status / message。真把 null 透上去，
+                    // 调用方会落在「既不 LoadingDone 也不 Failed」的空档里（老接口靠 message 兜底），
+                    // 所以这里统一按「本页没有内容」处理，让它正常走到翻页结束。
+                    ?: emptyList()
+
+            NotificationV18Kit.LIKE_URL ->
+                response.data?.map { NotificationV18Kit.toLikeMessage(it) } ?: emptyList()
+
+            else -> response.data
+        }
         Result.success(response.copy(data = data))
     }
 

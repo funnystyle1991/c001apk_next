@@ -214,6 +214,9 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             event.getContentIfNotHandledOrReturnNull()?.let {
                 // 详情回来了：首屏那批是列表项直出的，adapter 还持有预览 list 的引用，必须换掉
                 feedDataAdapter.submit(viewModel.feedDataList, viewModel.articleList)
+                // 图文的内容项数从 1 变成 N，装饰器按新 itemCount 重算 offsets，
+                // 否则正文会按预览期的边界渲染（顶到屏幕边、排序 tab 提前吸附）
+                binding.recyclerView.invalidateItemDecorations()
             }
         }
 
@@ -338,7 +341,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             if (itemDecorationCount == 0)
                 if (isPortrait)
                     addItemDecoration(
-                        StickyItemDecorator(requireContext(), 1, viewModel.itemCount,
+                        StickyItemDecorator(requireContext(), 1, { viewModel.itemCount },
                             object : StickyItemDecorator.SortShowListener {
                                 override fun showSort(show: Boolean) {
                                     binding.tabLayout.isVisible = show

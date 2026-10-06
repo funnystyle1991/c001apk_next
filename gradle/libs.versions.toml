@@ -27,7 +27,9 @@ lifecycle-extensions = "2.2.0"
 lifecycle-livedata-ktx = "2.7.0"
 material = "1.14.0"
 material-preference = "2.0.0"
-material-version = "2.7.2"
+# rikka 2.7.2 的 class 文件是 Java 21(65.0)，CI 的 JDK 17 读不了（kapt 直接报 wrong version 65.0）。
+# 2.7.0 是 Java 8 字节码，且它引用的 material 资源在 1.14.0 里全部存在（已逐个核对），故停在 2.7.0。
+material-version = "2.7.0"
 materialthemebuilder = "1.3.3"
 okhttp = "4.12.0"
 oss-android-sdk = "2.9.19"

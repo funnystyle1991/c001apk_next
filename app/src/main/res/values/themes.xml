@@ -157,8 +157,8 @@
         <item name="android:paddingBottom">@dimen/m3_btn_padding_bottom</item>
         <item name="android:insetTop">@dimen/m3_btn_inset</item>
         <item name="android:insetBottom">@dimen/m3_btn_inset</item>
-        <item name="android:textAppearance">@macro/m3_comp_text_button_label_text_type</item>
-        <item name="shapeAppearance">@style/ShapeAppearance.M3.Comp.TextButton.Container.Shape
+        <item name="android:textAppearance">@macro/m3_comp_button_small_label_text</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.M3.Comp.Button.Small.Container.Shape.Round
         </item>
         <item name="materialThemeOverlay">@style/ThemeOverlay.Material3.Button.TextButton</item>
         <item name="iconTint">@color/m3_text_button_foreground_color_selector</item>

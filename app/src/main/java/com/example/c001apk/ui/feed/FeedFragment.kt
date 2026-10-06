@@ -33,7 +33,6 @@ import com.example.c001apk.adapter.FooterState
 import com.example.c001apk.adapter.HeaderAdapter
 import com.example.c001apk.adapter.ItemListener
 import com.example.c001apk.databinding.FragmentFeedBinding
-import com.example.c001apk.logic.model.HomeFeedResponse
 import com.example.c001apk.logic.model.TotalReplyResponse
 import com.example.c001apk.ui.base.BaseFragment
 import com.example.c001apk.ui.feed.reply.ReplyActivity
@@ -510,7 +509,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             dateline: String?,
             rid: Any?,
             isViewReply: Any?,
-            feedData: HomeFeedResponse.Data?
+            feedData: Any?
         ) {
             super.onViewFeed(
                 view,

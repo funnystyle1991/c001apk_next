@@ -15,7 +15,6 @@ import com.example.c001apk.adapter.FooterState
 import com.example.c001apk.adapter.HeaderAdapter
 import com.example.c001apk.adapter.ItemListener
 import com.example.c001apk.databinding.ActivityMessageCenterBinding
-import com.example.c001apk.logic.model.HomeFeedResponse
 import com.example.c001apk.ui.base.BaseActivity
 import com.example.c001apk.ui.login.WebLoginActivity
 import com.example.c001apk.util.IntentUtil
@@ -194,7 +193,7 @@ class MessageCenterActivity : BaseActivity<ActivityMessageCenterBinding>() {
             dateline: String?,
             rid: Any?,
             isViewReply: Any?,
-            feedData: HomeFeedResponse.Data?
+            feedData: Any?
         ) {
             super.onViewFeed(
                 view,

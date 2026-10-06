@@ -30,7 +30,6 @@ import com.example.c001apk.adapter.FooterState
 import com.example.c001apk.adapter.ItemListener
 import com.example.c001apk.constant.Constants
 import com.example.c001apk.databinding.DialogReplyToReplyBottomSheetBinding
-import com.example.c001apk.logic.model.HomeFeedResponse
 import com.example.c001apk.logic.model.TotalReplyResponse
 import com.example.c001apk.ui.feed.reply.ReplyActivity
 import com.example.c001apk.util.PrefManager
@@ -269,7 +268,7 @@ class Reply2ReplyBottomSheetDialog : BottomSheetDialogFragment() {
             dateline: String?,
             rid: Any?,
             isViewReply: Any?,
-            feedData: HomeFeedResponse.Data?
+            feedData: Any?
         ) {
             super.onViewFeed(
                 view,

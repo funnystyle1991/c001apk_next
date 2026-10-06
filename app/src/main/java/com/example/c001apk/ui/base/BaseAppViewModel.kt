@@ -74,7 +74,7 @@ abstract class BaseAppViewModel(
             dateline: String?,
             rid: Any?,
             isViewReply: Any?,
-            feedData: HomeFeedResponse.Data?
+            feedData: Any?
         ) {
             super.onViewFeed(
                 view,

@@ -128,56 +128,37 @@ PARALLAX_SLIDE = """<?xml version="1.0" encoding="utf-8"?>
     android:toXDelta="{to}" />
 """
 
-# 被压在下面的那一层：进入时退到左边半屏、缩到 0.7、淡出
+# 被压在下面的那一层：进入时退到左边半屏。**纯位移，不缩放、不淡出。**
+#
+# 为什么缩不得 / 淡不得（2026-10-06 实测，别再照搬 rikkahub 的 Compose 参数）：
+#   `lout` 作用在**旧页 window surface** 上，动画把整个 surface（含 windowBackground、
+#   含 DecorView 背景）一起变换，窗口之外没有任何 canvas 可以画——旧页缩到 0.7 之后，
+#   四周露出的那一层在本窗口之外（更远页面，最底下是桌面），应用侧改 windowBackground
+#   或 DecorView 背景都够不到。`alpha 1 -> 0` 更直接：旧页在被新页盖住之前就透出下层，
+#   观感就是用户报的「上一页缩小、黑色露出来」。
+#   要「缩小 + 四周垫底色」只能回内容级 + 透明窗口，而那条路已实测否决（一卡一卡），
+#   所以这里退成纯位移。
+#   位移是安全的：`rin` 的 100% -> 0 与 `lout` 的 0 -> -50% 只要同曲线同时长，
+#   旧页右边沿 100% - 50%·t 始终 >= 新页左边沿 100% - 100%·t，两层永远搭接、不露空。
 PARALLAX_LAYER_OUT = """<?xml version="1.0" encoding="utf-8"?>
-<!-- 生成物，勿手改：parallax 旧页退场（左移半屏 + 缩到 0.7 + 淡出）/ {curve} / {duration}ms -->
-<set xmlns:android="http://schemas.android.com/apk/res/android">
-    <translate
-        android:duration="{duration}"
-        android:fromXDelta="0"
-        android:interpolator="{interp}"
-        android:toXDelta="-50%" />
-    <scale
-        android:duration="{duration}"
-        android:fromXScale="1.0"
-        android:fromYScale="1.0"
-        android:interpolator="{interp}"
-        android:pivotX="50%"
-        android:pivotY="50%"
-        android:toXScale="0.7"
-        android:toYScale="0.7" />
-    <alpha
-        android:duration="{duration}"
-        android:fromAlpha="1.0"
-        android:interpolator="{interp}"
-        android:toAlpha="0.0" />
-</set>
+<!-- 生成物，勿手改：parallax 旧页退场（左移半屏，纯位移）/ {curve} / {duration}ms -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="{duration}"
+    android:fromXDelta="0"
+    android:interpolator="{interp}"
+    android:toXDelta="-50%" />
 """
 
-# 返回时从上面那层底下归位：-50% / 0.7 / 全透明 -> 原样
+# 返回时从上面那层底下归位：-50% -> 原样，同样**纯位移**
+# （起止与 `PARALLAX_LAYER_OUT` 严格对称，否则 pop 结束帧与 push 起始帧对不上，
+#  下层页会跳一下；同理不缩放不淡出，原因见上）
 PARALLAX_LAYER_IN = """<?xml version="1.0" encoding="utf-8"?>
-<!-- 生成物，勿手改：parallax 下层页归位（从左侧半屏 + 0.7 + 透明归位）/ {curve} / {duration}ms -->
-<set xmlns:android="http://schemas.android.com/apk/res/android">
-    <translate
-        android:duration="{duration}"
-        android:fromXDelta="-50%"
-        android:interpolator="{interp}"
-        android:toXDelta="0" />
-    <scale
-        android:duration="{duration}"
-        android:fromXScale="0.7"
-        android:fromYScale="0.7"
-        android:interpolator="{interp}"
-        android:pivotX="50%"
-        android:pivotY="50%"
-        android:toXScale="1.0"
-        android:toYScale="1.0" />
-    <alpha
-        android:duration="{duration}"
-        android:fromAlpha="0.0"
-        android:interpolator="{interp}"
-        android:toAlpha="1.0" />
-</set>
+<!-- 生成物，勿手改：parallax 下层页归位（从左侧半屏归位，纯位移）/ {curve} / {duration}ms -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="{duration}"
+    android:fromXDelta="-50%"
+    android:interpolator="{interp}"
+    android:toXDelta="0" />
 """
 
 KT_HEADER = """package com.example.c001apk.util
@@ -266,6 +247,13 @@ def main():
                 entries.append((key, fin if slot in ("rin", "lin") else fout))
 
             # 视差滑动：四个槽位形状各不相同，逐个烘（rikkahub 同款）
+            #
+            # 同步规则与 slide 同源：**配对的两层必须同曲线、同时长**，
+            #   push 配对 = rin（新页，上层）+ lout（旧页，下层）
+            #   pop  配对 = lin（下层页）+ rout（当前页，上层）
+            # 这里的 lout / rout 原先吃的是 exit 那套（accelerate、进入 - 50ms），
+            # 结果旧页已经退到一半、新页还没跟上，中间空出来的那块直接露桌面（用户报的
+            # 「黑色露出」的一半成因）；统一到 enter 这套后位移之和才是常量。
             p_rin = "exp_parallax_%s_%d_rin" % (curve, enter)
             p_lout = "exp_parallax_%s_%d_lout" % (curve, enter)
             p_lin = "exp_parallax_%s_%d_lin" % (curve, enter)
@@ -275,13 +263,13 @@ def main():
                 duration=enter, frm="100%", to="0", interp=enter_interp)))
             files.append((p_lout, PARALLAX_LAYER_OUT.format(
                 curve=curve, enter=enter, exit=exit_ms,
-                duration=exit_ms, interp=exit_interp)))
+                duration=enter, interp=enter_interp)))
             files.append((p_lin, PARALLAX_LAYER_IN.format(
                 curve=curve, enter=enter, exit=exit_ms,
                 duration=enter, interp=enter_interp)))
             files.append((p_rout, PARALLAX_SLIDE.format(
                 curve=curve, enter=enter, exit=exit_ms,
-                duration=exit_ms, frm="0", to="100%", interp=exit_interp)))
+                duration=enter, frm="0", to="100%", interp=enter_interp)))
             for slot, name in (("rin", p_rin), ("lout", p_lout), ("lin", p_lin), ("rout", p_rout)):
                 entries.append(("parallax_%s_%d_%s" % (curve, enter, slot), name))
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 生成物，勿手改：parallax / m2 / 进入 100ms（退出 50ms） -->
 <translate xmlns:android="http://schemas.android.com/apk/res/android"
-    android:duration="50"
+    android:duration="100"
     android:fromXDelta="0"
     android:interpolator="@interpolator/exp_m2_standard"
     android:toXDelta="100%" />

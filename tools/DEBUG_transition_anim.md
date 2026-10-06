@@ -375,3 +375,34 @@ adb shell "screenrecord --time-limit 8 --bit-rate 20000000 /sdcard/t.mp4"
 - window 级动画的前提就是「页面照旧卡、动画照样顺」，**不要**再用 `gfxinfo` 的 Janky 百分比验收。
 - 别为了「统一实现」把纯位移挪回内容级，也别为了「圆角 / 垫底色」把窗口改回透明。
 
+### 9.5 `parallax` 退成纯位移：用户报的「上一页缩小、黑色露出来」（2026-10-06）
+
+用户实测 `parallax` 档：进入下一页面时上一页缩小，四周露出黑色。
+
+先说结论：**这个黑色在 window 级下没有背景可以垫**，所以解法是**去掉让它露出来的两个成因**，
+而不是去「加背景」。
+
+- **为什么垫不上**：`lout` 的动画作用在旧页的 **window surface** 上，`windowBackground`、
+  DecorView 背景、页面根背景全都在这个 surface 里、跟着 transform 一起被缩放/平移。
+  旧页缩到 0.7 之后露出的那一层在**本窗口之外**（更远页面，最底下是桌面），
+  应用侧没有任何 canvas 能画到那里。`applyPageBackground()` 治不了这个——
+  它是给 DecorView 垫色、用来兜暗色 overlay 晚于 onCreate 的，和窗口之外的区域无关。
+  （§6 那段「露出的正是垫在旧页 DecorView 上的底色」是**内容级时代**的结论，
+  那时动画在 `android.R.id.content` 上播、DecorView 背景不参与变换才成立，现在已经不成立。）
+- **黑色从哪来**（两个成因，都在 `PARALLAX_LAYER_OUT` 里）：
+  1. `<alpha 1.0 -> 0.0>`：旧页在被新页盖住之前就淡出，左半屏直接透出下层 → 「黑」。
+  2. `<scale 1.0 -> 0.7>`（pivot 50%/50%、**没有 Y 位移**）：缩小后旧页的上下边各内收
+     `0.15·t·H`，而新页只做 X 位移、永远是全高，左上 / 左下角那一块谁都没盖住 → 「四周露」。
+- **改法**（`tools/gen_transition_anim.py`，重新生成 75 个 `exp_parallax_*_{lin,lout,rout}.xml`）：
+  - `PARALLAX_LAYER_OUT` / `PARALLAX_LAYER_IN` 改成**只有 `<translate>`**：`0 -> -50%` / `-50% -> 0`，
+    删掉 `<scale>` 与 `<alpha>`。两层都保持不透明全高，位移之和是常量，永远不会露空。
+  - `lout` / `rout` 的曲线与时长**对齐到配对的 `rin` / `lin`**（原先吃的是 exit 那套：
+    accelerate + 进入 - 50ms）。这和 §7 slide 那条注释是同一个道理：
+    push 配对 = `rin` + `lout`，pop 配对 = `lin` + `rout`，配对的两层必须同曲线同时长，
+    否则旧页退到一半、新页还没跟上，中间空出来的那块就是露底。
+  - 改完的四个槽位（std/400 为例）：`rin` 100%→0、`lout` 0→-50%、`lin` -50%→0、`rout` 0→100%，
+    全部 400ms / `standard_decelerate`。push 的末态 = pop 的初态，首尾对得上。
+- **观感代价**（用户已拍板放弃圆角，接受）：`parallax` 不再是「缩小的卡片」，
+  变成「旧页以半速左移退场」的视差——和 `slide`（旧页整屏同速退场）仍有肉眼可见的差别。
+  想找回「缩小 + 四周垫底色」只能回「内容级 + 透明窗口」，已实测否决，别回头。
+

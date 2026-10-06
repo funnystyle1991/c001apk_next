@@ -138,8 +138,11 @@ class FeedDataAdapter(
     }
 
     override fun getItemCount(): Int {
-        return if (feedDataList.isNullOrEmpty() && !articleList.isNullOrEmpty()) articleList.size
-        else if (!feedDataList.isNullOrEmpty() && articleList.isNullOrEmpty()) feedDataList.size
+        // 属性是 var（详情回填要整体换掉），先落到局部变量才能 smart cast
+        val feeds = feedDataList
+        val articles = articleList
+        return if (feeds.isNullOrEmpty() && !articles.isNullOrEmpty()) articles.size
+        else if (!feeds.isNullOrEmpty() && articles.isNullOrEmpty()) feeds.size
         else 0
     }
 
@@ -171,7 +174,8 @@ class FeedDataAdapter(
                     )
                     binding.setVariable(
                         BR.followAuthor,
-                        feedDataList?.getOrNull(0)?.userAction?.followAuthor ?: 0
+                        feedDataList?.getOrNull(0)?.userAction?.followAuthor
+                            ?: Constants.FOLLOW_AUTHOR_UNKNOWN
                     )
                     binding.executePendingBindings()
                 }
@@ -180,12 +184,13 @@ class FeedDataAdapter(
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (articleList.isNullOrEmpty()) 0
-        else when (articleList[position].type) {
+        val articles = articleList
+        return if (articles.isNullOrEmpty()) 0
+        else when (articles[position].type) {
             "text" -> 1
             "image" -> 2
             "shareUrl" -> 3
-            else -> throw IllegalArgumentException("invalid article type: ${articleList[position].type}")
+            else -> throw IllegalArgumentException("invalid article type: ${articles[position].type}")
         }
     }
 

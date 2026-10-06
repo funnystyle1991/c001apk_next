@@ -88,13 +88,21 @@ object TransitionAnim {
     }
 
     // ------------------------------------------------------------------
-    // 内容级转场：动画作用在 android.R.id.content 上，window 本身不缩放
+    // 两套转场通道，由 [useWindowAnim] 分流
     //
-    // 为什么不用 window 动画（overridePendingTransition 直接吃 res/anim）：window 缩放时，
-    // 窗口四周露出的是**本窗口之外的下一层窗口**（可能是桌面或更早的 Activity），暗色 /
-    // 纯黑主题下就是一片黑，改 windowBackground 也救不回来；而且窗口四角是直角，缩放后会
-    // 顶到屏幕圆角外。把同一套 res/anim 挪到内容视图上播，四周露出的是**本窗口自己的
-    // windowBackground**（就是应用背景），圆角也能自己裁。
+    // A. window 级（slide / none）：资源直接交给系统，动画作用在窗口 surface 上。
+    //    纯位移时两个窗口位移恒互补、严丝合缝，不会露出任何缝隙；且由**系统合成器**驱动，
+    //    应用主线程再卡也不影响它逐帧推进。
+    // B. 内容级（fade / parallax）：动画作用在 android.R.id.content 上，window 不参与。
+    //
+    // 为什么还需要 B：window 一旦缩放，窗口四周露出的是**本窗口之外的下一层窗口**
+    // （可能是桌面或更早的 Activity），暗色 / 纯黑主题下就是一片黑，改 windowBackground
+    // 也救不回来；窗口四角又是直角，缩放后会顶到屏幕圆角外。把动画挪到内容视图上播，
+    // 四周露出的是**本窗口自己的 windowBackground**（[refreshBackdrops] 垫的页面底色），
+    // 圆角也能自己裁。
+    //
+    // B 的固有代价：它依赖应用自己的绘制回调，重页面首帧卡顿会把动画帧整个吞掉
+    // （详见 [useWindowAnim]）。所以**纯位移一律留给 A**，别为了「统一实现」挪进 B。
     // ------------------------------------------------------------------
 
     /** 读不到系统屏幕圆角时的兜底圆角（dp） */
@@ -138,6 +146,9 @@ object TransitionAnim {
     fun register(activity: Activity, hasPageBackground: Boolean = true) {
         if (stack.none { it.ref.get() === activity })
             stack.add(Page(WeakReference(activity), hasPageBackground))
+        // window 级模式要在这里就把底色垫好：那边动画由系统播，没有「内容级首帧」这种
+        // 回调时机了，等窗口画出来再改 decor 会闪一下
+        if (useWindowAnim) refreshBackdrops()
     }
 
     /** 由 BaseActivity / BaseViewActivity 在 onDestroy 调用；顺带清掉已回收的僵尸引用 */
@@ -161,17 +172,26 @@ object TransitionAnim {
      * 最底下直接是桌面。实测退出时能看见壁纸上的小组件。
      *
      * 垫在 DecorView 上（它不参与内容动画），透出来的就变成应用背景色，与页面底色同色。
-     * 只垫非栈顶页：栈顶那页必须保持透明，否则会把下层页整个盖死，两层同框就没了。
      *
-     * 半透明浮层页（回复页）不垫——它下面那层不透明页已经垫过了，链路不会断。
+     * 垫哪几页分两种模式（见 [useWindowAnim]）：
+     * - 内容级：只垫非栈顶页——栈顶那页必须保持透明，否则会把下层页整个盖死，两层同框就没了；
+     * - window 级：每页都垫，兜住「内容视图没铺满窗口」的边（详情页 contentView 441 < 窗口 480）。
+     *
+     * 半透明浮层页（回复页）任何模式下都不垫——它下面那层不透明页已经垫过了，链路不会断。
      */
     private fun refreshBackdrops() {
         val alive = stack.mapNotNull { page ->
             page.ref.get()?.takeIf { !it.isFinishing && !it.isDestroyed }?.let { page to it }
         }
         val top = alive.lastOrNull()?.second ?: return
+        // window 级模式连栈顶页一起垫：位移不会露缝，垫它是为了兜住「内容视图没铺满窗口」
+        // 那一条——详情页的 contentView 只有 441 高（窗口 480），两层都归位之后，底部那
+        // 39px 会直接透到下层页面上去。内容级模式反过来，栈顶必须保持透明才能两层同框。
+        val padAll = useWindowAnim
         alive.forEach { (page, activity) ->
-            if (activity === top || !page.hasBackground) return@forEach
+            // 半透明浮层页（回复页）任何模式下都不垫，否则会把它下面那页整个盖死
+            if (!page.hasBackground) return@forEach
+            if (!padAll && activity === top) return@forEach
             val decor = activity.window?.decorView ?: return@forEach
             val color = MaterialColors.getColor(
                 decor, com.google.android.material.R.attr.colorSurface
@@ -183,10 +203,39 @@ object TransitionAnim {
     }
 
     /**
-     * 打开新页面：**window 不做任何动画**（传 0 而不是 res("rin")），
-     * 新页改在 [BaseActivity]/[BaseViewActivity] 的 onCreate 里播内容进入动画。
+     * 这次转场该不该走**内容级**动画（动画作用在 `android.R.id.content` 上）。
+     *
+     * 判据只有一条：**动画过程会不会露出窗口之外的东西**。
+     *
+     * - `parallax` 要缩放，窗口四周会露出桌面；
+     * - `fade` 交叉淡化时两个窗口都是半透明的，叠加后也会透出桌面。
+     *
+     * 这两种必须走内容级——动画只作用在内容块上，四周露出来的是本窗口自己的
+     * windowBackground（[refreshBackdrops] 垫的页面底色）。
+     *
+     * 而纯位移的 `slide` 反过来**必须走 window 级**：两个窗口在屏幕上位移恒互补
+     * （旧页右边缘 = 新页左边缘），一个像素的缝都不会有，压根不需要垫底色；
+     * 更关键的是 window 动画由 **系统合成器**驱动，不占用应用主线程。
+     *
+     * 内容级动画走的是应用自己的绘制回调（`View.applyLegacyAnimation` 在 `draw()` 里跑），
+     * 主线程一卡就直接跳过若干帧；而 `Animation` 又是**按墙钟**算进度的，等主线程缓过来
+     * 画下一帧时进度已经到头了——表现就是「一帧滑走 / 一帧白屏」。
+     * 实测详情页这种要发请求 + 解析 + 布局的重页面，进入时单帧能到 85~200ms，
+     * 400ms 的转场只够画 2~4 帧，于是整段动画等于没有；而 window 级动画同一台机器上
+     * 帧帧都在动（这也是改造前那版没有这个问题的原因）。
+     */
+    private val useWindowAnim: Boolean get() = type == TYPE_SLIDE || type == TYPE_NONE
+
+    /**
+     * 打开新页面。
+     *
+     * `slide` / `none` 直接把资源交给系统播 **window 动画**；其余类型让 window 不参与
+     * （传 0），改由新页在 [BaseActivity]/[BaseViewActivity] 的 onCreate 里播内容动画。
      */
     fun enterOptions(context: Context): ActivityOptions {
+        if (useWindowAnim) {
+            return ActivityOptions.makeCustomAnimation(context, res("rin"), res("lout"))
+        }
         enterPending = true
         return ActivityOptions.makeCustomAnimation(context, 0, 0)
     }
@@ -194,6 +243,9 @@ object TransitionAnim {
     /** 同 [enterOptions]，给还在用 androidx 兼容 API 的调用点 */
     @Suppress("DEPRECATION")
     fun enterOptionsCompat(context: Context): ActivityOptionsCompat {
+        if (useWindowAnim) {
+            return ActivityOptionsCompat.makeCustomAnimation(context, res("rin"), res("lout"))
+        }
         enterPending = true
         return ActivityOptionsCompat.makeCustomAnimation(context, 0, 0)
     }
@@ -229,11 +281,25 @@ object TransitionAnim {
     }
 
     /**
+     * window 级的返回动画，由 [BaseActivity] / [BaseViewActivity] 在 `super.finish()`
+     * **之后**立刻调用（框架要求 `overridePendingTransition` 紧跟 finish）。
+     *
+     * `overridePendingTransition(enterAnim, exitAnim)`：enter 是**被露出来的那层**
+     * （下层页从左归位 → `lin`），exit 是**正在关闭的这层**（右滑出 → `rout`）。
+     * 内容级模式下什么都不做——那边由 [startExit] 全程接管。
+     */
+    fun applyWindowExit(activity: Activity) {
+        if (useWindowAnim) activity.overridePendingTransition(res("lin"), res("rout"))
+    }
+
+    /**
      * 关闭当前页：内容右滑出 + 淡出，**动画播完才真正 finish**（window 全程不动）。
      *
      * @return true 表示已经接管收尾，调用方直接 return 即可，不要再自己 finish
      */
     fun startExit(activity: Activity): Boolean {
+        // window 级模式不走这条：直接放行给 super.finish() + applyWindowExit()
+        if (useWindowAnim) return false
         val resId = res("rout")
         if (resId == 0 || activity.isFinishing || exiting.containsKey(activity)) return false
         val view = contentView(activity) ?: return false

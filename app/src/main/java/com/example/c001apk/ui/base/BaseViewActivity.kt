@@ -27,7 +27,7 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         setContentView(binding.root)
 
         applyPageBackground()
-        // 转场：动画由内容视图播，window 不参与（见 TransitionAnim 顶部注释）
+        // 转场：slide / none 由系统播 window 动画；其余类型才由内容视图播（见 TransitionAnim.useWindowAnim）
         TransitionAnim.register(this, pageBackground)
         if (TransitionAnim.consumeEnter()) TransitionAnim.playEnter(this)
 
@@ -152,6 +152,8 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         // 内容先滑出，动画结束后 TransitionAnim 会再调一次 finish()，届时标记挡住重入
         if (TransitionAnim.startExit(this)) return
         super.finish()
+        // window 级模式（slide / none）的返回动画：系统合成器驱动，免疫主线程卡顿
+        TransitionAnim.applyWindowExit(this)
     }
 
 }

@@ -97,6 +97,31 @@ object ImageUtil {
         }
     }
 
+    /**
+     * 私信图片。跟 [showIMG] 只差一处：**不做 http2https**。
+     *
+     * 私信图片固定落在 `message-pic2.coolapk.com`，这个 CDN 不支持 https
+     * （实测 TLS 握手直接失败 `sslv3 alert handshake failure`），改成 https 就加载不出来；
+     * 明文访问本身没问题，`network_security_config` 里 `cleartextTrafficPermitted="true"`。
+     *
+     * 传入的必须是 `showImage` 302 出来的**带 auth_key 的完整地址**，裸地址会被 CDN 挡。
+     */
+    @SuppressLint("CheckResult")
+    fun showChatIMG(view: ImageView, url: String?) {
+        if (url.isNullOrEmpty()) return
+        val newUrl = GlideUrl(
+            url,
+            LazyHeaders.Builder().addHeader("User-Agent", USER_AGENT).build()
+        )
+        Glide.with(view)
+            .load(newUrl)
+            .transform(CenterCrop())
+            .transition(withCrossFade())
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
+            .skipMemoryCache(false)
+            .into(view)
+    }
+
     private suspend fun saveImageToGallery(ctx: Context, imageUrl: String): Boolean =
         withContext(Dispatchers.IO) {
             var success = false

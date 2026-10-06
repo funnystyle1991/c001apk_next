@@ -78,6 +78,15 @@
                 tools:ignore="HardcodedText" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/imageBtn"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="发送图片"
+                app:icon="@drawable/ic_photo"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/sendBtn"
                 style="@style/Widget.Material3.Button.IconButton"
                 android:layout_width="wrap_content"

@@ -310,13 +310,29 @@ class NetworkRepo @Inject constructor(
         Result.success(apiService.getChatHistory(ukey, page).await())
     }
 
-    /** 发私信（multipart）。文本 part 必须用 RequestBody，String 会被 Gson 加上引号 */
-    suspend fun sendMessage(uid: String, message: String) = fire {
+    /**
+     * 发私信（multipart）。文本 part 必须用 RequestBody，String 会被 Gson 加上引号。
+     * `messagePic` 是图片消息在 OSS 上的对象名（`ossUploadPrepare` 返回的 uploadFileName，
+     * 调用方要自己加前导斜杠），发纯文字时留空。
+     */
+    suspend fun sendMessage(uid: String, message: String, messagePic: String = "") = fire {
         val text = "text/plain; charset=utf-8".toMediaTypeOrNull()
         val empty = "".toRequestBody(text)
         Result.success(
-            apiService.sendMessage(uid, "1", message.toRequestBody(text), empty, empty).await()
+            apiService.sendMessage(
+                uid, "1", message.toRequestBody(text), messagePic.toRequestBody(text), empty, empty
+            ).await()
         )
+    }
+
+    /**
+     * 私信图片的真实地址。`message_pic` 只是 OSS 对象名，CDN 的裸地址会被 auth_key 拦，
+     * 必须先问 showImage；它回 302，Location 才是带签名（有效期约半小时）的地址。
+     * 必须用不跟随重定向的 client，否则 Location 取不到（跟 [getAppDownloadLink] 同套路）。
+     */
+    suspend fun getMessagePicUrl(id: String) = fire {
+        val response = apiServiceNoRedirect.getMessageImage(id).response()
+        Result.success(response.headers()["Location"])
     }
 
     suspend fun readMessage(ukey: String) = fire {

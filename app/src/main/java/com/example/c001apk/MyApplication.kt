@@ -14,6 +14,7 @@ import dagger.hilt.android.HiltAndroidApp
 import net.mikaelzero.mojito.Mojito
 import net.mikaelzero.mojito.loader.glide.GlideImageLoader
 import net.mikaelzero.mojito.view.sketch.SketchImageLoadFactory
+import net.mikaelzero.mojito.view.sketch.core.Sketch
 import kotlin.system.exitProcess
 
 @HiltAndroidApp
@@ -42,6 +43,17 @@ class MyApplication : Application() {
             GlideImageLoader.with(this, SslVerify.debugImageClientOrNull()),
             SketchImageLoadFactory()
         )
+
+        // 全屏看图器里的图是交给 Sketch 显示的（列表图片走 Glide），所以 Sketch 只有点开大图时才会
+        // 第一次被用到。Sketch.with() 是进程级单例，首次调用会在当前线程同步构造 Configuration：
+        // 建磁盘缓存、位图池、内存池、线程池，还要扫一遍缓存目录、读一次 PackageManager 元数据，
+        // 在主线程上就是几百毫秒 —— 表现正好是第一次点开图片会卡/闪一下，退出去再进来就好了
+        // （那时单例已经建好）。这里冷启动时后台预热，把这份一次性开销从点开的瞬间挪走。
+        Thread {
+            runCatching { Sketch.with(this) }.onFailure {
+                android.util.Log.w("MyApplication", "Sketch 预热失败", it)
+            }
+        }.start()
 
         Thread.setDefaultUncaughtExceptionHandler { _, paramThrowable ->
             val exceptionMessage = android.util.Log.getStackTraceString(paramThrowable)

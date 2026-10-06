@@ -295,9 +295,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
         val root = binding.root as ViewGroup
         root.bringChildToFront(binding.appBar)
         // 顶栏不裁子 View 之后，标题滑出顶栏的那一截得靠 topMask 压住，所以它要画在 appBar 之上；
-        // 高度取"顶栏内容区以上的空白"（一般是状态栏那一带），没有空白就保持 0
-        binding.topMask.layoutParams.height = binding.appBar.top + binding.toolBar.top
-        binding.topMask.requestLayout()
+        // 它多高（= 顶栏上方那段空白）要等排布完才知道，在 applyTitleSwitch 里按帧对
         root.bringChildToFront(binding.topMask)
         feedDataAdapter = FeedDataAdapter(
             ItemClickListener(),
@@ -747,14 +745,15 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
      * 一次量好固定住，两轴位移按同一个进度线性收敛 => 沿两点之间的直线平移。
      */
     private fun applyTitleSwitch(progress: Float) {
-        val p = progress.coerceIn(0f, 1f)
+        // 回顶那一下最后可能停在 1px，收成 0，免得标题差一丝、作者行露一丝
+        val p = if (progress <= 0.001f) 0f else progress.coerceIn(0f, 1f)
         val row = binding.titleProfile
         // 起点就是内容里那一行本身的屏幕位置，量一次固定住（item1 一滑出屏幕就量不到了，
         // 每帧现量会在半路跳回兜底值，起点也就跟着往上跳）
         measureTitleSwitchStart()
         val dx = titleSwitchStartX ?: -24.dp.toFloat()
         val dy = titleSwitchStartY ?: (if (row.height > 0) row.height else 40.dp).toFloat()
-        // 两轴按同一个 p 线性收敛 => 这一块是从原地被拖着斜着滑上去，不是从顶栏下边冒出来
+        // 两轴按同一个 p 线性收敛 => 这一块是朝着终点坐标斜着滑过去，不是随列表竖直往上滚
         row.translationY = (1f - p) * dy
         row.translationX = (1f - p) * dx
         // 全程不打透明度：滑进来多少就完整露出多少，不做淡入
@@ -775,6 +774,54 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             it.translationY = -p * (it.top + it.height)
             it.alpha = 1f
         }
+        // 标题滑出顶栏的那一截得有人裁：顶栏上方那段空白（状态栏那一带）排布完才知道多高，
+        // 所以放在这里按帧对，而不是 initView 里排布之前算
+        val maskHeight = binding.appBar.top + binding.toolBar.top
+        if (maskHeight != binding.topMask.height) {
+            binding.topMask.layoutParams.height = maskHeight
+            binding.topMask.requestLayout()
+        }
+        // 起点量准了才动列表里那一行：两块重叠着一起往上走，看起来才像"这一行飞上去了"。
+        // 量不准（兜底起点）就别藏，否则会变成列表里那行没了、顶栏又冒出来一行
+        if (titleSwitchStartY != null) setContentAuthorRowHidden(p > 0f)
+    }
+
+    // 内容里那一行作者信息（item1 的）：作者行飞上去的这段，得把列表里这一行藏掉，
+    // 不然会看到"一行随列表竖直往上滚 + 一行朝顶栏滑"两行同时在，很抽象
+    private var contentRowItem: View? = null
+    private var contentRowViews: List<View> = emptyList()
+
+    /** 动态内容卡和图文详情头的作者行都是这几个 id（没有的 layout 就跳过） */
+    private val contentRowIds = intArrayOf(
+        R.id.authorRow, R.id.avatar, R.id.uname, R.id.pubDate,
+        R.id.device, R.id.privateBadge, R.id.follow, R.id.followLoading
+    )
+
+    /** 用 alpha 藏/露列表里那一行：不动布局，卡片也不会跳一下。 */
+    private fun setContentAuthorRowHidden(hidden: Boolean) {
+        val item = binding.recyclerView.layoutManager?.findViewByPosition(1)
+        if (item == null) {
+            // 这一行已经滑出屏幕/被回收走了：还原 alpha，别让它带着透明去别的位置
+            restoreContentAuthorRow()
+            return
+        }
+        if (contentRowItem !== item) {
+            if (contentRowItem?.isAttachedToWindow == false) {
+                contentRowViews.forEach { it.alpha = 1f }
+            }
+            contentRowItem = item
+            contentRowViews = contentRowIds.mapNotNull { item.findViewById<View>(it) }
+        }
+        val alpha = if (hidden) 0f else 1f
+        contentRowViews.forEach { it.alpha = alpha }
+    }
+
+    private fun restoreContentAuthorRow() {
+        val item = contentRowItem ?: return
+        if (item.isAttachedToWindow) return
+        contentRowViews.forEach { it.alpha = 1f }
+        contentRowItem = null
+        contentRowViews = emptyList()
     }
 
     /**

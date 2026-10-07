@@ -1,6 +1,9 @@
 package com.example.c001apk.util
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.widget.ImageView
+import androidx.core.view.isVisible
 import com.example.c001apk.R
 
 /**
@@ -43,5 +46,20 @@ object VerifyBadge {
         uid == NEXT_MAINTAINER_UID -> NEXT_MAINTAINER_TITLE
         raw.isNullOrBlank() -> null
         else -> raw
+    }
+
+    /**
+     * 把结果落到角标 ImageView 上：有认证就显示并上色，没有就 GONE。
+     *
+     * DataBinding 那边走 [com.example.c001apk.adapter.setVerifyBadge]，
+     * 手动 inflate 的 ViewHolder（黑名单那种）直接用这个，判定逻辑只有一份。
+     */
+    fun applyTo(imageView: ImageView, uid: String?, icon: String?, status: Int?) {
+        val verified = isVerified(uid, status)
+        imageView.isVisible = verified
+        if (!verified) return
+        imageView.backgroundTintList =
+            ColorStateList.valueOf(badgeColor(imageView.context, uid, icon))
+        imageView.contentDescription = title(uid, null) ?: "认证用户"
     }
 }

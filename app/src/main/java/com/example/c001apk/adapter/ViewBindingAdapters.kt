@@ -98,13 +98,29 @@ fun followLoading(view: View, followAuthor: Int) {
  * 手里没有 userInfo 对象可传。
  */
 @BindingAdapter(value = ["verifyUid", "verifyIcon", "verifyStatus"], requireAll = false)
-fun setVerifyBadge(imageView: ImageView, uid: String?, icon: String?, status: Int?) {
-    val verified = VerifyBadge.isVerified(uid, status)
-    imageView.isVisible = verified
-    if (!verified) return
-    imageView.backgroundTintList =
-        ColorStateList.valueOf(VerifyBadge.badgeColor(imageView.context, uid, icon))
-    imageView.contentDescription = VerifyBadge.title(uid, null) ?: "认证用户"
+fun setVerifyBadge(imageView: ImageView, uid: String?, icon: String?, status: Int?) =
+    VerifyBadge.applyTo(imageView, uid, icon, status)
+
+/**
+ * 用户卡片（搜索用户 / 关注粉丝 / 黑名单共用 item_search_user）的头像角标。
+ *
+ * 那三处的头像是三个来源，优先级得跟 UserViewHolder 的分支顺序一致：两个 userInfo 都在时
+ * 认 userInfo，只有 fUserInfo 时认它，最后才是 Data 自己的扁平字段 —— 用户搜索返回的实体
+ * 就是这个形状，verify_* 跟 uid / username 平级。
+ */
+@BindingAdapter("verifyUserData")
+fun setVerifyUserData(imageView: ImageView, data: HomeFeedResponse.Data?) {
+    val user = when {
+        data?.userInfo != null && data.fUserInfo != null -> data.userInfo
+        data?.fUserInfo != null -> data.fUserInfo
+        else -> null
+    }
+    VerifyBadge.applyTo(
+        imageView,
+        user?.uid ?: data?.uid,
+        user?.verifyIcon ?: data?.verifyIcon,
+        user?.verifyStatus ?: data?.verifyStatus,
+    )
 }
 
 /**

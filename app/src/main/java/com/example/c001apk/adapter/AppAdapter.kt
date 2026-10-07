@@ -333,6 +333,8 @@ class AppAdapter(
         override fun bind(data: HomeFeedResponse.Data) {
 
             binding.setVariable(BR.listener, listener)
+            // 角标走布局里的 app:verifyUserData="@{data}"，不把 data 塞进 binding 就不会触发
+            binding.setVariable(BR.data, data)
 
             if (data.userInfo != null && data.fUserInfo != null) {
                 binding.uid = data.userInfo.uid

@@ -109,6 +109,12 @@ data class HomeFeedResponse(
         @SerializedName("recent_like_list") val recentLikeList: String?,
         val entityId: String?,
         val userAvatar: String?,
+        /**
+         * 扁平用户实体（用户搜索返回的就是这种形状）自带的认证字段：
+         * 跟 uid / username 平级，不在 userInfo 里面，所以这里也得留一份。
+         */
+        @SerializedName("verify_status") val verifyStatus: Int? = null,
+        @SerializedName("verify_icon") val verifyIcon: String? = null,
         val infoHtml: String?,
         val title: String?,
         val commentStatusText: String?,

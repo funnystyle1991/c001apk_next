@@ -6,38 +6,59 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.text.Editable
 import android.text.InputFilter
 import android.text.InputType
 import android.text.Spanned
 import android.text.style.DynamicDrawableSpan
 import android.text.style.ImageSpan
+import android.view.Gravity
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.View
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
+import androidx.core.graphics.ColorUtils
+import androidx.core.view.HapticFeedbackConstantsCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import androidx.viewpager2.widget.ViewPager2
 import com.bumptech.glide.Glide
+import com.example.c001apk.BuildConfig
 import com.example.c001apk.MyApplication
 import com.example.c001apk.R
 import com.example.c001apk.databinding.ActivityArticlePublishBinding
 import com.example.c001apk.ui.base.BaseActivity
+import com.example.c001apk.ui.feed.reply.attopic.AtTopicActivity
+import com.example.c001apk.ui.feed.reply.emoji.EmojiPagerAdapter
+import com.example.c001apk.util.EmojiUtils
 import com.example.c001apk.util.ImageUtil.getImageDimensionsAndMD5
 import com.example.c001apk.util.ImageUtil.toHex
+import com.example.c001apk.util.TransitionAnim
+import com.example.c001apk.util.dp
 import com.example.c001apk.util.makeToast
 import com.example.c001apk.util.ossUpload
+import com.example.c001apk.view.EmojiTextWatcher
+import com.example.c001apk.view.FastDeleteAtUserKeyListener
+import com.example.c001apk.view.OnTextInputListener
+import com.example.c001apk.view.SmoothInputLayout
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.gson.Gson
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -54,9 +75,30 @@ import kotlin.math.roundToInt
  * 存在 span 上，发布时一起写进 message（见 [editDescription]）。
  */
 @AndroidEntryPoint
-class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
+class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>(),
+    View.OnClickListener, SmoothInputLayout.OnVisibilityChangeListener {
 
     private val viewModel: ArticlePublishViewModel by viewModels()
+
+    /** 表情面板数据：最近 / 默认 / 酷币 三页，切法与发表动态页一样 */
+    private val dataList by lazy { EmojiUtils.emojiMap.toList() }
+    private val recentList = ArrayList<List<Pair<String, Int>>>()
+    private val emojiList = ArrayList<List<Pair<String, Int>>>()
+    private val coolBList = ArrayList<List<Pair<String, Int>>>()
+    private val list = listOf(recentList, emojiList, coolBList)
+    private lateinit var atTopicResultLauncher: ActivityResultLauncher<Intent>
+
+    /** 刚敲下「@」就跳去选人：回来要把这个「@」替换掉，而不是追在它后面 */
+    private var isFromAt = false
+
+    init {
+        // 前 4 个（置顶/楼主/层主/图片）不进面板，之后 27 个一页
+        for (i in 0..3) {
+            emojiList.add(dataList.subList(i * 27 + 4, (i + 1) * 27 + 4))
+        }
+        coolBList.add(dataList.subList(112, 139))
+        coolBList.add(dataList.subList(139, 155))
+    }
 
     private var coverUri: Uri? = null
     private var coverMd5Byte: ByteArray? = null
@@ -80,6 +122,9 @@ class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
 
         initLauncher()
         initView()
+        initEditText()
+        initEmojiPanel()
+        initAtTopic()
         initObserve()
     }
 
@@ -88,6 +133,10 @@ class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
         binding.coverContainer.setOnClickListener { pickCover() }
         binding.addImage.setOnClickListener { pickBody() }
         binding.publish.setOnClickListener { publish() }
+        binding.emojiBtn.setOnClickListener(this)
+        binding.atBtn.setOnClickListener(this)
+        binding.tagBtn.setOnClickListener(this)
+        binding.main.setOnVisibilityChangeListener(this)
         // 正文里的缩略图可点：点了弹窗写这张图的说明（对应 message 里 image 块的 description）
         binding.articleBody.setOnTouchListener { _, event ->
             val edit = binding.articleBody
@@ -102,6 +151,153 @@ class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
                 true
             }
         }
+    }
+
+    /**
+     * 正文输入框的所见即所得装饰：`[微笑]` 渲染成表情图、`@某人` 与 `#话题#` 上主题色，
+     * 退格能把它们整块删掉。与发表动态页同一套控件。
+     */
+    private fun initEditText() {
+        binding.articleBody.apply {
+            highlightColor = ColorUtils.setAlphaComponent(
+                MaterialColors.getColor(
+                    this@ArticlePublishActivity,
+                    androidx.appcompat.R.attr.colorPrimaryDark,
+                    0
+                ), 128
+            )
+            addTextChangedListener(EmojiTextWatcher(this@ArticlePublishActivity, textSize) {})
+            addTextChangedListener(OnTextInputListener("@") {
+                isFromAt = true
+                launchAtTopic("user")
+            })
+            setOnKeyListener(FastDeleteAtUserKeyListener())
+        }
+    }
+
+    /** 表情面板：最近 / 默认 / 酷币 三页，适配器直接复用动态页的 */
+    private fun initEmojiPanel() {
+        for (i in 0..2) {
+            binding.indicator.addView(
+                TextView(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.MATCH_PARENT
+                    ).apply { weight = 1f }
+                    gravity = Gravity.CENTER
+                    text = listOf("最近", "默认", "酷币")[i]
+                    background = getDrawable(R.drawable.selector_bg_trans)
+                    setOnClickListener {
+                        binding.emojiPanel.setCurrentItem(i, false)
+                    }
+                    if (i == 0 && BuildConfig.DEBUG) {
+                        setOnLongClickListener {
+                            viewModel.deleteAll()
+                            true
+                        }
+                    }
+                }
+            )
+            if (i != 2) {
+                binding.indicator.addView(
+                    View(this).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            1.dp,
+                            LinearLayout.LayoutParams.MATCH_PARENT
+                        )
+                        setBackgroundColor(
+                            MaterialColors.getColor(
+                                this@ArticlePublishActivity,
+                                com.google.android.material.R.attr.colorSurfaceVariant, 0
+                            )
+                        )
+                    }
+                )
+            }
+        }
+        binding.emojiPanel.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                for (i in 0 until binding.indicator.childCount) {
+                    with(binding.indicator.getChildAt(i)) {
+                        if (this is TextView) {
+                            background = getDrawable(
+                                if (i / 2 == position) R.drawable.selector_emoji_indicator_selected
+                                else R.drawable.selector_emoji_indicator
+                            )
+                            setTextColor(
+                                if (i / 2 == position)
+                                    MaterialColors.getColor(
+                                        this@ArticlePublishActivity,
+                                        com.google.android.material.R.attr.colorOnPrimary, 0
+                                    )
+                                else
+                                    MaterialColors.getColor(
+                                        this@ArticlePublishActivity,
+                                        androidx.appcompat.R.attr.colorControlNormal, 0
+                                    )
+                            )
+                        }
+                    }
+                }
+            }
+        })
+        binding.emojiPanel.adapter = EmojiPagerAdapter(
+            list,
+            onClickEmoji = {
+                with(binding.articleBody) {
+                    if (it == "[c001apk]") {
+                        // 面板右下角那格是退格，长按走 countDownTimer 连删
+                        onBackSpace()
+                    } else {
+                        editableText.replace(selectionStart, selectionEnd, it)
+                        viewModel.updateRecentEmoji(it)
+                    }
+                }
+            },
+            onCountStart = { countDownTimer.start() },
+            onCountStop = { countDownTimer.cancel() }
+        )
+    }
+
+    /** @人 / #话题：选择页把结果回填到正文光标处 */
+    private fun initAtTopic() {
+        atTopicResultLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode != RESULT_OK) return@registerForActivityResult
+            val text = result.data?.getStringExtra("data") ?: return@registerForActivityResult
+            val edit = binding.articleBody
+            if (isFromAt) {
+                // 敲「@」跳过去的：把光标前那个「@」换成选中的结果
+                isFromAt = false
+                val end = edit.selectionStart.coerceAtLeast(1)
+                edit.editableText.replace(end - 1, end, text)
+            } else {
+                val at = edit.selectionStart.coerceIn(0, edit.editableText.length)
+                edit.editableText.insert(at, text)
+            }
+            // 本页不会一进来就弹键盘，只有从选择页回来这条路径补一次
+            lifecycleScope.launch(Dispatchers.Main) {
+                delay(150)
+                binding.main.showKeyboard()
+            }
+        }
+    }
+
+    private fun launchAtTopic(type: String) {
+        atTopicResultLauncher.launch(
+            Intent(this, AtTopicActivity::class.java).putExtra("type", type),
+            TransitionAnim.enterOptionsCompat(this)
+        )
+    }
+
+    private fun showInput() {
+        binding.main.showKeyboard()
+    }
+
+    private fun showEmoji() {
+        binding.main.showEmojiPanel(true)
     }
 
     private fun initLauncher() {
@@ -144,6 +340,25 @@ class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
     }
 
     private fun initObserve() {
+        viewModel.recentEmojiLiveData.observe(this) {
+            // 用户正停在「最近」页翻着，就别打断他
+            if (binding.emojiPanel.currentItem == 0 && recentList.isNotEmpty())
+                return@observe
+            recentList.clear()
+            if (it.isNullOrEmpty()) {
+                // 第一次用、最近还是空的：默认停到「默认」页，别停在一个空页上
+                if (viewModel.isInit) {
+                    viewModel.isInit = false
+                    binding.emojiPanel.setCurrentItem(1, false)
+                }
+                recentList.add(0, emptyList())
+            } else {
+                recentList.add(0, it.map { item ->
+                    Pair(item.data, EmojiUtils.emojiMap[item.data] ?: R.drawable.ic_logo)
+                })
+            }
+            binding.emojiPanel.adapter?.notifyItemChanged(0)
+        }
         viewModel.toastText.observe(this) { event ->
             event.getContentIfNotHandledOrReturnNull()?.let {
                 closeDialog()
@@ -386,6 +601,55 @@ class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
         thumbnail: Bitmap,
         val block: ArticleBlock.Image,
     ) : ImageSpan(MyApplication.context, thumbnail, DynamicDrawableSpan.ALIGN_BOTTOM)
+
+    override fun onClick(view: View) {
+        when (view.id) {
+            R.id.emojiBtn -> {
+                ViewCompat.performHapticFeedback(view, HapticFeedbackConstantsCompat.CONFIRM)
+                if (binding.emojiBtn.isSelected) showInput() else showEmoji()
+            }
+
+            R.id.atBtn -> {
+                ViewCompat.performHapticFeedback(view, HapticFeedbackConstantsCompat.CONFIRM)
+                launchAtTopic("user")
+            }
+
+            R.id.tagBtn -> {
+                ViewCompat.performHapticFeedback(view, HapticFeedbackConstantsCompat.CONFIRM)
+                launchAtTopic("topic")
+            }
+        }
+    }
+
+    /** 表情面板展开/收起：按钮图标在「表情」和「键盘」之间切 */
+    override fun onVisibilityChange(visibility: Int) {
+        binding.emojiBtn.isSelected = visibility == View.VISIBLE
+        binding.emojiBtn.setImageResource(
+            if (visibility == View.VISIBLE) R.drawable.ic_keyboard else R.drawable.ic_emoji
+        )
+    }
+
+    /** 面板右下角那格退格：给输入框发一个 DEL，再补一次震动 */
+    private fun onBackSpace() {
+        dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL))
+        ViewCompat.performHapticFeedback(
+            binding.articleBody, HapticFeedbackConstantsCompat.CONFIRM
+        )
+    }
+
+    /** 长按退格连删 */
+    private val countDownTimer: CountDownTimer = object : CountDownTimer(100000, 50) {
+        override fun onTick(millisUntilFinished: Long) {
+            onBackSpace()
+        }
+
+        override fun onFinish() {}
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        countDownTimer.cancel()
+    }
 
     private fun publish() {
         val title = binding.articleTitle.text.toString().trim()

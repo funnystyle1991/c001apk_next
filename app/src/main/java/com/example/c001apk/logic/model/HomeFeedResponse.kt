@@ -93,7 +93,8 @@ data class HomeFeedResponse(
         val commentnum: String?,
         val replynum: String?,
         val forwardnum: String?,
-        val favnum: String?,
+        // 可变：收藏夹弹窗操作后要把服务端回的新收藏数写回来
+        var favnum: String?,
         val dateline: Long?,
         @SerializedName("create_time") val createTime: String?,
         @SerializedName("device_title") val deviceTitle: String?,

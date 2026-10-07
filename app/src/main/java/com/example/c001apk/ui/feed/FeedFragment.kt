@@ -260,8 +260,14 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
 
         viewModel.feedUserState.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandledOrReturnNull()?.let {
-                if (it)
-                    feedDataAdapter.notifyItemChanged(0, true)
+                if (it) feedDataAdapter.notifyFeedStateChanged()
+            }
+        }
+
+        viewModel.feedFavState.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandledOrReturnNull()?.let {
+                // 收藏数绑在 data 上，必须整条重绑：带 payload 的那条分支只重绑点赞/关注
+                feedDataAdapter.notifyFavChanged()
             }
         }
 
@@ -453,13 +459,6 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                         }
                     }
 
-                    R.id.share -> {
-                        IntentUtil.shareText(
-                            requireContext(),
-                            "https://www.coolapk1s.com/feed/${viewModel.id}"
-                        )
-                    }
-
                     R.id.copyLink -> {
                         ClipboardUtil.copyText(
                             requireContext(),
@@ -483,13 +482,6 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                                 "https://m.coolapk.com/mp/do?c=feed&m=report&type=feed&id=${viewModel.id}"
                             )
                         }
-                    }
-
-                    R.id.favorite -> {
-                        // 服务端多收藏夹：选择 / 取消收藏 / 新建 / 长按编辑
-                        CollectionPickBottomSheet().apply {
-                            arguments = Bundle().apply { putString("feedId", viewModel.id) }
-                        }.show(childFragmentManager, "collectionPick")
                     }
 
                 }
@@ -654,6 +646,22 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                     viewModel.onLikeFeed(id, isLike)
                 else
                     viewModel.onLikeReply(id, isLike)
+        }
+
+        override fun onFavoriteClick(id: String?) {
+            // 服务端多收藏夹：选择 / 取消收藏 / 新建 / 长按编辑。
+            // 收藏数是服务端回的，回来后整条重绑卡片（见 feedFavState）
+            CollectionPickBottomSheet().apply {
+                arguments = Bundle().apply { putString("feedId", id ?: viewModel.id) }
+                onChanged = { favNum -> viewModel.onFavoriteChanged(favNum) }
+            }.show(childFragmentManager, "collectionPick")
+        }
+
+        override fun onShareFeed(id: String?) {
+            IntentUtil.shareText(
+                requireContext(),
+                "https://www.coolapk1s.com/feed/${id ?: viewModel.id}"
+            )
         }
 
         override fun showTotalReply(

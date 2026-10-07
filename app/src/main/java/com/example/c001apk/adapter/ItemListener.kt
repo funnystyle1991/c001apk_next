@@ -197,6 +197,15 @@ interface ItemListener {
 
     fun onLikeClick(type: String, id: String, isLike: Int) {}
 
+    /**
+     * 详情页底栏「收藏」：弹收藏夹选择。数字变化由实现方回写（服务端多收藏夹，
+     * 这里不是简单的 +1/-1，收藏数得用接口返回的 favnum）。
+     */
+    fun onFavoriteClick(id: String?) {}
+
+    /** 详情页底栏「转发」：拉系统分享面板发链接（不是转发动态，forwardnum 不变） */
+    fun onShareFeed(id: String?) {}
+
     fun onReply(
         id: String,
         cuid: String,

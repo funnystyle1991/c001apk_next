@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="data"
+            type="com.example.c001apk.logic.model.HomeFeedResponse.Data" />
+
+        <variable
+            name="likeData"
+            type="com.example.c001apk.logic.model.Like" />
+
+        <variable
+            name="listener"
+            type="com.example.c001apk.adapter.ItemListener" />
+
+    </data>
+
+    <!--
+      图文正文末尾的互动栏：回复 / 点赞 / 收藏 / 转发，和动态详情内容卡底栏是同一套动作
+      （动态把那行做在内容卡里，图文的正文是散块，只能单独占一项挂在末尾）。
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="end"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/reply"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/actionBarItemBackground"
+            android:textColor="@android:color/darker_gray"
+            app:customText="@{data.replynum}"
+            app:icon="@{@drawable/ic_message}" />
+
+        <TextView
+            android:id="@+id/like"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:background="?attr/actionBarItemBackground"
+            android:onClick="@{() -> listener.onLikeClick(`feed`, data.id, likeData.isLike)}"
+            android:text="@{likeData.likeNum}"
+            android:textColor="@android:color/darker_gray"
+            app:setLike="@{likeData.isLike}" />
+
+        <TextView
+            android:id="@+id/favorite"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:background="?attr/actionBarItemBackground"
+            android:onClick="@{() -> listener.onFavoriteClick(data.id)}"
+            android:textColor="@android:color/darker_gray"
+            app:customText="@{data.favnum}"
+            app:icon="@{@drawable/ic_feed_favorite}" />
+
+        <TextView
+            android:id="@+id/forward"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:background="?attr/actionBarItemBackground"
+            android:onClick="@{() -> listener.onShareFeed(data.id)}"
+            android:textColor="@android:color/darker_gray"
+            app:customText="@{data.forwardnum}"
+            app:icon="@{@drawable/ic_feed_forward}" />
+
+    </LinearLayout>
+
+</layout>

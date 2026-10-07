@@ -86,6 +86,9 @@ class FeedViewModel @AssistedInject constructor(
     val feedReplyData = MutableLiveData<List<TotalReplyResponse.Data>>()
     val feedUserState = MutableLiveData<Event<Boolean>>()
 
+    /** 收藏数回写（见 [onFavoriteChanged]）：要整条重绑，不能混进 feedUserState 的 payload 分支 */
+    val feedFavState = MutableLiveData<Event<Int>>()
+
     fun onFollowUnFollow(url: String, uid: String, followAuthor: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             networkRepo.postFollowUnFollow(url, uid)
@@ -231,6 +234,13 @@ class FeedViewModel @AssistedInject constructor(
     var feedData: HomeFeedResponse.Data? = null
 
     /**
+     * 详情那份数据的落点：动态是 `feedDataList[0]`，图文是 `articleHeader`（和 `feedData` 同一份对象）。
+     * 改 likenum / favnum / userAction 这类字段都从这里取——只写 feedDataList，图文下是空改。
+     */
+    private fun currentFeedData(): HomeFeedResponse.Data? =
+        feedDataList?.getOrNull(0) ?: articleHeader ?: feedData
+
+    /**
      * 首屏是列表项直出的（详情还没回来）。列表项不下的 `userAction.followAuthor` 等字段
      * 在 [fetchFeedData] 回来前一律当"未知"，由 UI 转圈占位，不能按默认值渲染。
      */
@@ -304,6 +314,17 @@ class FeedViewModel @AssistedInject constructor(
 
         }
 
+    /**
+     * 收藏夹弹窗回来：把服务端回的最新收藏数写回详情数据。
+     * 收藏数挂在 `data.favnum` 上，只有整条重绑才会刷新——`feedUserState` 那条事件带 payload，
+     * payload 分支只重绑点赞/关注，数字不会跟着变。
+     */
+    fun onFavoriteChanged(favNum: Int?) {
+        favNum ?: return
+        currentFeedData()?.favnum = favNum.toString()
+        feedFavState.postValue(Event(favNum))
+    }
+
     fun onLikeFeed(id: String, isLike: Int) {
         val likeType = if (isLike == 1) "unlike" else "like"
         val likeUrl = "/v6/feed/$likeType"
@@ -312,9 +333,14 @@ class FeedViewModel @AssistedInject constructor(
                 .collect { result ->
                     val response = result.getOrNull()
                     if (response != null) {
-                        if (response.data != null) {
-                            feedDataList?.getOrNull(0)?.likenum = response.data.count
-                            feedDataList?.getOrNull(0)?.userAction?.like = if (isLike == 1) 0 else 1
+                        // 落到局部变量：下面要在 let 里读它，属性访问的智能转换不值得赌
+                        val respData = response.data
+                        if (respData != null) {
+                            // 图文没有 feedDataList，点赞数字在末尾互动栏那份 data 上
+                            currentFeedData()?.let {
+                                it.likenum = respData.count
+                                it.userAction?.like = if (isLike == 1) 0 else 1
+                            }
                             feedUserState.postValue(Event(true))
                         } else {
                             response.message?.let {
@@ -640,8 +666,8 @@ class FeedViewModel @AssistedInject constructor(
                                 it.add(item)
                         }
                     }
-                    // HeaderAdapter(1) + 图文头部项(1) + 正文块
-                    itemCount = it.size + 2
+                    // HeaderAdapter(1) + 图文头部项(1) + 正文块 + 末尾互动栏
+                    itemCount = it.size + 3
                 }
                 articleHeader = data
                 // 分支必须互斥：两条分支共用一个 adapter，而 FeedDataAdapter.getItemCount 在

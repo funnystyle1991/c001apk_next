@@ -369,15 +369,46 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
 
     /**
      * 横屏 Rail 的 cell 不是均分条高的（menuGravity=center 悬空、cell 高≈rail 宽），
-     * 竖屏那套 barW*(i+0.5)/n 公式套不上，直接读实际布局出来的 cell 子 View 中心。
-     * childCount 校验兜住"child 0 不是菜单容器"的误读——那种情况宁可不滑。
+     * 竖屏那套 barW*(i+0.5)/n 公式套不上，只能读实际布局出来的 cell 子 View。
+     *
+     * 但不能按 getChildAt(0) 去猜菜单容器：material 1.14 起 NavigationRailView 把菜单
+     * 包进了 contentContainer（还可能再套一层 ScrollView），第 0 个子 View 变成了那个
+     * 容器，childCount 对不上就返回 null，调用方 `?: return` 静默退出——横屏表现为
+     * 滴一直停在卡片顶部不动、上下拖松手永远不切页。这里改成逐层找「子项数等于菜单项数、
+     * 且每个子项都是导航条目」的 ViewGroup，层级怎么加都不怕。
+     *
+     * 中心点换算改用 getLocationInWindow 相对玻璃外壳取差值，不再假设「rail 顶缘 == 外壳顶缘
+     * 且菜单容器是它的直接子 View」。
      */
     private fun railItemCenterY(index: Int): Float? {
-        val menu = navView.getChildAt(0) as? ViewGroup ?: return null
-        if (menu.childCount != navView.menu.size()) return null
+        val bar = binding.navGlassHost
+        val menu = findRailMenuContainer() ?: return null
         val item = menu.getChildAt(index) ?: return null
-        if (item.height == 0) return null
-        return navView.top + menu.top + item.top + item.height / 2f
+        if (item.height == 0 || bar.height == 0) return null
+        val itemLoc = IntArray(2).also { item.getLocationInWindow(it) }
+        val barLoc = IntArray(2).also { bar.getLocationInWindow(it) }
+        return itemLoc[1] + item.height / 2f - barLoc[1]
+    }
+
+    /** 深度优先找 rail 的菜单容器：子项数与菜单一致，且每个子项都带 material 的条目图标 id */
+    private fun findRailMenuContainer(): ViewGroup? {
+        val count = navView.menu.size()
+        if (count == 0) return null
+        val stack = ArrayDeque<View>()
+        stack.addLast(navView)
+        while (stack.isNotEmpty()) {
+            val group = stack.removeLast() as ViewGroup
+            if (group !== navView) {
+                val childrenAreItems = (0 until group.childCount).all { i ->
+                    val child = group.getChildAt(i) as? ViewGroup
+                    child != null &&
+                        child.findViewById<View>(R.id.navigation_bar_item_icon_view) != null
+                }
+                if (group.childCount == count && childrenAreItems) return group
+            }
+            for (i in 0 until group.childCount) stack.addLast(group.getChildAt(i))
+        }
+        return null
     }
 
     /** 纵向落位：和 placeLensAt 同款，只是动 translationY */

@@ -125,6 +125,12 @@ class GameCardAdapter(
         fun bind(data: HomeFeedResponse.Entities) {
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.listener, listener)
+            binding.root.setOnClickListener {
+                listener.onViewFeed(
+                    it, data.id, null, data.username, null, null, data.message, null,
+                    null, null, null
+                )
+            }
             binding.executePendingBindings()
         }
     }

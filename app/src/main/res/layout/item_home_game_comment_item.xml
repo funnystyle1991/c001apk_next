@@ -15,13 +15,16 @@
 
     </data>
 
-    <!-- 最新点评一条：左边是点评正文，右边是该条点评对应的游戏 -->
+    <!--
+      最新点评一条：左边是点评正文，右边是该条点评对应的游戏。
+      点击在 Adapter 里挂：onViewFeed 有好几个参数是 String?，
+      databinding 表达式里写 null 会被推断成 Object，匹配不上方法签名。
+    -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@drawable/round_corners_12_win"
         android:foreground="@drawable/selector_bg_12_trans"
-        android:onClick="@{(view) -> listener.onViewFeed(view, data.id, null, data.username, null, null, data.message, null, null, null, null)}"
         android:orientation="horizontal"
         android:paddingStart="12dp"
         android:paddingTop="10dp"

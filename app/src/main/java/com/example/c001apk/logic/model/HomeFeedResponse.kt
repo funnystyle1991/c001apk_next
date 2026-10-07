@@ -1,8 +1,14 @@
 package com.example.c001apk.logic.model
 
 import android.os.Parcelable
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
 import kotlinx.parcelize.Parcelize
+import java.lang.reflect.Type
 
 data class HomeFeedResponse(
     val status: Int?,
@@ -142,6 +148,8 @@ data class HomeFeedResponse(
         @SerializedName("star_total_count") val starTotalCount: String? = null,
         @SerializedName("config_name") val configName: String? = null,
         val productSpecs: List<String>? = null,
+        // 服务端可能下发对象（有评分项）或空数组 []（没有评分项），见 ProductRatingSpecsAdapter
+        @field:JsonAdapter(ProductRatingSpecsAdapter::class)
         val productRatingSpecs: Map<String, String>? = null,
 
         // ---- 活动页「线下」tab 的 pear_goods 实体字段 ----
@@ -352,9 +360,35 @@ data class HomeFeedResponse(
         @SerializedName("star_total_count") val starTotalCount: String? = null,
         @SerializedName("config_name") val configName: String? = null,
         val productSpecs: List<String>? = null,
+        // 服务端可能下发对象（有评分项）或空数组 []（没有评分项），见 ProductRatingSpecsAdapter
+        @field:JsonAdapter(ProductRatingSpecsAdapter::class)
         val productRatingSpecs: Map<String, String>? = null,
         val description: String? = null
     ) : Parcelable
 
+}
+
+/**
+ * `product_rating_specs` 的容错解析。
+ *
+ * 机型对比列表（/v6/page/dataList?url=/product/productList?...）里，同一个字段有两种形式：
+ *   - 有评分项的机型下发对象：{"外观质感": "8.5", "性价比": "9.0"}
+ *   - 没评分项的新机 / 冷门机型下发**空数组** []
+ * 直接声明成 Map<String, String> 时，Gson 读到 [] 会抛
+ * `Expected BEGIN_OBJECT but was BEGIN_ARRAY`，整条响应解析失败，
+ * 列表页就是一片空白（20 条里只要有 1 条是 [] 就够毁掉整页）。
+ * 这里把「不是对象」的情况一律当作没有评分项，不让它影响其余条目。
+ */
+class ProductRatingSpecsAdapter : JsonDeserializer<Map<String, String>?> {
+    override fun deserialize(
+        json: JsonElement,
+        typeOfT: Type,
+        context: JsonDeserializationContext
+    ): Map<String, String>? =
+        if (json.isJsonObject) {
+            context.deserialize(json, object : TypeToken<Map<String, String>>() {}.type)
+        } else {
+            null
+        }
 }
 

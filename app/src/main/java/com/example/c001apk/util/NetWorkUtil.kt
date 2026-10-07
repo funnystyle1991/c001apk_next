@@ -115,6 +115,19 @@ object NetWorkUtil {
                     }
                 }
             }
+        } else if (replace.startsWith("/product/productList")) {
+            // 机型对比列表页（同价位 / 同SoC / 同系列）：产品页「参数」tab 里 listCard 卡片
+            // 的 url 是服务端下发的**列表 url**，形如
+            //   /product/productList?type=series&id=1546&categoryId=1000&title=数字系列&entityTemplate=productSelect
+            // 它必须整条交给 /v6/page/dataList（CarouselActivity 走的就是这条），
+            // 单页时 CarouselPagerFragment 会自动隐藏 tab 栏、用 title 当标题。
+            // 若落到下面的 /product/<id> 分支，substring(9) 会把 "productList?type=..." 整个
+            // 当成机型 id 去请求 /v6/product/detail，服务端返回「手机吧ID不能为空」+ data=null，
+            // 列表就永远是空的。
+            IntentUtil.startActivity<CarouselActivity>(context) {
+                putExtra("title", title)
+                putExtra("url", replace)
+            }
         } else if (replace.startsWith("/product/")) {
             IntentUtil.startActivity<TopicActivity>(context) {
                 putExtra("type", "product")

@@ -14,14 +14,12 @@ import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.example.c001apk.BR
 import com.example.c001apk.R
 import com.example.c001apk.adapter.ItemListener
-import com.example.c001apk.adapter.setGridView
 import com.example.c001apk.databinding.ItemFeedContentReplyItemBinding
 import com.example.c001apk.logic.model.Like
 import com.example.c001apk.logic.model.TotalReplyResponse
 import com.example.c001apk.util.SpannableStringBuilderUtil
 import com.example.c001apk.util.dp
 import com.example.c001apk.view.LinkMovementClickMethod
-import com.example.c001apk.view.ninegridimageview.NineGridImageView
 import com.google.android.material.color.MaterialColors
 
 class FeedReplyAdapter(
@@ -154,7 +152,9 @@ class FeedReplyAdapter(
                         )
                         text = SpannableStringBuilderUtil.setText(
                             context,
-                            replyData.message,
+                            // 回复不铺图：九宫格会把卡片撑得老长，带图时按全站一贯的写法在正文后
+                            // 挂一个「查看图片(N)」，点它才全屏看图（见 withPicLink）
+                            replyData.message.withPicLink(replyData.pic, replyData.picArr),
                             textSize,
                             replyData.picArr
                         ) {
@@ -166,21 +166,7 @@ class FeedReplyAdapter(
                                 true
                             )
                         }
-                        // 带图回复的正文就是服务端下发的占位符「[图片]」，图由下面的九宫格渲染，
-                        // 这行字留着会渲染成一条只有「[图片]」的文字
-                        isVisible = !(
-                                replyData.message.trim() == "[图片]" &&
-                                        !replyData.picArr.isNullOrEmpty()
-                                )
                     }
-                    // 二级回复的图走一级评论那套（NineGridImageView + setGridView），
-                    // 之前这里没绑图片控件，带图的回复只剩「[图片]」两个字且点不开
-                    setGridView(
-                        view.findViewById<NineGridImageView>(R.id.multiImage),
-                        replyData.pic,
-                        replyData.picArr,
-                        "reply"
-                    )
                     view.setOnClickListener {
                         this@FeedReplyAdapter.listener.onReply(
                             replyData.id, reply.uid, replyData.uid, replyData.username,
@@ -217,6 +203,20 @@ class FeedReplyAdapter(
         }
     }
 
+}
+
+/**
+ * 给带图的回复正文接上「查看图片(N)」链接，写法与首页卡片热评、回复列表一致：
+ * href 是 coolapk 图片地址，SpannableStringBuilderUtil 会把 picArr 一并交给 MyURLSpan，
+ * 于是点一下就是这组图的全屏看图（一张和多张走同一条路）。
+ * 服务端给纯图回复下发的正文就是占位符「[图片]」（会被 EmojiUtils 渲染成一个小图标），
+ * 那种情况不再补第二个图标；正文另有文字时才加图标做提示。
+ */
+private fun String.withPicLink(pic: String?, picArr: List<String>?): String {
+    if (picArr.isNullOrEmpty()) return this
+    val url = pic?.takeIf { it.isNotEmpty() } ?: picArr[0]
+    val icon = if (trim() == "[图片]") "" else "[图片] "
+    return "$this $icon<a class=\"feed-forward-pic\" href=$url>查看图片(${picArr.size})</a>"
 }
 
 class FeedReplyDiffCallback : DiffUtil.ItemCallback<TotalReplyResponse.Data>() {

@@ -499,12 +499,14 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         selectSettledTab(best)
     }
 
-    /** 横屏滴上下拖：dragLensTo 的纵向镜像（鼓起不挑轴，两轴同倍） */
+    /** 横屏滴上下拖：dragLensTo 的纵向镜像，鼓胀只沿拖拽轴（纵向拉长、横向等体积压窄） */
     private fun dragLensToY(y: Float) {
         val lens = binding.navLensHost
         if (lens.visibility != View.VISIBLE) return
         lensAnim?.cancel()
-        lens.scaleX = 1.06f
+        // 横屏卡片和滴同宽（都是 84dp），横向再放大 1.06 就是左右各溢出 2.5dp，
+        // 滴会探出玻璃卡片外缘——所以横向按 slideLensVertical 同款等体积收窄
+        lens.scaleX = 1f - 0.06f * 0.55f
         lens.scaleY = 1.06f
         lens.translationY = clampLensY(y - lens.height / 2f, 1.06f)
         syncLensOffset()

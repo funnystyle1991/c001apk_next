@@ -14,12 +14,14 @@ import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.example.c001apk.BR
 import com.example.c001apk.R
 import com.example.c001apk.adapter.ItemListener
+import com.example.c001apk.adapter.setGridView
 import com.example.c001apk.databinding.ItemFeedContentReplyItemBinding
 import com.example.c001apk.logic.model.Like
 import com.example.c001apk.logic.model.TotalReplyResponse
 import com.example.c001apk.util.SpannableStringBuilderUtil
 import com.example.c001apk.util.dp
 import com.example.c001apk.view.LinkMovementClickMethod
+import com.example.c001apk.view.ninegridimageview.NineGridImageView
 import com.google.android.material.color.MaterialColors
 
 class FeedReplyAdapter(
@@ -164,7 +166,21 @@ class FeedReplyAdapter(
                                 true
                             )
                         }
+                        // 带图回复的正文就是服务端下发的占位符「[图片]」，图由下面的九宫格渲染，
+                        // 这行字留着会渲染成一条只有「[图片]」的文字
+                        isVisible = !(
+                                replyData.message.trim() == "[图片]" &&
+                                        !replyData.picArr.isNullOrEmpty()
+                                )
                     }
+                    // 二级回复的图走一级评论那套（NineGridImageView + setGridView），
+                    // 之前这里没绑图片控件，带图的回复只剩「[图片]」两个字且点不开
+                    setGridView(
+                        view.findViewById<NineGridImageView>(R.id.multiImage),
+                        replyData.pic,
+                        replyData.picArr,
+                        "reply"
+                    )
                     view.setOnClickListener {
                         this@FeedReplyAdapter.listener.onReply(
                             replyData.id, reply.uid, replyData.uid, replyData.username,

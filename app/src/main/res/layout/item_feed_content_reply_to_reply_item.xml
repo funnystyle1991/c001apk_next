@@ -6,16 +6,31 @@
 
     </data>
 
-    <TextView
-        android:id="@+id/reply"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/selectableItemBackground"
-        android:lineSpacingMultiplier="1.2"
+        android:orientation="vertical"
         android:paddingStart="10dp"
         android:paddingTop="4dp"
         android:paddingEnd="10dp"
-        android:paddingBottom="4dp"
-        tools:text="text" />
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:id="@+id/reply"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:lineSpacingMultiplier="1.2"
+            tools:text="text" />
+
+        <!-- 二级回复带的图。一级评论布局里叫 multiImage，同款控件、同一套绑定逻辑
+             （app:feedType="reply"）；这个布局是代码 inflate 的，属性在 FeedReplyAdapter 里手动绑 -->
+        <com.example.c001apk.view.ninegridimageview.NineGridImageView
+            android:id="@+id/multiImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp" />
+
+    </LinearLayout>
 
 </layout>

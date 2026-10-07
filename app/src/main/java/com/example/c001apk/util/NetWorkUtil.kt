@@ -156,6 +156,23 @@ object NetWorkUtil {
                 putExtra("url", replace.replace("#/page?url=", "").replace("/page?url=", ""))
                 putExtra("title", title)
             }
+        } else if (replace.startsWith("#/topic/") || replace.startsWith("/topic/")) {
+            // 服务端下发的「栏目」url 必须整条交给 /v6/page/dataList，sort / keywords /
+            // ratingUI 这些参数才带得过去（和 #/topic/userFollowTagList 同一条链路）。
+            // 游戏频道卡片右上角的「榜单」给的就是这种：
+            //   #/topic/tagList?keywords=2025游戏%2c…&sort=hot_num&ratingUI=1&title=🎮 热门新游
+            // 之前落到末尾的 else，只会弹「unsupported url」。
+            // withConfigCard 那对参数是让服务端多下发一张空的 configCard（「默认配置」），
+            // 通用列表渲染不了它、会多出一条空白卡片，所以剥掉（实测剥掉后正好 20 条榜单项）。
+            IntentUtil.startActivity<CarouselActivity>(context) {
+                putExtra(
+                    "url",
+                    replace
+                        .replace(Regex("[&?]withConfigCard=[^&]*"), "")
+                        .replace(Regex("[&?]configCardExtraData=[^&]*"), "")
+                )
+                putExtra("title", title)
+            }
         } else if (replace.startsWith("image.coolapk.com")) {
             ImageUtil.startBigImgViewSimple(context, url.http2https)
         } else if (url.startsWith("https://") || url.startsWith("http://")) {

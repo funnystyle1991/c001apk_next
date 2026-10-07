@@ -9,6 +9,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -35,6 +36,9 @@ class UserPagerFragment : BasePagerFragment() {
     private val viewModel by viewModels<UserViewModel>(ownerProducer = { requireActivity() })
     private lateinit var userBinding: BaseViewUserBinding
     private var menuBlock: MenuItem? = null
+
+    /** 签名当前是不是展开态（折叠时只留 2 行） */
+    private var bioExpanded = false
 
     /** 是不是在看自己的主页（uid 和本地登录 uid 相同） */
     private val isSelf: Boolean
@@ -94,6 +98,13 @@ class UserPagerFragment : BasePagerFragment() {
             }
         }
 
+        bindBio()
+        userBinding.bioExpand.setOnClickListener {
+            bioExpanded = !bioExpanded
+            userBinding.bio.maxLines = if (bioExpanded) Int.MAX_VALUE else BIO_COLLAPSED_LINES
+            userBinding.bioExpand.text = if (bioExpanded) "收起" else "展开"
+        }
+
         userBinding.equipLayout.setOnClickListener {
             IntentUtil.startActivity<WebViewActivity>(requireContext()) {
                 putExtra("url", "https://m.coolapk.com/myDevice/${viewModel.uid}")
@@ -129,6 +140,8 @@ class UserPagerFragment : BasePagerFragment() {
                 // userData 是拉完资料才有的，isSelf / 关注态此时才最终确定
                 userBinding.followBtn.isVisible = isSelf || PrefManager.isLogin
                 bindMailBtn()
+                // 签名可能刚被编辑过，重新折叠一次
+                bindBio()
             }
         }
 
@@ -142,6 +155,29 @@ class UserPagerFragment : BasePagerFragment() {
     /** 私信圆钮：自己的主页不显示，未登录也没法发私信 */
     private fun bindMailBtn() {
         userBinding.mailBtn.isVisible = !isSelf && PrefManager.isLogin
+    }
+
+    /**
+     * 签名折叠回 2 行，并判断要不要露出「展开」。
+     * 是否被截断只有等 TextView 布局完才知道，所以回调挂在 doOnLayout 上
+     * （文字或宽度变化都会再触发一次）。
+     */
+    private fun bindBio() {
+        bioExpanded = false
+        userBinding.bio.maxLines = BIO_COLLAPSED_LINES
+        userBinding.bioExpand.text = "展开"
+        userBinding.bioExpand.isVisible = false
+        userBinding.bio.doOnLayout { refreshBioExpand() }
+    }
+
+    /** 折叠态下签名确实被截断了才显示「展开」，否则不留一行空白 */
+    private fun refreshBioExpand() {
+        if (bioExpanded) return
+        val layout = userBinding.bio.layout ?: return
+        val lastLine = layout.lineCount - 1
+        userBinding.bioExpand.isVisible =
+            layout.lineCount > BIO_COLLAPSED_LINES ||
+                    (lastLine >= 0 && layout.getEllipsisCount(lastLine) > 0)
     }
 
     override fun onResume() {
@@ -320,5 +356,10 @@ class UserPagerFragment : BasePagerFragment() {
 
         // 初始为完全展开
         applyBarIconTint(true)
+    }
+
+    companion object {
+        /** 折叠时签名保留的行数，与 base_view_user.xml 里的 maxLines 保持一致 */
+        private const val BIO_COLLAPSED_LINES = 2
     }
 }

@@ -43,6 +43,7 @@ import com.example.c001apk.view.DragNavigationRailView
 import com.example.c001apk.view.FrostedGlassDrawable
 import com.example.c001apk.view.GlassLensDrawable
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.navigation.NavigationBarView
 import com.hihonor.smartgripkit.SmartGripEventListener
 import com.hihonor.smartgripkit.SmartGripEventManager

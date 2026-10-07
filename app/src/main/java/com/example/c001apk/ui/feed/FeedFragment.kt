@@ -605,6 +605,17 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                 menuInflater.inflate(R.menu.feed_reply_menu, menu).apply {
                     menu.findItem(R.id.delete).isVisible = PrefManager.uid == uid
                     menu.findItem(R.id.report).isVisible = PrefManager.isLogin
+                    // 置顶：只有帖主能操作，而且接口置顶的是「动态的回复」，
+                    // 所以二级回复（rPosition 有效）不给这一项。标题按当前状态切换。
+                    menu.findItem(R.id.stickTop)?.apply {
+                        isVisible = PrefManager.isLogin &&
+                                PrefManager.uid == viewModel.feedUid &&
+                                (rPosition == null || rPosition == -1)
+                        title = view.context.getString(
+                            if (id == viewModel.topReplyId) R.string.unstick_top
+                            else R.string.stick_top
+                        )
+                    }
                 }
                 setOnMenuItemClickListener(
                     PopClickListener(
@@ -765,6 +776,10 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                     IntentUtil.startActivity<CopyActivity>(requireContext()) {
                         putExtra("text", text)
                     }
+                }
+
+                R.id.stickTop -> {
+                    viewModel.postReplyTop(id, id == viewModel.topReplyId)
                 }
 
                 R.id.show -> {

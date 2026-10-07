@@ -67,7 +67,11 @@ class FeedViewModel @AssistedInject constructor(
     var verifyStatus: Int? = null
     var replyCount: String? = null
     var dateLine: Long? = null
-    private var topReplyId: String? = null
+    /**
+     * 当前置顶回复的 id（服务端只保留一个）。除了刷新时过滤重复项，评论菜单也要读它
+     * 决定「置顶 / 取消置顶」哪个文案，所以是公开的。
+     */
+    var topReplyId: String? = null
     private var replyMeId: String? = null
     private var isTop: Boolean? = null
     var feedType: String? = null
@@ -394,6 +398,82 @@ class FeedViewModel @AssistedInject constructor(
                     }
                 }
         }
+    }
+
+    /**
+     * 帖主置顶 / 取消置顶某条回复（`/v6/feed/addReplyTopToFeed` 与 `cancelReplyTopFromFeed`）。
+     *
+     * 只有动态作者能操作，菜单那边已经按 uid 卡过一道，服务端也会校验。
+     * 成功后不重新拉列表，只做本地重排，理由：接口返回的 `data` 是一句文案不是列表，
+     * 而 [topReplyId] / [feedTopReplyList] 正是下拉刷新拼首屏的依据
+     * （见 [fetchFeedReply] 里 `feedTopReplyList` 的两支），不同步对齐的话，
+     * 刷新后置顶项会丢，或者连同服务端下发的那条一起出现两条。
+     */
+    fun postReplyTop(replyId: String, cancel: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val request =
+                if (cancel) networkRepo.cancelReplyTopFromFeed(id)
+                else networkRepo.addReplyTopToFeed(replyId, id)
+            request.collect { result ->
+                val response = result.getOrNull()
+                if (response != null) {
+                    if (!response.message.isNullOrEmpty()) {
+                        response.message.let {
+                            toastText.postValue(Event(it))
+                        }
+                    } else {
+                        toastText.postValue(
+                            Event(response.data ?: if (cancel) "已取消置顶" else "置顶成功")
+                        )
+                        applyReplyTop(replyId, cancel)
+                    }
+                } else {
+                    result.exceptionOrNull()?.printStackTrace()
+                }
+            }
+        }
+    }
+
+    /**
+     * 置顶 / 取消置顶的本地重排。
+     *
+     * 置顶标记就是往 `username` 上加 `" [置顶]"`，写法与 [handleFeedData] 里处理服务端
+     * `topReplyRows` 的那份一致。这里一律用 `copy` 造新实例、不改原对象：列表走 DiffUtil，
+     * 实例不变的话 [FeedReplyDiffCallback] 认不出「同一条、内容变了」，条目不会重绑，
+     * 标记要等条目被回收复用才显出来。
+     *
+     * 置顶后不拉接口：服务端把这条排在最前，本地同步挪到 0 位，观感与刷新后一致；
+     * 取消置顶则位置不动，下次刷新服务端按时间重排。
+     */
+    private fun applyReplyTop(replyId: String, cancel: Boolean) {
+        val replyList = feedReplyData.value?.toMutableList() ?: return
+        val replyTag = " [置顶]"
+        val oldTopId = topReplyId
+        if (cancel) {
+            topReplyId = null
+            feedTopReplyList.clear()
+            feedReplyData.postValue(clearReplyTag(replyList, replyId, replyTag))
+            return
+        }
+        val target = replyList.firstOrNull { it.id == replyId } ?: return
+        val pinned = target.copy(username = target.username.removeSuffix(replyTag) + replyTag)
+        replyList.remove(target)
+        replyList.add(0, pinned)
+        topReplyId = replyId
+        feedTopReplyList.clear()
+        feedTopReplyList.add(pinned)
+        // 服务端只保留一个置顶：旧的那条要摘掉标记，否则屏幕上会并排两条「置顶」
+        feedReplyData.postValue(clearReplyTag(replyList, oldTopId, replyTag))
+    }
+
+    /** 把 [replyId] 那条的置顶标记摘掉；不在列表里、本来就没标记时原样返回 */
+    private fun clearReplyTag(
+        replyList: List<TotalReplyResponse.Data>,
+        replyId: String?,
+        replyTag: String
+    ): List<TotalReplyResponse.Data> = replyList.map {
+        if (it.id != replyId || !it.username.endsWith(replyTag)) it
+        else it.copy(username = it.username.removeSuffix(replyTag))
     }
 
     fun saveUid(uid: String) {

@@ -215,7 +215,13 @@ class FeedReplyDiffCallback : DiffUtil.ItemCallback<TotalReplyResponse.Data>() {
         oldItem: TotalReplyResponse.Data,
         newItem: TotalReplyResponse.Data
     ): Boolean {
-        return oldItem.likenum == newItem.likenum && oldItem.lastupdate == newItem.lastupdate
+        // username 也要比：贴主置顶 / 取消置顶只是往 username 上增删 " [置顶]" 标记，
+        // 不比它就判成「内容没变」，条目不会重绑，标记要等条目被回收复用才出现。
+        // 只动 likenum / lastupdate 时 [getChangePayload] 仍走局部刷新，不受影响；
+        // username 变了但这两项没变时它返回 null，RecyclerView 自然走整条重绑。
+        return oldItem.likenum == newItem.likenum &&
+                oldItem.lastupdate == newItem.lastupdate &&
+                oldItem.username == newItem.username
     }
 
     override fun getChangePayload(

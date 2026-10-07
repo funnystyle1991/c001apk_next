@@ -363,7 +363,20 @@ data class HomeFeedResponse(
         // 服务端可能下发对象（有评分项）或空数组 []（没有评分项），见 ProductRatingSpecsAdapter
         @field:JsonAdapter(ProductRatingSpecsAdapter::class)
         val productRatingSpecs: Map<String, String>? = null,
-        val description: String? = null
+        val description: String? = null,
+        // ---- 游戏频道（/v6/page/dataList?url=V15_YOUXI）下发的 topic 实体字段 ----
+        // 讨论热度文本（热门新游卡片右下角那个数字）
+        @SerializedName("hot_num_txt") val hotNumTxt: String? = null,
+        // 发售日期原文，形如 "2026年11月19日"，也可能是 "未公布"
+        @SerializedName("release_time") val releaseTime: String? = null,
+        // 评分条数（游戏评分卡片显示「N 条」）
+        @SerializedName("rating_total_num") val ratingTotalNum: String? = null,
+        @SerializedName("commentnum_txt") val commentnumTxt: String? = null,
+        // feedListCard（最新点评）下发的就是完整 feed 结构，这里补上点评用得到的几个
+        val ttitle: String? = null,
+        val message: String? = null,
+        // 点评对应的游戏图标
+        val tpic: String? = null
     ) : Parcelable
 
 }

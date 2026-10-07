@@ -169,8 +169,8 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/forwarded" />
 
-        <!-- 底栏从右到左：转发 / 收藏 / 点赞 / 回复。转发和收藏的数字来自接口
-             （forwardnum / favnum），不点进去也能看出多少人转过、收过 -->
+        <!-- 底栏从左到右：点赞 / 回复 / 收藏 / 转发（约束是右锚定链，所以这里从右往左写）。
+             转发和收藏的数字来自接口（forwardnum / favnum），不点进去也能看出多少人转过、收过 -->
         <TextView
             android:id="@+id/forward"
             android:layout_width="wrap_content"
@@ -208,7 +208,7 @@
             android:onClick="@{() -> listener.onLikeClick(`feed`, data.id, likeData.isLike)}"
             android:text="@{likeData.likeNum}"
             android:textColor="@android:color/darker_gray"
-            app:layout_constraintEnd_toStartOf="@id/favorite"
+            app:layout_constraintEnd_toStartOf="@id/reply"
             app:layout_constraintTop_toBottomOf="@id/forwarded"
             app:setLike="@{likeData.isLike}" />
 
@@ -221,7 +221,7 @@
             android:textColor="@android:color/darker_gray"
             app:customText="@{data.replynum}"
             app:icon="@{@drawable/ic_message}"
-            app:layout_constraintEnd_toStartOf="@id/like"
+            app:layout_constraintEnd_toStartOf="@id/favorite"
             app:layout_constraintTop_toBottomOf="@id/forwarded" />
 
         <com.example.c001apk.view.ninegridimageview.NineGridImageView

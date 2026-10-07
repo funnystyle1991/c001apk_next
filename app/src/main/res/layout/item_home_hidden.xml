@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <data>
+
+    </data>
+
+    <!--
+      明确不渲染的卡片（configCard 是页面配置、sponsorCard 依赖服务端广告模板）：
+      占一个 0 高度，免得它们在列表里留下一行「未支持的卡片模板」。
+    -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp" />
+
+</layout>

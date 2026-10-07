@@ -9,6 +9,7 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.view.isVisible
 import androidx.databinding.ViewDataBinding
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.widget.ViewPager2
 import com.example.c001apk.BR
@@ -18,6 +19,9 @@ import com.example.c001apk.databinding.ItemCollectionListItemBinding
 import com.example.c001apk.databinding.ItemFeedReplyBinding
 import com.example.c001apk.databinding.ItemHomeFeedBinding
 import com.example.c001apk.databinding.ItemHomeFeedRefreshCardBinding
+import com.example.c001apk.databinding.ItemHomeGameCardListBinding
+import com.example.c001apk.databinding.ItemHomeGameTabCardBinding
+import com.example.c001apk.databinding.ItemHomeHiddenBinding
 import com.example.c001apk.databinding.ItemHomeIconLinkGridCardBinding
 import com.example.c001apk.databinding.ItemHomeIconMiniScrollCardBinding
 import com.example.c001apk.databinding.ItemHomeImageCarouselCardBinding
@@ -216,6 +220,85 @@ class AppAdapter(
         }
     }
 
+    // 游戏频道（/v6/page/dataList?url=V15_YOUXI）顶部四个入口：资讯 / 喜加一 / SteamDB / 硬件
+    class GameTabCardViewHolder(
+        val binding: ItemHomeGameTabCardBinding,
+        val listener: ItemListener
+    ) :
+        BaseViewHolder<ViewDataBinding>(binding) {
+        override fun bind(data: HomeFeedResponse.Data) {
+            data.entities?.let { entities ->
+                binding.recyclerView.apply {
+                    adapter = GameCardAdapter(listener, GameCardAdapter.Mode.TAB).also {
+                        it.submitList(entities)
+                    }
+                    layoutManager = GridLayoutManager(itemView.context, 4)
+                }
+            }
+        }
+    }
+
+    // 游戏频道里「标题 + 一组条目」的卡片。这些排版在接口里各是一个 entityTemplate
+    // （热门新游 iconLongTitleGridCard、游戏评分 iconGridCard、发售日历 productTimelineListCard、
+    // 游戏闲聊 imageScrollCard、热议手游 iconScrollCard、最新点评 feedListCard、世界频道 sortSelectCard），
+    // 但数据都是 entities[]，所以按模板选一份排版交给 GameCardAdapter。
+    class GameCardViewHolder(
+        val binding: ItemHomeGameCardListBinding,
+        val listener: ItemListener
+    ) :
+        BaseViewHolder<ViewDataBinding>(binding) {
+        private var mode: GameCardAdapter.Mode? = null
+
+        override fun bind(data: HomeFeedResponse.Data) {
+            val entities = data.entities
+            if (entities.isNullOrEmpty()) return
+
+            val newMode = bindMode(data.entityTemplate)
+
+            binding.title.text = data.title
+            binding.title.isVisible = !data.title.isNullOrEmpty()
+            // 右上角是接口下发的（「榜单」这类），点了跳卡片自己的 url
+            binding.subTitle.text = data.subTitle.orEmpty()
+            binding.subTitle.isVisible = !data.subTitle.isNullOrEmpty()
+            binding.subTitle.setOnClickListener {
+                if (!data.url.isNullOrEmpty()) listener.onOpenLink(it, data.url, data.title)
+            }
+
+            binding.recyclerView.apply {
+                // 同一个 ViewHolder 会轮流承接不同模板的卡片，排版模式变了就得整套换掉
+                layoutManager = when {
+                    newMode == GameCardAdapter.Mode.GRID ->
+                        GridLayoutManager(itemView.context, 4)
+
+                    newMode.isHorizontal ->
+                        LinearLayoutManager(itemView.context).also {
+                            it.orientation = LinearLayoutManager.HORIZONTAL
+                        }
+
+                    else -> LinearLayoutManager(itemView.context)
+                }
+                if (mode == newMode) {
+                    (adapter as GameCardAdapter).submitList(entities)
+                } else {
+                    if (newMode.isHorizontal && itemDecorationCount == 0)
+                        addItemDecoration(LinearItemDecoration1(10.dp))
+                    adapter = GameCardAdapter(listener, newMode).also { it.submitList(entities) }
+                    mode = newMode
+                }
+            }
+        }
+
+        private fun bindMode(template: String?): GameCardAdapter.Mode = when (template) {
+            "productTimelineListCard" -> GameCardAdapter.Mode.TIMELINE
+            "imageScrollCard" -> GameCardAdapter.Mode.IMAGE
+            "iconScrollCard" -> GameCardAdapter.Mode.ICON
+            "feedListCard" -> GameCardAdapter.Mode.COMMENT
+            "sortSelectCard" -> GameCardAdapter.Mode.SORT
+            // iconLongTitleGridCard（热门新游）/ iconGridCard（游戏评分）
+            else -> GameCardAdapter.Mode.GRID
+        }
+    }
+
     class RefreshCardViewHolder(val binding: ItemHomeFeedRefreshCardBinding) :
         BaseViewHolder<ViewDataBinding>(binding) {
         override fun bind(data: HomeFeedResponse.Data) {
@@ -402,6 +485,13 @@ class AppAdapter(
     }
 
     // 未支持的卡片模板：显示一行提示，而不是抛异常让整页空白/崩溃
+    // configCard（页面配置）/ sponsorCard（广告位）这类不该出现在列表里的卡片，占 0 高度
+    class HiddenViewHolder(val binding: ItemHomeHiddenBinding) :
+        BaseViewHolder<ViewDataBinding>(binding) {
+        override fun bind(data: HomeFeedResponse.Data) {
+        }
+    }
+
     class UnsupportedViewHolder(
         val binding: ItemHomeUnsupportedBinding,
         val listener: ItemListener
@@ -832,6 +922,33 @@ class AppAdapter(
                 )
             }
 
+            23 -> {
+                GameTabCardViewHolder(
+                    ItemHomeGameTabCardBinding.inflate(
+                        LayoutInflater.from(parent.context), parent,
+                        false
+                    ), listener
+                )
+            }
+
+            24 -> {
+                GameCardViewHolder(
+                    ItemHomeGameCardListBinding.inflate(
+                        LayoutInflater.from(parent.context), parent,
+                        false
+                    ), listener
+                )
+            }
+
+            25 -> {
+                HiddenViewHolder(
+                    ItemHomeHiddenBinding.inflate(
+                        LayoutInflater.from(parent.context), parent,
+                        false
+                    )
+                )
+            }
+
             else -> {
                 UnsupportedViewHolder(
                     ItemHomeUnsupportedBinding.inflate(
@@ -934,6 +1051,19 @@ class AppAdapter(
 
                     // 专题页「说明」等纯文本卡片
                     "textCard" -> 20
+
+                    // 游戏频道（/v6/page/dataList?url=V15_YOUXI）的卡片
+                    "iconMiniLinkGridCard" -> 23
+                    "iconLongTitleGridCard",
+                    "iconGridCard",
+                    "productTimelineListCard",
+                    "imageScrollCard",
+                    "iconScrollCard",
+                    "feedListCard",
+                    "sortSelectCard" -> 24
+
+                    // 页面配置（configCard）/ 广告位（sponsorCard）：不渲染
+                    "configCard", "sponsorCard" -> 25
 
                     // 未支持的卡片模板交给占位 ViewHolder，避免整页空白/崩溃
                     else -> 14

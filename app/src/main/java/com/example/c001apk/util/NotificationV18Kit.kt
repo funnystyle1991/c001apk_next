@@ -126,7 +126,20 @@ object NotificationV18Kit {
         json.addProperty("userAvatar", avatar)
         // 黑名单是按 uid 静默的，这一页该静默的是点赞人（老接口这里给的是动态作者）
         json.addProperty("uid", fromUid)
-        json.addProperty("fid", data.targetId?.toString().orEmpty())
+        // 被赞的不一定是动态：`reply_like`（赞了你的评论）下发的 target_type 是
+        // `feed_reply`、target_id 是**评论 id**，照着 target_id 去开动态只会得到
+        // 「文章已被删除」（评论 id 不是动态 id）。条目自带的 url 才是权威入口，
+        // 实测两种形态：
+        //   赞了你的动态 -> /feed/74184314        （target_id = 动态 id，两者一致）
+        //   赞了你的评论 -> /feed/73361859?rid=610334792
+        // 所以动态 id 一律取 url 里的 /feed/<数字>，评论 id 取 rid=<数字> ——
+        // 后者交给详情页去滚动定位（[MessageResponse.Data.rid]），没有就退回 target_id。
+        val url = data.url.orEmpty()
+        val feedId = Regex("/feed/(\\d+)").find(url)?.groupValues?.get(1)
+        json.addProperty("fid", feedId ?: data.targetId?.toString().orEmpty())
+        Regex("[?&]rid=(\\d+)").find(url)?.groupValues?.get(1)?.let {
+            json.addProperty("rid", it.toLong())
+        }
         json.addProperty("pic", data.additionInfo)
         return gson.fromJson(json, MessageResponse.Data::class.java)
     }

@@ -113,7 +113,7 @@ class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
             registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(9)) { uris ->
                 for (uri in uris) {
                     if (bodyImages().size >= MAX_BODY_IMAGES) {
-                        makeToast("正文最多插入$MAX_BODY_IMAGES张图片")
+                        makeToast("正文最多插入${MAX_BODY_IMAGES}张图片")
                         break
                     }
                     insertImage(uri)

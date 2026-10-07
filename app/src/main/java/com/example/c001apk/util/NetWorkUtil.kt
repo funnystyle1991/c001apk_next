@@ -12,6 +12,7 @@ import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import com.example.c001apk.MyApplication.Companion.context
+import com.example.c001apk.R
 import com.example.c001apk.ui.app.AppActivity
 import com.example.c001apk.ui.carousel.CarouselActivity
 import com.example.c001apk.ui.coolpic.CoolPicActivity

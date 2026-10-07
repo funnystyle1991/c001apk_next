@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     # main  = 发布线：每推一次（= 发一次正式版）版本号自动 +1，产物进 release-latest
-    # debug = 测试线：沿用当前版本号，产物进 debug-latest（prerelease）
+    # debug = 测试线：版本号对齐 main（= 线上最高号，不涨号），产物进 debug-latest（prerelease）
     # update = 只放升级配置 json，不构建产物（见 Publish 步骤的排除条件）
     branches: [ main, debug, update ]
     paths-ignore:
@@ -80,34 +80,62 @@ jobs:
           echo "channel=$C" >> $GITHUB_OUTPUT
           echo "本次构建渠道：$C"
 
-      # 正式版版本号：每推一次 main 就把 version.properties 的 patch +1、versionCode +1，
-      # 用解出来的号构建（-Poverride*，见 app/build.gradle.kts），构建完再写回 main
-      # 作为下一次的基线（最后的 Commit bumped version 步骤）。
-      # debug / update 不解算，继续用文件里的当前号 —— 与正式版保持同一个 versionCode，
-      # 用户可以 release / debug 来回覆盖安装。
+      # 版本号真源是 main 的 version.properties：main 每次发布都把号 +1 后写回，所以它
+      # 永远等于「线上已发布的最高号」。这里把要用的号解出来直接写进工作区的
+      # version.properties —— 两个变体（assembleRelease 与 assembleDebug）都读这个文件；
+      # 以前只给 assembleRelease 传 -Poverride*，debug 包还留着本分支的旧号（10002 <
+      # 线上 10003），装不上线上正式版。
+      #   main  → 基线 +1（本次要发的正式版），构建完由 Commit bumped version 写回基线；
+      #   其它  → 直接用 main 的基线，不涨号、不写回，测试包与线上正式版同号可来回覆盖。
       - name: Resolve version
         id: ver
-        if: github.ref_name == 'main'
         run: |
           set -euo pipefail
-          NAME=$(grep -m1 '^VERSION_NAME=' version.properties | cut -d= -f2-)
-          CODE=$(grep -m1 '^VERSION_CODE=' version.properties | cut -d= -f2-)
-          BASE=${NAME#V}
-          NEW_NAME="V${BASE%.*}.$(( ${BASE##*.} + 1 ))"
-          NEW_CODE=$(( CODE + 1 ))
-          echo "name=${NEW_NAME}" >> $GITHUB_OUTPUT
-          echo "code=${NEW_CODE}" >> $GITHUB_OUTPUT
-          echo "版本号：${NAME}（${CODE}）→ ${NEW_NAME}（${NEW_CODE}）"
+          # 一律 tr -d '\r'：version.properties 在 Windows 侧检出时是 CRLF，
+          # 不剥掉行尾的 \r，$(( )) 会直接报 "integer expression expected"
+          LOCAL_NAME=$(grep -m1 '^VERSION_NAME=' version.properties | cut -d= -f2- | tr -d '\r')
+          LOCAL_CODE=$(grep -m1 '^VERSION_CODE=' version.properties | cut -d= -f2- | tr -d '\r')
+
+          # 同仓库 main 分支的号（checkout 用 fetch-depth: 0，一般已在本地 refs 里）
+          if ! git show origin/main:version.properties > /tmp/main-version.properties 2>/dev/null; then
+            git fetch origin main --depth=1
+            git show origin/main:version.properties > /tmp/main-version.properties
+          fi
+          MAIN_NAME=$(grep -m1 '^VERSION_NAME=' /tmp/main-version.properties | cut -d= -f2- | tr -d '\r')
+          MAIN_CODE=$(grep -m1 '^VERSION_CODE=' /tmp/main-version.properties | cut -d= -f2- | tr -d '\r')
+
+          # 两个来源取号大的那份（正常是 main 更大；本分支被手工调高过就尊重本地）
+          if [ "${MAIN_CODE:-0}" -gt "${LOCAL_CODE:-0}" ]; then
+            BASE_NAME=$MAIN_NAME; BASE_CODE=$MAIN_CODE
+          else
+            BASE_NAME=$LOCAL_NAME; BASE_CODE=$LOCAL_CODE
+          fi
+          echo "版本号来源：main=${MAIN_NAME}(${MAIN_CODE}) 本分支=${LOCAL_NAME}(${LOCAL_CODE}) → 基线 ${BASE_NAME}(${BASE_CODE})"
+
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            BASE=${BASE_NAME#V}
+            NAME="V${BASE%.*}.$(( ${BASE##*.} + 1 ))"
+            CODE=$(( BASE_CODE + 1 ))
+            echo "::notice::正式版：${BASE_NAME}（${BASE_CODE}）→ 本次发布 ${NAME}（${CODE}）"
+          else
+            NAME=$BASE_NAME
+            CODE=$BASE_CODE
+            echo "::notice::测试线：沿用线上最高号 ${NAME}（${CODE}），不涨号、不写回"
+          fi
+
+          sed -i "s/^VERSION_NAME=.*/VERSION_NAME=${NAME}/" version.properties
+          sed -i "s/^VERSION_CODE=.*/VERSION_CODE=${CODE}/" version.properties
+          grep -E '^VERSION_(NAME|CODE)=' version.properties
+          echo "name=${NAME}" >> $GITHUB_OUTPUT
+          echo "code=${CODE}" >> $GITHUB_OUTPUT
 
       - name: Build release
         id: buildRelease
         run: |
           set -o pipefail
-          OVERRIDE=""
-          if [ -n "${{ steps.ver.outputs.name }}" ]; then
-            OVERRIDE="-PoverrideVersionName=${{ steps.ver.outputs.name }} -PoverrideVersionCode=${{ steps.ver.outputs.code }}"
-          fi
-          ./gradlew :app:assembleRelease -Pchannel=${{ steps.channel.outputs.channel }} $OVERRIDE --stacktrace 2>&1 | tee gradle-release.log
+          # 本次要用的版本号已由 Resolve version 写进 version.properties，
+          # Gradle 直接读文件即可（assembleDebug 也是这样拿到同一个号）
+          ./gradlew :app:assembleRelease -Pchannel=${{ steps.channel.outputs.channel }} --stacktrace 2>&1 | tee gradle-release.log
           echo "releaseName=$(ls app/build/outputs/apk/release/*.apk | awk -F '(/|\\.apk)' '{print $6}')" >> $GITHUB_OUTPUT
 
       - name: Upload release
@@ -179,8 +207,8 @@ jobs:
           done
           echo "本次发布产物：${FILES[*]}"
 
-          # main 上 version.properties 里存的是「上一次发过的」号，本次用的是 Resolve version
-          # 解出来的号；非 main 分支没有 override，直接读文件
+          # 本次用的号由 Resolve version 决定（main 是 +1 后的号，其它分支是 main 的基线），
+          # 它已经写进 version.properties，正常直接取 outputs
           VERSION="${{ steps.ver.outputs.name }}"
           CODE="${{ steps.ver.outputs.code }}"
           if [ -z "$VERSION" ]; then
@@ -245,7 +273,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           echo "::notice::${TITLE} → https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
 
-      # 正式版：把本次用掉的版本号写回 main，作为下一次 +1 的基线。
+      # 正式版：把本次用掉的版本号提交到 main，作为下一次 +1 的基线。
+      # 工作区里的 version.properties 在 Resolve version 已经改成新号了，这里只是把它提交掉。
       # GITHUB_TOKEN 的推送本身不会再触发 workflow，再加 [skip ci] 双保险。
       - name: Commit bumped version
         if: success() && github.ref_name == 'main'

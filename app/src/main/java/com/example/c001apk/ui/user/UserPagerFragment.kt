@@ -9,7 +9,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.core.view.doOnLayout
+import androidx.core.view.doOnNextLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -159,30 +159,32 @@ class UserPagerFragment : BasePagerFragment() {
 
     /**
      * 签名折叠回 2 行，并判断要不要露出「展开」。
-     * 按钮贴在签名右侧（横排，见 base_view_user.xml），不额外占高度。
-     * 是否被截断只有等 TextView 布局完才知道，所以回调挂在 doOnLayout 上。
+     *
+     * 按钮钉在父容器右边缘、与签名垂直居中（见 base_view_user.xml），且始终占着
+     * 那点宽度（INVISIBLE 而非 GONE）——这样签名的可用宽度是恒定的，「要不要展开」
+     * 的判断就不会因为按钮自己的显隐而改变。要是让按钮 GONE 掉，判定就成一个
+     * 反馈环：按钮显示 → 签名变窄 → 更容易判成截断 → 保持显示；一旦某次刷新把
+     * 按钮重置成 GONE，签名变宽，同一次判定又会得出「不截断」，按钮就此消失。
      */
     private fun bindBio() {
         bioExpanded = false
-        userBinding.bio.maxLines = BIO_COLLAPSED_LINES
+        val bio = userBinding.bio
+        bio.maxLines = BIO_COLLAPSED_LINES
         userBinding.bioExpand.text = "展开"
-        userBinding.bioExpand.isVisible = false
-        userBinding.bio.doOnLayout { refreshBioExpand() }
+        userBinding.bioExpand.visibility = View.INVISIBLE
+        refreshBioExpand()
+        // 签名文字可能是刚绑上去的，此刻 layout 还是旧的，等这次布局完再判一次
+        bio.doOnNextLayout { refreshBioExpand() }
     }
 
-    /**
-     * 折叠态下签名确实被截断了才显示「展开」，否则按钮 GONE、签名自己占满整行。
-     *
-     * 判定用的是「按钮 GONE」时的整行宽度：这个宽度下都不截断就更用不着展开；
-     * 反过来露出按钮只会让签名更窄、截得更早，不会退回不需要按钮的状态，所以判一次即可。
-     */
+    /** 折叠态下签名确实被截断了才露出「展开」，否则按钮留成 INVISIBLE 继续占位 */
     private fun refreshBioExpand() {
         if (bioExpanded) return
         val layout = userBinding.bio.layout ?: return
         val lastLine = layout.lineCount - 1
-        userBinding.bioExpand.isVisible =
-            layout.lineCount > BIO_COLLAPSED_LINES ||
-                    (lastLine >= 0 && layout.getEllipsisCount(lastLine) > 0)
+        val truncated = layout.lineCount > BIO_COLLAPSED_LINES ||
+                (lastLine >= 0 && layout.getEllipsisCount(lastLine) > 0)
+        userBinding.bioExpand.visibility = if (truncated) View.VISIBLE else View.INVISIBLE
     }
 
     override fun onResume() {

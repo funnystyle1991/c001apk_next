@@ -206,20 +206,19 @@
         </LinearLayout>
 
         <!--
-            签名 + 展开按钮：横向并排，按钮贴在签名右侧、垂直居中。
-            按钮放在签名下方会多占一行高度（头部整块高度不够，按钮会被下面的数据行顶掉看不见），
-            横排则只在签名那一行的高度里，按钮 GONE 时也不占宽度。
-            行数与是否被截断由 UserPagerFragment 在布局完成后判断（见 bindBio）。
+            签名 + 展开按钮：按钮钉在父容器右边缘、与签名垂直居中。
+
+            按钮用 INVISIBLE 而不是 GONE：它一占位就固定了签名的宽度，「要不要展开」的
+            判定就不会因为按钮自己显示/隐藏而改变可用宽度（否则判定是个反馈环，刷新一次
+            就可能翻到另一头，表现为「刚进页面有按钮、刷新后没了」）。判定见 bindBio。
         -->
-        <LinearLayout
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/bioLayout"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginTop="6dp"
             android:layout_marginEnd="16dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/verifyTitleRow">
@@ -229,28 +228,32 @@
                 style="@style/UserTextColor"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="2"
                 android:text="@{userData.bio}"
-                android:textSize="13sp" />
+                android:textSize="13sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/bioExpand"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
 
             <TextView
                 android:id="@+id/bioExpand"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:minHeight="28dp"
                 android:gravity="center"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp"
+                android:minWidth="40dp"
+                android:minHeight="28dp"
                 android:text="展开"
                 android:textColor="#B3FFFFFF"
                 android:textSize="12sp"
                 android:textStyle="bold"
-                android:visibility="gone" />
-        </LinearLayout>
+                android:visibility="invisible"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
         <LinearLayout
             android:id="@+id/stats"

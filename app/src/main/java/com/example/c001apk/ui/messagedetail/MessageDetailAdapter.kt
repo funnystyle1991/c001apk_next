@@ -17,11 +17,15 @@ import com.example.c001apk.util.MessageKit
  *
  * 头像不用消息自身的字段：聊天记录里的 `userAvatar` / `fromUserAvatar` 对应的是
  * 接收者 / 发送者，方向容易反，所以直接由会话信息传进来（跟桌面版一致）。
+ * 头像右上角那枚认证角标同理：`/v6/message/chat` 不下发认证字段，只能拿会话里
+ * 带过来的对方 uid 去查云端认证表（见 [com.example.c001apk.util.VerifyBadge]）。
  */
 class MessageDetailAdapter(
     private val myUid: String,
     private val myAvatar: String,
     private val partnerAvatar: String,
+    /** 对方的 uid，只给认证角标用（气泡左右由 fromuid 判断，用不到它） */
+    private val partnerUid: String,
     /**
      * 图片消息的地址要现问 `showImage` 换签名地址（CDN 的裸地址会被 auth_key 挡），
      * adapter 自己没有协程作用域，所以这件事交给页面 / ViewModel 做，结果回调回来。
@@ -39,12 +43,14 @@ class MessageDetailAdapter(
             isMe: Boolean,
             myAvatar: String,
             partnerAvatar: String,
+            partnerUid: String,
             loadPic: (String, (MessageKit.MessagePic?) -> Unit) -> Unit
         ) {
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.isMe, isMe)
             binding.setVariable(BR.myAvatar, myAvatar)
             binding.setVariable(BR.partnerAvatar, partnerAvatar)
+            binding.setVariable(BR.partnerUid, partnerUid)
             binding.executePendingBindings()
 
             val view = if (isMe) binding.picRight else binding.picLeft
@@ -98,7 +104,7 @@ class MessageDetailAdapter(
 
     override fun onBindViewHolder(holder: ChatViewHolder, position: Int) {
         val item = currentList[position]
-        holder.bind(item, item.fromuid == myUid, myAvatar, partnerAvatar, loadPic)
+        holder.bind(item, item.fromuid == myUid, myAvatar, partnerAvatar, partnerUid, loadPic)
     }
 
 }

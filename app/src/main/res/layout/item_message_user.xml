@@ -52,6 +52,27 @@
                 app:shapeAppearance="@style/circleImageStyle" />
 
             <!--
+                认证角标：压在头像右下角，没认证时 GONE。
+                uid 认 partnerUid（跟头像、点击跳转同一个来源，永远指向「对方」）；
+                认证字段由 MessageKit.verifyIcon / verifyStatus 从 fromUserInfo 里取 ——
+                私信会话（/v6/message/list）没有那个对象，这一支就只按 uid 查云端认证表。
+            -->
+            <ImageView
+                android:id="@+id/verifyBadge"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:background="@drawable/bg_verify_badge"
+                android:contentDescription="@null"
+                android:padding="2dp"
+                android:src="@drawable/ic_verify_check"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@id/avatar"
+                app:layout_constraintEnd_toEndOf="@id/avatar"
+                app:verifyIcon="@{MessageKit.verifyIcon(data)}"
+                app:verifyStatus="@{MessageKit.verifyStatus(data)}"
+                app:verifyUid="@{MessageKit.partnerUid(data)}" />
+
+            <!--
                 要展示的是**对方**：私信会话认 messageUsername / messageUserAvatar，
                 通知条目（好友关注）认 fromusername / fromUserAvatar——
                 partnerName / partnerAvatar 内部已经按这个顺序兜底了。

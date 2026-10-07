@@ -8,6 +8,8 @@
 
         <import type="com.example.c001apk.util.DateUtils" />
 
+        <import type="com.example.c001apk.util.MessageKit" />
+
         <variable
             name="data"
             type="com.example.c001apk.logic.model.MessageResponse.Data" />
@@ -37,6 +39,27 @@
             app:layout_constraintTop_toTopOf="parent"
             app:setImage="@{data.fromUserAvatar}"
             app:shapeAppearance="@style/circleImageStyle" />
+
+        <!--
+            认证角标：压在头像右下角，没认证时 GONE。
+            uid 用 fromuid（与头像、点击跳转同一个发送者）；认证字段由
+            MessageKit.verifyIcon / verifyStatus 从 fromUserInfo 里取，
+            只有 V18 通知流下发那个对象，没下发时退回按 uid 查云端认证表。
+        -->
+        <ImageView
+            android:id="@+id/verifyBadge"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="@drawable/bg_verify_badge"
+            android:contentDescription="@null"
+            android:padding="2dp"
+            android:src="@drawable/ic_verify_check"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/avatar"
+            app:layout_constraintEnd_toEndOf="@id/avatar"
+            app:verifyIcon="@{MessageKit.verifyIcon(data)}"
+            app:verifyStatus="@{MessageKit.verifyStatus(data)}"
+            app:verifyUid="@{data.fromuid}" />
 
         <TextView
             android:id="@+id/uname"

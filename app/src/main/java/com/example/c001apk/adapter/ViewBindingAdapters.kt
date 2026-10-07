@@ -107,12 +107,20 @@ fun setVerifyBadge(imageView: ImageView, uid: String?, icon: String?, status: In
     imageView.contentDescription = VerifyBadge.title(uid, null) ?: "认证用户"
 }
 
-/** 个人主页的认证文字：本地特例那条认证服务端不下发，得在这里补上 */
+/**
+ * 个人主页的认证行：角标 + 文字，认证文字只在这里出现（列表 / 详情页只挂头像角标）。
+ *
+ * 绑整行而不是绑文字：角标要和头像右下角那枚同色，文字又得能顶成本地特例的文案，
+ * 两者都吃同一份判定，写在一处省得各判一遍。
+ */
 @BindingAdapter("verifyTitle")
-fun setVerifyTitle(textView: TextView, data: UserProfileResponse.Data?) {
+fun setVerifyTitle(row: View, data: UserProfileResponse.Data?) {
     val title = VerifyBadge.title(data?.uid, data?.verifyTitle)
-    textView.text = title.orEmpty()
-    textView.isVisible = !title.isNullOrEmpty()
+    row.isVisible = !title.isNullOrEmpty()
+    if (title.isNullOrEmpty()) return
+    row.findViewById<TextView>(R.id.verifyTitleText)?.text = title
+    row.findViewById<ImageView>(R.id.verifyTitleBadge)?.backgroundTintList =
+        ColorStateList.valueOf(VerifyBadge.badgeColor(row.context, data?.uid, data?.verifyIcon))
 }
 
 @BindingAdapter("setArticleImage")

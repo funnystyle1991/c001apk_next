@@ -373,8 +373,8 @@ data class HomeFeedResponse(
         @SerializedName("rating_total_num") val ratingTotalNum: String? = null,
         @SerializedName("commentnum_txt") val commentnumTxt: String? = null,
         // feedListCard（最新点评）下发的就是完整 feed 结构，这里补上点评用得到的几个
+        // （message / username / id / url 主构造函数里已经有了，别再声明一遍）
         val ttitle: String? = null,
-        val message: String? = null,
         // 点评对应的游戏图标
         val tpic: String? = null
     ) : Parcelable

@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.c001apk.R
 import com.example.c001apk.logic.model.BlackListUser
 import com.example.c001apk.util.ImageUtil
+import com.example.c001apk.util.VerifyBadge
 
 /** 云端用户黑名单列表（头像 + 昵称 + UID + 移除） */
 class UserBlackListAdapter :
@@ -29,6 +30,7 @@ class UserBlackListAdapter :
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val avatar: ImageView = view.findViewById(R.id.avatar)
+        val verifyBadge: ImageView = view.findViewById(R.id.verifyBadge)
         val username: TextView = view.findViewById(R.id.username)
         val uid: TextView = view.findViewById(R.id.uid)
         val remove: ImageView = view.findViewById(R.id.remove)
@@ -43,6 +45,7 @@ class UserBlackListAdapter :
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val user = currentList[position]
         ImageUtil.showIMG(holder.avatar, user.userAvatar)
+        VerifyBadge.applyTo(holder.verifyBadge, user.uid, user.verifyIcon, user.verifyStatus)
         holder.username.text = user.name
         holder.uid.text = "UID: ${user.uid.orEmpty()}"
         holder.itemView.setOnClickListener { onItemClick?.invoke(user) }

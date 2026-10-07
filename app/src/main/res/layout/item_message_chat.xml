@@ -30,6 +30,11 @@
             name="myAvatar"
             type="String" />
 
+        <!-- 对方的 uid，同样由 adapter 用会话信息传入（认证角标按它查，聊天记录里没有） -->
+        <variable
+            name="partnerUid"
+            type="String" />
+
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -69,6 +74,26 @@
             app:layout_constraintTop_toTopOf="parent"
             app:shapeAppearance="@style/circleImageStyle"
             tools:visibility="visible" />
+
+        <!--
+            对方头像上的认证角标，没认证时 GONE。
+            可见性只由角标那一支适配器写：自己发的消息 / 系统提示这两种情况下
+            对方头像是 GONE 的，所以 uid 也跟着一起收（给空串），
+            否则角标会孤零零浮在左边。
+            /v6/message/chat 不下发认证字段，这里只按 uid 查云端认证表。
+        -->
+        <ImageView
+            android:id="@+id/verifyBadge"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
+            android:background="@drawable/bg_verify_badge"
+            android:contentDescription="@null"
+            android:padding="2dp"
+            android:src="@drawable/ic_verify_check"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/avatarLeft"
+            app:layout_constraintEnd_toEndOf="@id/avatarLeft"
+            app:verifyUid="@{MessageKit.badgeUid(data, isMe, partnerUid)}" />
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/bubbleLeft"

@@ -3,6 +3,7 @@ package com.example.c001apk.ui.feed.reply.attopic
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -10,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.c001apk.R
 import com.example.c001apk.logic.model.HomeFeedResponse
 import com.example.c001apk.util.ImageUtil.showIMG
+import com.example.c001apk.util.VerifyBadge
 import com.google.android.material.imageview.ShapeableImageView
 
 class SearchAdapter(
@@ -18,6 +20,7 @@ class SearchAdapter(
 
     class ViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
         val avatar: ShapeableImageView = view.findViewById(R.id.logoCover)
+        val verifyBadge: ImageView = view.findViewById(R.id.verifyBadge)
         val username: TextView = view.findViewById(R.id.title)
         var avatarUrl: String = ""
         var id: String = ""
@@ -39,11 +42,16 @@ class SearchAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val data = currentList[position]
+        // 先摆成「没认证」，user 分支再覆盖：话题行复用过来时不能残留上一行的角标
+        VerifyBadge.applyTo(holder.verifyBadge, null, null, null)
         when (data.entityType) {
             "user" -> {
                 holder.avatarUrl = data.userAvatar ?: ""
                 holder.username.text = data.username
                 showIMG(holder.avatar, data.userAvatar)
+                VerifyBadge.applyTo(
+                    holder.verifyBadge, data.uid, data.verifyIcon, data.verifyStatus
+                )
             }
 
             "topic" -> {

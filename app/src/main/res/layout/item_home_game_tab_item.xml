@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <variable
+            name="data"
+            type="com.example.c001apk.logic.model.HomeFeedResponse.Entities" />
+
+        <variable
+            name="listener"
+            type="com.example.c001apk.adapter.ItemListener" />
+
+    </data>
+
+    <!--
+      游戏频道四个入口的单条。url 有 /t/ 话题、/page?url= 二级页、外链三种，
+      统一交给 onOpenLink 按前缀分发（onViewTopic 只认 topic / product）。
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/round_corners_12_win"
+        android:foreground="@drawable/selector_bg_12_trans"
+        android:gravity="center_horizontal"
+        android:onClick="@{(view) -> listener.onOpenLink(view, data.url, data.title)}"
+        android:orientation="vertical"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/icon"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@color/cover"
+            app:setImage="@{data.logo}"
+            app:shapeAppearance="@style/searchTopicRadius"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@{data.title}"
+            android:textSize="12sp"
+            tools:text="资讯" />
+
+    </LinearLayout>
+
+</layout>

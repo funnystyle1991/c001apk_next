@@ -51,6 +51,21 @@
                 app:layout_constraintTop_toTopOf="parent"
                 app:shapeAppearance="@style/circleImageStyle" />
 
+            <!-- 认证角标：压在头像右下角，没认证时 GONE。
+                 头像有 userInfo / fUserInfo / 扁平实体三个来源，交给 verifyUserData 判 -->
+            <ImageView
+                android:id="@+id/verifyBadge"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:background="@drawable/bg_verify_badge"
+                android:contentDescription="@null"
+                android:padding="2dp"
+                android:src="@drawable/ic_verify_check"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@id/avatar"
+                app:layout_constraintEnd_toEndOf="@id/avatar"
+                app:verifyUserData="@{data}" />
+
             <TextView
                 android:id="@+id/uname"
                 android:layout_width="0dp"

@@ -9,6 +9,7 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnNextLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -35,6 +36,9 @@ class UserPagerFragment : BasePagerFragment() {
     private val viewModel by viewModels<UserViewModel>(ownerProducer = { requireActivity() })
     private lateinit var userBinding: BaseViewUserBinding
     private var menuBlock: MenuItem? = null
+
+    /** 签名当前是不是展开态（折叠时只留 2 行） */
+    private var bioExpanded = false
 
     /** 是不是在看自己的主页（uid 和本地登录 uid 相同） */
     private val isSelf: Boolean
@@ -94,6 +98,13 @@ class UserPagerFragment : BasePagerFragment() {
             }
         }
 
+        bindBio()
+        userBinding.bioExpand.setOnClickListener {
+            bioExpanded = !bioExpanded
+            userBinding.bio.maxLines = if (bioExpanded) Int.MAX_VALUE else BIO_COLLAPSED_LINES
+            userBinding.bioExpand.text = if (bioExpanded) "收起" else "展开"
+        }
+
         userBinding.equipLayout.setOnClickListener {
             IntentUtil.startActivity<WebViewActivity>(requireContext()) {
                 putExtra("url", "https://m.coolapk.com/myDevice/${viewModel.uid}")
@@ -129,6 +140,8 @@ class UserPagerFragment : BasePagerFragment() {
                 // userData 是拉完资料才有的，isSelf / 关注态此时才最终确定
                 userBinding.followBtn.isVisible = isSelf || PrefManager.isLogin
                 bindMailBtn()
+                // 签名可能刚被编辑过，重新折叠一次
+                bindBio()
             }
         }
 
@@ -142,6 +155,36 @@ class UserPagerFragment : BasePagerFragment() {
     /** 私信圆钮：自己的主页不显示，未登录也没法发私信 */
     private fun bindMailBtn() {
         userBinding.mailBtn.isVisible = !isSelf && PrefManager.isLogin
+    }
+
+    /**
+     * 签名折叠回 2 行，并判断要不要露出「展开」。
+     *
+     * 按钮钉在父容器右边缘、与签名垂直居中（见 base_view_user.xml），且始终占着
+     * 那点宽度（INVISIBLE 而非 GONE）——这样签名的可用宽度是恒定的，「要不要展开」
+     * 的判断就不会因为按钮自己的显隐而改变。要是让按钮 GONE 掉，判定就成一个
+     * 反馈环：按钮显示 → 签名变窄 → 更容易判成截断 → 保持显示；一旦某次刷新把
+     * 按钮重置成 GONE，签名变宽，同一次判定又会得出「不截断」，按钮就此消失。
+     */
+    private fun bindBio() {
+        bioExpanded = false
+        val bio = userBinding.bio
+        bio.maxLines = BIO_COLLAPSED_LINES
+        userBinding.bioExpand.text = "展开"
+        userBinding.bioExpand.visibility = View.INVISIBLE
+        refreshBioExpand()
+        // 签名文字可能是刚绑上去的，此刻 layout 还是旧的，等这次布局完再判一次
+        bio.doOnNextLayout { refreshBioExpand() }
+    }
+
+    /** 折叠态下签名确实被截断了才露出「展开」，否则按钮留成 INVISIBLE 继续占位 */
+    private fun refreshBioExpand() {
+        if (bioExpanded) return
+        val layout = userBinding.bio.layout ?: return
+        val lastLine = layout.lineCount - 1
+        val truncated = layout.lineCount > BIO_COLLAPSED_LINES ||
+                (lastLine >= 0 && layout.getEllipsisCount(lastLine) > 0)
+        userBinding.bioExpand.visibility = if (truncated) View.VISIBLE else View.INVISIBLE
     }
 
     override fun onResume() {
@@ -320,5 +363,10 @@ class UserPagerFragment : BasePagerFragment() {
 
         // 初始为完全展开
         applyBarIconTint(true)
+    }
+
+    companion object {
+        /** 折叠时签名保留的行数，与 base_view_user.xml 里的 maxLines 保持一致 */
+        private const val BIO_COLLAPSED_LINES = 2
     }
 }

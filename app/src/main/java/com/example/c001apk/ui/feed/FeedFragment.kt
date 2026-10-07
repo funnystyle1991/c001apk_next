@@ -260,8 +260,14 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
 
         viewModel.feedUserState.observe(viewLifecycleOwner) { event ->
             event.getContentIfNotHandledOrReturnNull()?.let {
-                if (it)
-                    feedDataAdapter.notifyItemChanged(0, true)
+                if (it) feedDataAdapter.notifyFeedStateChanged()
+            }
+        }
+
+        viewModel.feedFavState.observe(viewLifecycleOwner) { event ->
+            event.getContentIfNotHandledOrReturnNull()?.let {
+                // 收藏数绑在 data 上，必须整条重绑：带 payload 的那条分支只重绑点赞/关注
+                feedDataAdapter.notifyFavChanged()
             }
         }
 
@@ -351,6 +357,9 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             avatarUrl = viewModel.avatar
             dateline = viewModel.dateLine
             deviceTitle = viewModel.device
+            authorUid = viewModel.feedUid
+            authorVerifyIcon = viewModel.verifyIcon
+            authorVerifyStatus = viewModel.verifyStatus
         }
         // 先把作者行摆到起点上：XML 里它是 gone，得先转成 invisible 排布出来，
         // 后面才量得到它的静态位置（也让首帧不会从兜底值跳一下）
@@ -453,13 +462,6 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                         }
                     }
 
-                    R.id.share -> {
-                        IntentUtil.shareText(
-                            requireContext(),
-                            "https://www.coolapk1s.com/feed/${viewModel.id}"
-                        )
-                    }
-
                     R.id.copyLink -> {
                         ClipboardUtil.copyText(
                             requireContext(),
@@ -483,13 +485,6 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                                 "https://m.coolapk.com/mp/do?c=feed&m=report&type=feed&id=${viewModel.id}"
                             )
                         }
-                    }
-
-                    R.id.favorite -> {
-                        // 服务端多收藏夹：选择 / 取消收藏 / 新建 / 长按编辑
-                        CollectionPickBottomSheet().apply {
-                            arguments = Bundle().apply { putString("feedId", viewModel.id) }
-                        }.show(childFragmentManager, "collectionPick")
                     }
 
                 }
@@ -610,6 +605,17 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                 menuInflater.inflate(R.menu.feed_reply_menu, menu).apply {
                     menu.findItem(R.id.delete).isVisible = PrefManager.uid == uid
                     menu.findItem(R.id.report).isVisible = PrefManager.isLogin
+                    // 置顶：只有帖主能操作，而且接口置顶的是「动态的回复」，
+                    // 所以二级回复（rPosition 有效）不给这一项。标题按当前状态切换。
+                    menu.findItem(R.id.stickTop)?.apply {
+                        isVisible = PrefManager.isLogin &&
+                                PrefManager.uid == viewModel.feedUid &&
+                                (rPosition == null || rPosition == -1)
+                        title = view.context.getString(
+                            if (id == viewModel.topReplyId) R.string.unstick_top
+                            else R.string.stick_top
+                        )
+                    }
                 }
                 setOnMenuItemClickListener(
                     PopClickListener(
@@ -654,6 +660,22 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                     viewModel.onLikeFeed(id, isLike)
                 else
                     viewModel.onLikeReply(id, isLike)
+        }
+
+        override fun onFavoriteClick(id: String?) {
+            // 服务端多收藏夹：选择 / 取消收藏 / 新建 / 长按编辑。
+            // 收藏数是服务端回的，回来后整条重绑卡片（见 feedFavState）
+            CollectionPickBottomSheet().apply {
+                arguments = Bundle().apply { putString("feedId", id ?: viewModel.id) }
+                onChanged = { favNum -> viewModel.onFavoriteChanged(favNum) }
+            }.show(childFragmentManager, "collectionPick")
+        }
+
+        override fun onShareFeed(id: String?) {
+            IntentUtil.shareText(
+                requireContext(),
+                "https://www.coolapk1s.com/feed/${id ?: viewModel.id}"
+            )
         }
 
         override fun showTotalReply(
@@ -756,6 +778,10 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
                     }
                 }
 
+                R.id.stickTop -> {
+                    viewModel.postReplyTop(id, id == viewModel.topReplyId)
+                }
+
                 R.id.show -> {
                     ItemClickListener().showTotalReply(
                         id,
@@ -839,7 +865,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
 
     /** 动态内容卡和图文详情头的作者行都是这几个 id（没有的 layout 就跳过） */
     private val contentRowIds = listOf(
-        R.id.authorRow, R.id.avatar, R.id.uname, R.id.pubDate,
+        R.id.authorRow, R.id.avatar, R.id.verifyBadge, R.id.uname, R.id.pubDate,
         R.id.device, R.id.privateBadge, R.id.follow, R.id.followLoading
     )
 

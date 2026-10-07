@@ -40,6 +40,13 @@ class CollectionPickViewModel @Inject constructor(
     val loading = MutableLiveData<Boolean>()
     val toastText = MutableLiveData<Event<String>>()
 
+    /**
+     * 服务端回的最新收藏数（`addItem` 响应里的 `favnum`）。
+     * 多收藏夹下本地加减算不准——同一个夹重复点、别人同时收藏都会偏，
+     * 所以数字只认接口。详情页底栏的收藏数就靠它刷新。
+     */
+    val favCount = MutableLiveData<Int>()
+
     fun load(feedId: String?) {
         viewModelScope.launch(Dispatchers.IO) {
             loading.postValue(true)
@@ -56,14 +63,15 @@ class CollectionPickViewModel @Inject constructor(
     fun toggle(feedId: String, item: CollectionData) {
         viewModelScope.launch(Dispatchers.IO) {
             val collected = item.isBeCollected == 1
-            val ok = runCatching {
+            val result = runCatching {
                 networkRepo.addToCollection(
                     id = if (collected) "" else item.id.orEmpty(),
                     cancelId = if (collected) item.id.orEmpty() else "",
                     targetId = feedId,
                     type = "feed"
-                ).firstOrNull()?.isSuccess == true
-            }.getOrDefault(false)
+                ).firstOrNull()
+            }.getOrNull()
+            val ok = result?.isSuccess == true
             toastText.postValue(
                 Event(
                     when {
@@ -73,7 +81,10 @@ class CollectionPickViewModel @Inject constructor(
                     }
                 )
             )
-            if (ok) load(feedId)
+            if (ok) {
+                result?.getOrNull()?.favnum?.let { favCount.postValue(it) }
+                load(feedId)
+            }
         }
     }
 
@@ -98,9 +109,11 @@ class CollectionPickViewModel @Inject constructor(
             val ok = result?.isSuccess == true
             val newId = result?.getOrNull()?.data?.id
             if (ok && !newId.isNullOrEmpty() && !feedId.isNullOrEmpty()) {
-                runCatching {
+                val added = runCatching {
                     networkRepo.addToCollection(newId, "", feedId, "feed").firstOrNull()
-                }
+                }.getOrNull()
+                // 新建后顺带收藏也会让收藏数变，同样得把新数字带出去
+                added?.getOrNull()?.favnum?.let { favCount.postValue(it) }
             }
             toastText.postValue(
                 Event(

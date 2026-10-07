@@ -34,6 +34,8 @@ data class UserProfileResponse(
         // 认证标题，如「酷安认证: 酷安员工」；verify_status == 1 时展示
         @SerializedName("verify_title") val verifyTitle: String? = null,
         @SerializedName("verify_status") val verifyStatus: Int? = null,
+        // 认证角标图标名（v_green / v_yellow），用来定头部那枚角标的颜色
+        @SerializedName("verify_icon") val verifyIcon: String? = null,
         val province: String? = null,
         val city: String? = null,
         // 生日（编辑资料用）；0 表示未设置 / 保密

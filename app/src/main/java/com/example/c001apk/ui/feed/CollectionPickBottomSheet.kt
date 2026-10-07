@@ -41,8 +41,8 @@ class CollectionPickBottomSheet : BottomSheetDialogFragment() {
     private var feedId: String = ""
     private var editCoverUri: Uri? = null
 
-    /** 收藏状态变化后通知外面（动态详情页用来刷新） */
-    var onChanged: (() -> Unit)? = null
+    /** 收藏数变化后通知外面（动态详情页底栏刷数字），参数是服务端回的最新收藏数 */
+    var onChanged: ((Int?) -> Unit)? = null
 
     private val pickCover = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -81,8 +81,11 @@ class CollectionPickBottomSheet : BottomSheetDialogFragment() {
         viewModel.toastText.observe(viewLifecycleOwner) { event: Event<String>? ->
             event?.getContentIfNotHandledOrReturnNull()?.let {
                 requireContext().makeToast(it)
-                onChanged?.invoke()
             }
+        }
+        // 只有服务端回了新收藏数才通知外面：操作失败、纯改收藏夹信息都不该动底栏数字
+        viewModel.favCount.observe(viewLifecycleOwner) {
+            onChanged?.invoke(it)
         }
 
         viewModel.load(feedId)

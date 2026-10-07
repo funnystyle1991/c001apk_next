@@ -490,6 +490,21 @@ interface ApiService {
         @Field("feedId") feedId: String,
     ): Call<LikeReplyResponse>
 
+    // 帖主把某条回复置顶。replyId 与 feedId 都是表单字段，成功返回 data="回复置顶成功"。
+    // 只有动态作者能操作，服务端会校验。
+    @POST("/v6/feed/addReplyTopToFeed")
+    @FormUrlEncoded
+    fun addReplyTopToFeed(
+        @Field("replyId") replyId: String,
+        @Field("feedId") feedId: String,
+    ): Call<LikeReplyResponse>
+
+    // 取消回复置顶。一条动态只保留一个置顶回复，所以只认 feedId、不用带 replyId，
+    // 成功返回 data="取消回复置顶成功"。
+    @POST("/v6/feed/cancelReplyTopFromFeed")
+    @FormUrlEncoded
+    fun cancelReplyTopFromFeed(@Field("feedId") feedId: String): Call<LikeReplyResponse>
+
     @GET
     fun getFollow(
         @Url url: String,

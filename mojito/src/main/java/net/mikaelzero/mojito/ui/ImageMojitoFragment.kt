@@ -275,7 +275,18 @@ class ImageMojitoFragment : Fragment(), IMojitoFragment, OnMojitoViewCallback {
                 }
 
                 override fun onFail(error: Exception?) {
-                    loadImageFail(false)
+                    // 缩略图在缓存和网络里都取不到时别直接黑屏：有原图就加载原图。
+                    // 评论区「查看图片」这类没有源视图的入口每次都会走到这里（它们的
+                    // .s.jpg 从来没被任何控件加载过，只读缓存必然 miss），原来的写法是
+                    // 拿同一个缩略图地址再要一次就收工，失败了什么都不画。
+                    // forceLoadTarget 必须带：autoLoadTarget 关着的时候 replaceImageUrl
+                    // 又会变成只读缓存，那就还是失败。
+                    val target = fragmentConfig.targetUrl
+                    if (needHandleTarget && target != null) {
+                        replaceImageUrl(target, true)
+                    } else {
+                        loadImageFail(false)
+                    }
                 }
 
                 override fun onSuccess(image: File) {

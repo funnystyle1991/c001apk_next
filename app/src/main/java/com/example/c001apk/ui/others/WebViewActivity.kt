@@ -27,13 +27,17 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.coordinatorlayout.widget.CoordinatorLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.core.view.updatePadding
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 import com.example.c001apk.R
 import com.example.c001apk.databinding.ActivityWebViewBinding
 import com.example.c001apk.ui.base.BaseActivity
 import com.example.c001apk.util.ClipboardUtil.copyText
+import com.example.c001apk.util.LinkGuard
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.SslErrorPrompter
 import com.example.c001apk.util.http2https
@@ -55,6 +59,9 @@ class WebViewActivity : BaseActivity<ActivityWebViewBinding>() {
      */
     private val editUrl: String? by lazy { intent.getStringExtra("editUrl") }
     private var webView: WebView? = null
+
+    /** 用户点过「知道了」的 host：同一次浏览里不再重复提示，换个域名再提示 */
+    private var riskDismissedHost: String? = null
 
     companion object {
         // 每个进程只允许设置一次 WebView 数据目录后缀
@@ -83,6 +90,8 @@ class WebViewActivity : BaseActivity<ActivityWebViewBinding>() {
                 }
             }
             binding.root.addView(webView)
+            // WebView 是代码 addView 的，z 序在 XML 子 View 之后，会把风险提示条盖住
+            binding.riskBanner.bringToFront()
         }.onFailure {
             MaterialAlertDialogBuilder(this)
                 .setTitle("Failed to init WebView")
@@ -98,8 +107,42 @@ class WebViewActivity : BaseActivity<ActivityWebViewBinding>() {
                 .show()
         }
 
+        bindRiskBanner()
+
         link?.let {
             loadUrlInWebView(it)
+        }
+    }
+
+    /**
+     * 风险提示条：贴底，得自己让开系统导航栏（根布局是 edgeToEdge 的）。
+     * 「知道了」只关掉当前 host 的提示，页面内跳到别的域名会再提示一次。
+     */
+    private fun bindRiskBanner() {
+        // 基准 padding 先存下来：insets 会分发多次，直接累加会越垫越高
+        val basePaddingBottom = binding.riskBanner.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(binding.riskBanner) { view, insets ->
+            view.updatePadding(
+                bottom = basePaddingBottom +
+                        insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
+            )
+            insets
+        }
+        binding.riskDismiss.setOnClickListener {
+            riskDismissedHost = LinkGuard.hostOf(webView?.url)
+            binding.riskBanner.isVisible = false
+        }
+    }
+
+    /** 当前页不在可信链接白名单里才提示；提示内容带上具体域名 */
+    private fun updateRiskBanner(url: String?) {
+        val text = url?.trim().orEmpty()
+        val risky = (text.startsWith("http://") || text.startsWith("https://")) &&
+                !LinkGuard.isTrusted(text) &&
+                LinkGuard.hostOf(text) != riskDismissedHost
+        binding.riskBanner.isVisible = risky
+        if (risky) {
+            binding.riskText.text = getString(R.string.link_risk_tip, LinkGuard.hostOf(text))
         }
     }
 
@@ -203,7 +246,11 @@ class WebViewActivity : BaseActivity<ActivityWebViewBinding>() {
                         view: WebView?, url: String?, favicon: Bitmap?
                     ) {
                         super.onPageStarted(view, url, favicon)
-                        if (url != null) applyCoolapkCookies(url)
+                        if (url != null) {
+                            applyCoolapkCookies(url)
+                            // 网页内部继续跳转也会走到这里，所以提示条跟着当前地址走
+                            updateRiskBanner(url)
+                        }
                     }
 
                     /** SSL 证书校验不过（如抓包/中间人）：阻止加载并弹风险警告 */

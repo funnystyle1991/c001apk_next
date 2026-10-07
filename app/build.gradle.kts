@@ -69,14 +69,16 @@ fun String.execute(currentWorkingDir: File = file("./")): String {
 }
 
 // ===== 发行版本（唯一真源：仓库根目录 version.properties）=====
-// 规则：正式版只在 main 分支发布，每发一次 CI 自动把 patch +1、versionCode +1：
-//       CI 用 -PoverrideVersionName / -PoverrideVersionCode 把本次要发的号传进来，
-//       构建完再把新号写回 version.properties 提交，作为下一次的基线。
-//       debug 线不涨号，沿用文件里的当前号 —— 与正式版同一个 versionCode，可来回覆盖安装。
+// 规则：正式版只在 main 分支发布，每发一次 CI 自动把 patch +1、versionCode +1，构建完再把
+//       新号写回 version.properties 提交作基线；其它分支的 CI 构建时从 main 取同一个号
+//       （不涨号、不写回），所以测试包与线上正式版的 versionCode 相同，可来回覆盖安装。
+//       CI 的做法是把解出来的号直接写进 version.properties 再构建（见 .github/workflows/ci.yml
+//       的 Resolve version），因此下面保留的 -PoverrideVersionName / -PoverrideVersionCode
+//       只给本地手工跳号用，CI 不再传。
 val releaseProps = Properties().also { it.load(rootProject.file("version.properties").inputStream()) }
 val fileCode = releaseProps.getProperty("VERSION_CODE").trim().toInt()
 val fileTag = releaseProps.getProperty("VERSION_NAME").trim()
-// CI 发正式版时传入的本次版本号；本地构建 / debug 线不传，用文件里的值
+// -Poverride* 手传的版本号（本地临时跳号用）；不传就用文件里的值
 val verCode = (findProperty("overrideVersionCode") as String?)?.takeIf { it.isNotBlank() }?.trim()?.toInt() ?: fileCode
 val verTag = (findProperty("overrideVersionName") as String?)?.takeIf { it.isNotBlank() }?.trim() ?: fileTag
 // 发行渠道：CI 按分支传 -Pchannel=release|debug；本地不传默认 release

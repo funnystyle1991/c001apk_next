@@ -62,6 +62,7 @@ class MessageDetailActivity : BaseActivity<ActivityMessageDetailBinding>() {
             myUid = PrefManager.uid,
             myAvatar = PrefManager.userAvatar,
             partnerAvatar = intent.getStringExtra("avatar").orEmpty(),
+            partnerUid = intent.getStringExtra("uid").orEmpty(),
             // 图片消息的地址要现问 showImage 换，只能在 ViewModel 里做（那边有作用域 + 缓存）
             loadPic = { id, onReady -> viewModel.loadMessagePic(id, onReady) }
         )

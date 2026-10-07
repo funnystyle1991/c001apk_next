@@ -290,6 +290,19 @@ object PrefManager {
         get() = pref.getString("spamConfig", "")!!
         set(value) = pref.edit().putString("spamConfig", value).apply()
 
+    /**
+     * 用户认证表缓存（userverify 接口的原始响应，见 [RemoteConfig]）。
+     * 每次启动拉一次新表覆盖；拉不到就用这份，所以离线也能看到认证标。
+     */
+    var userVerifyConfig: String
+        get() = pref.getString("userVerifyConfig", "")!!
+        set(value) = pref.edit().putString("userVerifyConfig", value).apply()
+
+    /** 可信链接白名单缓存（reliablelink 接口的原始响应），同上 */
+    var reliableLinkConfig: String
+        get() = pref.getString("reliableLinkConfig", "")!!
+        set(value) = pref.edit().putString("reliableLinkConfig", value).apply()
+
     var recentIds: String
         get() = pref.getString("recentIds", "")!!
         set(value) = pref.edit().putString("recentIds", value).apply()

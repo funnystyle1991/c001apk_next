@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.StaggeredGridLayoutManager
 import com.example.c001apk.BR
 import com.example.c001apk.adapter.ItemListener
 import com.example.c001apk.constant.Constants
+import com.example.c001apk.databinding.ItemFeedArticleActionBinding
 import com.example.c001apk.databinding.ItemFeedArticleHeaderBinding
 import com.example.c001apk.databinding.ItemFeedArticleImageBinding
 import com.example.c001apk.databinding.ItemFeedArticleShareUrlBinding
@@ -51,6 +52,25 @@ class FeedDataAdapter(
         notifyDataSetChanged()
     }
 
+    /**
+     * 点赞 / 关注状态回填。动态只有内容卡一项；图文是头部作者行（关注）+ 末尾互动栏（点赞）两项，
+     * 少通知一项就会出现"点了赞、数字没动"。
+     */
+    fun notifyFeedStateChanged() {
+        if (header != null) {
+            notifyItemChanged(0, true)
+            notifyItemChanged(itemCount - 1, true)
+        } else {
+            notifyItemChanged(0, true)
+        }
+    }
+
+    /** 收藏数变化要整条重绑：动态刷内容卡，图文刷末尾互动栏（favnum 都挂在 data 上） */
+    fun notifyFavChanged() {
+        if (header != null) notifyItemChanged(itemCount - 1)
+        else notifyItemChanged(0)
+    }
+
     class FeedViewHolder(val binding: ItemFeedContentBinding, val listener: ItemListener) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(data: HomeFeedResponse.Data?) {
@@ -86,6 +106,28 @@ class FeedDataAdapter(
             binding.setVariable(
                 BR.followAuthor,
                 data?.userAction?.followAuthor ?: Constants.FOLLOW_AUTHOR_UNKNOWN
+            )
+            binding.executePendingBindings()
+        }
+    }
+
+    /**
+     * 图文正文末尾的互动栏（回复 / 点赞 / 收藏 / 转发）。
+     * 绑的是头部那份 `data`——图文全程只有一份 feedData，评论数、点赞数、收藏数都挂在它上面。
+     */
+    class ArticleActionViewHolder(
+        val binding: ItemFeedArticleActionBinding,
+        val listener: ItemListener
+    ) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(data: HomeFeedResponse.Data?) {
+            binding.setVariable(BR.data, data)
+            binding.setVariable(BR.listener, listener)
+            binding.setVariable(
+                BR.likeData,
+                Like(
+                    data?.likenum ?: "0",
+                    data?.userAction?.like ?: 0
+                )
             )
             binding.executePendingBindings()
         }
@@ -146,6 +188,16 @@ class FeedDataAdapter(
                 ArticleHeaderViewHolder(binding, listener)
             }
 
+            5 -> {
+                val binding = ItemFeedArticleActionBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false
+                )
+                setFullSpan(parent, binding.root)
+                ArticleActionViewHolder(binding, listener)
+            }
+
             1 -> TextViewHolder(
                 ItemFeedArticleTextBinding.inflate(
                     LayoutInflater.from(parent.context),
@@ -186,8 +238,8 @@ class FeedDataAdapter(
     override fun getItemCount(): Int {
         // 属性是 var（详情回填要整体换掉），先落到局部变量才能 smart cast
         val articles = articleList
-        // 图文：头部项 + 正文块
-        if (header != null) return headerOffset + (articles?.size ?: 0)
+        // 图文：头部项 + 正文块 + 末尾互动栏
+        if (header != null) return headerOffset + (articles?.size ?: 0) + 1
         val feeds = feedDataList
         return if (feeds.isNullOrEmpty() && !articles.isNullOrEmpty()) articles.size
         else if (!feeds.isNullOrEmpty() && articles.isNullOrEmpty()) feeds.size
@@ -197,6 +249,7 @@ class FeedDataAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (holder) {
             is ArticleHeaderViewHolder -> holder.bind(header)
+            is ArticleActionViewHolder -> holder.bind(header)
             is FeedViewHolder -> holder.bind(feedDataList?.getOrNull(position - headerOffset))
             is TextViewHolder -> holder.bind(articleList?.getOrNull(position - headerOffset))
             is ImageViewHolder -> holder.bind(articleList?.getOrNull(position - headerOffset))
@@ -215,6 +268,11 @@ class FeedDataAdapter(
             if (payloads[0] == true) {
                 // 关注状态回填：动态在内容卡上，图文在头部作者行上
                 if (holder is ArticleHeaderViewHolder) {
+                    holder.bind(header)
+                    return
+                }
+                // 图文的互动栏也挂在 header 上，点赞后就靠这一支刷数字
+                if (holder is ArticleActionViewHolder) {
                     holder.bind(header)
                     return
                 }
@@ -238,7 +296,11 @@ class FeedDataAdapter(
     }
 
     override fun getItemViewType(position: Int): Int {
-        if (header != null && position == 0) return 4
+        if (header != null) {
+            if (position == 0) return 4
+            // 互动栏钉在末位：正文块多少段都不影响它的位置
+            if (position == itemCount - 1) return 5
+        }
         val articles = articleList
         return if (articles.isNullOrEmpty()) 0
         else when (articles[position - headerOffset].type) {

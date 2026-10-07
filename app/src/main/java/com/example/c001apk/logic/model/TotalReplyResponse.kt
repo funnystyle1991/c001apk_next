@@ -38,8 +38,18 @@ data class TotalReplyResponse(
     @Parcelize
     data class UserAction(var like: Int) : Parcelable
 
+    /**
+     * 回复作者。原来只取了 username，但服务端下发的就是一个完整用户对象：
+     * 参考实现里评论 / 热评都在读 user_info.verify_title，所以认证三件套也一并接上。
+     */
     @Parcelize
-    data class UserInfo(val username: String) : Parcelable
+    data class UserInfo(
+        val username: String,
+        val uid: String? = null,
+        @SerializedName("verify_status") val verifyStatus: Int? = null,
+        @SerializedName("verify_icon") val verifyIcon: String? = null,
+        @SerializedName("verify_title") val verifyTitle: String? = null,
+    ) : Parcelable
 
 
 }

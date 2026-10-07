@@ -77,13 +77,16 @@ class MessageContentAdapter(
         RecyclerView.ViewHolder(binding.root) {
         var id: String = ""
 
-        /**
-         * 「我收到的赞」要点进去的那条动态。
-         *
-         * 这一页的条目 id 是点赞记录的主键（`feed-<动态id>-<点赞人uid>`），拿去开动态会开错；
-         * 被赞的动态 id 在归一化时落到了 `fid`（V18 的 `target_id`，见 [NotificationV18Kit.toLikeMessage]）。
-         */
         var fid: String = ""
+
+        /**
+         * 被赞的那条评论（只有「赞了你的评论」有值），详情页靠它滚到评论区定位。
+         *
+         * 评论点赞条目的 `target_id` 是评论 id，不能当动态 id 用（会开成「文章已被删除」）；
+         * 归一化时动态 id 落 [fid]、评论 id 落 `rid`（都取自条目自带的 url，见
+         * [NotificationV18Kit.toLikeMessage]）。
+         */
+        var rid: String = ""
 
         init {
             itemView.setOnClickListener {
@@ -91,6 +94,10 @@ class MessageContentAdapter(
                 if (target.isBlank()) return@setOnClickListener
                 IntentUtil.startActivity<FeedActivity>(itemView.context) {
                     putExtra("id", target)
+                    if (rid.isNotBlank()) {
+                        putExtra("rid", rid)
+                        putExtra("viewReply", true)
+                    }
                 }
             }
         }
@@ -98,6 +105,7 @@ class MessageContentAdapter(
         fun bind(data: MessageResponse.Data) {
             id = data.id
             fid = data.fid.orEmpty()
+            rid = data.rid?.takeIf { it > 0 }?.toString().orEmpty()
             binding.setVariable(BR.type, type)
             binding.setVariable(BR.data, data)
             binding.setVariable(BR.listener, listener)

@@ -172,6 +172,25 @@ object UpdateChecker {
     }
 
     /**
+     * 拉自建服务的其它 JSON 配置（用户认证表 / 可信链接白名单，见 [RemoteConfig]）。
+     *
+     * 与升级接口共用同一个 client、UA 与请求头：都是自有域名，没必要各建一套连接池，
+     * 服务端也能统一按 X-App-userrandomid 统计。非 200 或异常返回 null，调用方保留旧缓存。
+     */
+    suspend fun fetchConfig(url: String): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val builder = Request.Builder()
+                .url(url)
+                .header("X-App-userrandomid", PrefManager.userRandomId)
+                .header("User-Agent", userAgent)
+            installHeaders().forEach { (name, value) -> builder.header(name, value) }
+            client.newCall(builder.build()).execute().use { resp ->
+                if (!resp.isSuccessful) null else resp.body?.string()
+            }
+        }.getOrNull()
+    }
+
+    /**
      * 查正式版的更新信息。接口不通或该段缺失时返回 null。
      */
     suspend fun fetchUpdate(): UpdateInfo? {

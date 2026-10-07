@@ -23,6 +23,7 @@ import com.example.c001apk.util.CookieUtil.atme
 import com.example.c001apk.util.CookieUtil.contacts_follow
 import com.example.c001apk.util.CookieUtil.feedlike
 import com.example.c001apk.util.ImageUtil
+import com.example.c001apk.util.VerifyBadge
 import com.example.c001apk.util.IntentUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.dp
@@ -239,6 +240,8 @@ class MineFragment : BaseFragment<FragmentMineBinding>() {
         binding.progress.progress = PrefManager.experience.toIntOrNull() ?: -1
         if (PrefManager.userAvatar.isNotEmpty())
             ImageUtil.showIMG(binding.avatar, PrefManager.userAvatar)
+        // 自己的认证信息本地没存 status，只有维护者那条特例能认出来（uid 判定）
+        VerifyBadge.applyTo(binding.verifyBadge, PrefManager.uid, null, null)
     }
 
 }

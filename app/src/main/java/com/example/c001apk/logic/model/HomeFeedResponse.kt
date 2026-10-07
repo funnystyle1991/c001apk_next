@@ -292,7 +292,14 @@ data class HomeFeedResponse(
         val cover: String?,
         val fans: String?,
         val follow: String?,
-        val bio: String?
+        val bio: String?,
+        // ---- 认证：列表和详情都下发 ----
+        // 1 = 已认证，头像右下角挂角标
+        @SerializedName("verify_status") val verifyStatus: Int? = null,
+        // 角标图标名，样本里只有 v_green / v_yellow
+        @SerializedName("verify_icon") val verifyIcon: String? = null,
+        // 完整认证名（如「酷安认证: 酷安员工」），只在个人主页展示
+        @SerializedName("verify_title") val verifyTitle: String? = null
     ) : Parcelable
 
     @Parcelize

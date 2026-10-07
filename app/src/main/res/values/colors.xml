@@ -11,4 +11,8 @@
     <color name="search_rank_1">#F5455C</color>
     <color name="search_rank_2">#FF9500</color>
     <color name="search_rank_3">#FFC107</color>
+    <!-- 认证角标底色：绿标 / 黄标由服务端 verify_icon 决定，樱花标是本地特例 -->
+    <color name="verify_badge_green">#4CAF50</color>
+    <color name="verify_badge_yellow">#FFB300</color>
+    <color name="verify_badge_sakura">#FF9CA8</color>
 </resources>

@@ -1,5 +1,6 @@
 package com.example.c001apk.adapter
 
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.text.Html
@@ -16,10 +17,12 @@ import com.example.c001apk.R
 import com.example.c001apk.constant.Constants
 import com.example.c001apk.logic.model.FeedArticleContentBean
 import com.example.c001apk.logic.model.HomeFeedResponse
+import com.example.c001apk.logic.model.UserProfileResponse
 import com.example.c001apk.util.ImageUtil
 import com.example.c001apk.util.NetWorkUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.SpannableStringBuilderUtil
+import com.example.c001apk.util.VerifyBadge
 import com.example.c001apk.util.dp
 import com.example.c001apk.view.LinkTextView
 import com.example.c001apk.view.ninegridimageview.NineGridImageView
@@ -86,6 +89,30 @@ fun setFollowText(textView: TextView, followAuthor: Int) {
 @BindingAdapter("followLoading")
 fun followLoading(view: View, followAuthor: Int) {
     view.isVisible = followAuthor == Constants.FOLLOW_AUTHOR_UNKNOWN
+}
+
+/**
+ * 头像右下角的认证角标，没有认证就 GONE。
+ *
+ * 收拆开的三个字段而不是整个 userInfo：详情页顶栏那一行只有 username / avatar，
+ * 手里没有 userInfo 对象可传。
+ */
+@BindingAdapter(value = ["verifyUid", "verifyIcon", "verifyStatus"], requireAll = false)
+fun setVerifyBadge(imageView: ImageView, uid: String?, icon: String?, status: Int?) {
+    val verified = VerifyBadge.isVerified(uid, status)
+    imageView.isVisible = verified
+    if (!verified) return
+    imageView.backgroundTintList =
+        ColorStateList.valueOf(VerifyBadge.badgeColor(imageView.context, uid, icon))
+    imageView.contentDescription = VerifyBadge.title(uid, null) ?: "认证用户"
+}
+
+/** 个人主页的认证文字：本地特例那条认证服务端不下发，得在这里补上 */
+@BindingAdapter("verifyTitle")
+fun setVerifyTitle(textView: TextView, data: UserProfileResponse.Data?) {
+    val title = VerifyBadge.title(data?.uid, data?.verifyTitle)
+    textView.text = title.orEmpty()
+    textView.isVisible = !title.isNullOrEmpty()
 }
 
 @BindingAdapter("setArticleImage")

@@ -357,6 +357,9 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
             avatarUrl = viewModel.avatar
             dateline = viewModel.dateLine
             deviceTitle = viewModel.device
+            authorUid = viewModel.feedUid
+            authorVerifyIcon = viewModel.verifyIcon
+            authorVerifyStatus = viewModel.verifyStatus
         }
         // 先把作者行摆到起点上：XML 里它是 gone，得先转成 invisible 排布出来，
         // 后面才量得到它的静态位置（也让首帧不会从兜底值跳一下）
@@ -847,7 +850,7 @@ class FeedFragment : BaseFragment<FragmentFeedBinding>() {
 
     /** 动态内容卡和图文详情头的作者行都是这几个 id（没有的 layout 就跳过） */
     private val contentRowIds = listOf(
-        R.id.authorRow, R.id.avatar, R.id.uname, R.id.pubDate,
+        R.id.authorRow, R.id.avatar, R.id.verifyBadge, R.id.uname, R.id.pubDate,
         R.id.device, R.id.privateBadge, R.id.follow, R.id.followLoading
     )
 

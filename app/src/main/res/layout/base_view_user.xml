@@ -150,6 +150,8 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
+        <!-- 认证文字只在这里（个人主页）出现：列表 / 详情页只挂头像右下角那枚角标。
+             走 adapter 而不是直接绑 verifyTitle，是因为本地特例那条认证服务端不下发 -->
         <TextView
             android:id="@+id/verifyTitle"
             style="@style/UserTextColor"
@@ -160,12 +162,11 @@
             android:layout_marginEnd="16dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@{userData.verifyTitle}"
             android:textSize="12sp"
-            android:visibility="@{userData.verifyTitle == null || userData.verifyTitle.isEmpty() ? View.GONE : View.VISIBLE}"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/nameRow" />
+            app:layout_constraintTop_toBottomOf="@id/nameRow"
+            app:verifyTitle="@{userData}" />
 
         <TextView
             android:id="@+id/bio"

@@ -61,6 +61,10 @@ class FeedViewModel @AssistedInject constructor(
     var funame: String? = null
     var avatar: String? = null
     var device: String? = null
+
+    // 认证角标：挂在顶栏头像右下角，uid 复用 feedUid
+    var verifyIcon: String? = null
+    var verifyStatus: Int? = null
     var replyCount: String? = null
     var dateLine: Long? = null
     private var topReplyId: String? = null
@@ -629,6 +633,8 @@ class FeedViewModel @AssistedInject constructor(
             funame = data.userInfo?.username
             avatar = data.userAvatar
             device = data.deviceTitle
+            verifyIcon = data.userInfo?.verifyIcon
+            verifyStatus = data.userInfo?.verifyStatus
             replyCount = data.replynum
             dateLine = data.dateline
             feedTypeName = data.feedTypeName

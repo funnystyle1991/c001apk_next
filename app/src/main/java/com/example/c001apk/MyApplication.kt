@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatDelegate
 import com.example.c001apk.ui.others.BugHandlerActivity
 import com.example.c001apk.util.PrefManager
+import com.example.c001apk.util.RemoteConfig
 import com.example.c001apk.util.RiskControlPrompter
 import com.example.c001apk.util.SslErrorPrompter
 import com.example.c001apk.util.SslVerify
@@ -41,6 +42,12 @@ class MyApplication : Application() {
         // 读取本身就会生成，这里显式读一次只是为了把生成时机钉在「首次启动」，
         // 顺带保证自更新接口第一次打请求时就已经有值（见 PrefManager.userRandomId）
         PrefManager.userRandomId
+
+        // 云端配置（用户认证表 / 可信链接白名单）：先用上次缓存，再后台刷新一次。
+        // 放在这里而不是各页面里拉，是因为认证标散落在列表、详情、消息各处，
+        // 每处各拉一次没必要，而且首次进入时未必已经有表。
+        RemoteConfig.initFromCache()
+        RemoteConfig.refreshAsync()
 
         // 图片加载同样走 OkHttp（Mojito 的 Glide 会替换 GlideUrl 加载器）。
         // 这个客户端必须给：图片 CDN 按 UA 放行，没 UA 会被判 567 直接黑屏，

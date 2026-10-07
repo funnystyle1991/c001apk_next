@@ -163,7 +163,7 @@ class HomeFeedFragment : BaseAppFragment<HomeFeedViewModel>(), IOnTabClickListen
                     .setTitle(R.string.publish)
                     .setItems(arrayOf(
                         getString(R.string.publishFeed),
-                        getString(R.string.type_article)
+                        getString(R.string.publishArticle)
                     )) { _, which ->
                         startReply(if (which == 0) "createFeed" else "createArticle")
                     }

@@ -3,7 +3,9 @@ package com.example.c001apk.ui.article
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.Matrix
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.view.MotionEvent
@@ -34,6 +36,14 @@ class CropImageActivity : BaseActivity<ActivityCropImageBinding>() {
         const val COVER_W = 1600
         const val COVER_H = 719
         private const val MAX_SCALE = 4f
+
+        /** 描边色：画面偏亮用半透明黑，偏暗用白，保证任何图下都看得见框 */
+        private const val BORDER_ON_LIGHT = 0xE6000000.toInt()
+        private const val BORDER_ON_DARK = 0xFFFFFFFF.toInt()
+
+        /** 亮度阈值与采样密度：框内平均亮度高于它就算「亮画面」 */
+        private const val LIGHT_THRESHOLD = 0.55f
+        private const val SAMPLE_STEPS = 12
     }
 
     /** 输出尺寸（决定裁剪框比例）；不传就是图文封面 1600x719 */
@@ -113,6 +123,7 @@ class CropImageActivity : BaseActivity<ActivityCropImageBinding>() {
         transX = overlayLeft + (cw - sw) / 2
         transY = overlayTop + (ch - sh) / 2
         applyTransform()
+        updateOverlayBorder()
         initGesture()
     }
 
@@ -121,6 +132,52 @@ class CropImageActivity : BaseActivity<ActivityCropImageBinding>() {
         matrix.setScale(scale, scale)
         matrix.postTranslate(transX, transY)
         binding.cropImage.imageMatrix = matrix
+    }
+
+    /**
+     * 描边色跟着框内画面走：亮画面（白底图、浅色照片）用半透明黑，
+     * 暗画面用白。原来固定白色，裁一张白图就完全看不到框在哪。
+     *
+     * 采样点是把裁剪框逆变换回原图坐标算的，和 [confirmCrop] 一套映射；
+     * 只取 13x13 个点算平均亮度，够用且便宜，所以拖拽结束 / 缩放结束时才刷。
+     */
+    private fun updateOverlayBorder() {
+        val bmp = srcBitmap ?: return
+        val depth = if (averageLightness() > LIGHT_THRESHOLD) BORDER_ON_LIGHT else BORDER_ON_DARK
+        val width = (1.5f * resources.displayMetrics.density).roundToInt()
+        binding.cropOverlay.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setStroke(width, depth)
+        }
+    }
+
+    /** 裁剪框内的平均亮度（0 全黑 ~ 1 全白）；算不出来时按亮画面处理（用深色描边） */
+    private fun averageLightness(): Float {
+        val bmp = srcBitmap ?: return 1f
+        val inv = Matrix()
+        if (!matrix.invert(inv)) return 1f
+        val cw = binding.cropOverlay.width.toFloat()
+        val ch = binding.cropOverlay.height.toFloat()
+        if (cw <= 0f || ch <= 0f) return 1f
+        var sum = 0f
+        var count = 0
+        val point = FloatArray(2)
+        for (i in 0..SAMPLE_STEPS) {
+            for (j in 0..SAMPLE_STEPS) {
+                point[0] = overlayLeft + cw * i / SAMPLE_STEPS
+                point[1] = overlayTop + ch * j / SAMPLE_STEPS
+                inv.mapPoints(point)
+                val x = point[0].toInt()
+                val y = point[1].toInt()
+                if (x < 0 || y < 0 || x >= bmp.width || y >= bmp.height) continue
+                val pixel = bmp.getPixel(x, y)
+                sum += (0.299f * Color.red(pixel) +
+                        0.587f * Color.green(pixel) +
+                        0.114f * Color.blue(pixel)) / 255f
+                count++
+            }
+        }
+        return if (count == 0) 1f else sum / count
     }
 
     private fun clamp() {
@@ -151,6 +208,11 @@ class CropImageActivity : BaseActivity<ActivityCropImageBinding>() {
                     applyTransform()
                     return true
                 }
+
+                /** 缩放手势（含双指平移）结束时框内画面才算定下来，这时再刷描边色 */
+                override fun onScaleEnd(detector: ScaleGestureDetector) {
+                    updateOverlayBorder()
+                }
             }
         )
 
@@ -171,6 +233,8 @@ class CropImageActivity : BaseActivity<ActivityCropImageBinding>() {
                         applyTransform()
                     }
                 }
+                // 拖动过程中每帧都采样没必要，抬手时统一刷新一次
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> updateOverlayBorder()
             }
             true
         }

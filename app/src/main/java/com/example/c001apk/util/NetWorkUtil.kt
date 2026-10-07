@@ -1,7 +1,9 @@
 package com.example.c001apk.util
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.net.ConnectivityManager
 import android.net.Network
@@ -19,6 +21,7 @@ import com.example.c001apk.ui.feed.FeedActivity
 import com.example.c001apk.ui.others.WebViewActivity
 import com.example.c001apk.ui.topic.TopicActivity
 import com.example.c001apk.ui.user.UserActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 
 object NetWorkUtil {
@@ -176,17 +179,14 @@ object NetWorkUtil {
         } else if (replace.startsWith("image.coolapk.com")) {
             ImageUtil.startBigImgViewSimple(context, url.http2https)
         } else if (url.startsWith("https://") || url.startsWith("http://")) {
+            val trusted = LinkGuard.isTrusted(url)
             if (PrefManager.isOpenLinkOutside) {
-                val intent = Intent()
-                intent.action = Intent.ACTION_VIEW
-                intent.data = Uri.parse(url)
-                try {
-                    context.startActivity(intent)
-                } catch (e: ActivityNotFoundException) {
-                    Toast.makeText(context, "打开失败", Toast.LENGTH_SHORT).show()
-                    Log.w("error", "Activity was not found for intent, $intent")
-                }
+                // 外跳是不可逆的（离开应用、换到浏览器），可信域名直接走，
+                // 不在白名单里的先弹一次确认，看好域名再决定
+                if (trusted) openOutside(context, url) else confirmLeaveApp(context, url)
             } else {
+                // 应用内 WebView：不在白名单里也不拦，由 WebViewActivity 在页面底部
+                // 挂一条风险提示（网页内部继续跳转还会重新判定）
                 IntentUtil.startActivity<WebViewActivity>(context) {
                     putExtra("url", url)
                 }
@@ -195,6 +195,47 @@ object NetWorkUtil {
             Toast.makeText(context, "unsupported url: $url", Toast.LENGTH_SHORT).show()
             ClipboardUtil.copyText(context, url, false)
         }
+    }
+
+    /** 交给系统浏览器 / 其它 App 打开 */
+    private fun openOutside(context: Context, url: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        try {
+            context.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(context, "打开失败", Toast.LENGTH_SHORT).show()
+            Log.w("error", "Activity was not found for intent, $intent")
+        }
+    }
+
+    /**
+     * 非可信链接外跳前的二次确认。
+     * 弹窗只能挂在 Activity 上，而 [openLink] 的调用方偶尔会传 Application context，
+     * 所以这里解包一次；实在拿不到就退化成 Toast（至少别静默什么都不做）。
+     */
+    private fun confirmLeaveApp(context: Context, url: String) {
+        val activity = context.findActivity()
+        val message = "你即将离开 c001apk next，前往 ${LinkGuard.hostOf(url)}"
+        if (activity == null) {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            return
+        }
+        MaterialAlertDialogBuilder(activity)
+            .setTitle(R.string.link_external_title)
+            .setMessage(message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.link_external_confirm) { _, _ -> openOutside(activity, url) }
+            .show()
+    }
+
+    /** 顺着 ContextWrapper 一路找到 Activity，找不到返回 null */
+    private fun Context.findActivity(): Activity? {
+        var current: Context? = this
+        while (current is ContextWrapper) {
+            if (current is Activity) return current
+            current = current.baseContext
+        }
+        return null
     }
 
     fun openLinkDyh(type: String, mContext: Context, url: String, id: String, title: String?) {

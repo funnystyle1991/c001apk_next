@@ -394,6 +394,9 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
     private fun findRailMenuContainer(): ViewGroup? {
         val count = navView.menu.size()
         if (count == 0) return null
+        // 项目开了 android.nonTransitiveRClass，material 的资源只在它自己的 R 里，
+        // 写 R.id.xxx 编不过，必须点名 com.google.android.material.R
+        val itemIconId = com.google.android.material.R.id.navigation_bar_item_icon_view
         val stack = ArrayDeque<View>()
         stack.addLast(navView)
         while (stack.isNotEmpty()) {
@@ -401,8 +404,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             if (group !== navView) {
                 val childrenAreItems = (0 until group.childCount).all { i ->
                     val child = group.getChildAt(i) as? ViewGroup
-                    child != null &&
-                        child.findViewById<View>(R.id.navigation_bar_item_icon_view) != null
+                    child != null && child.findViewById<View>(itemIconId) != null
                 }
                 if (group.childCount == count && childrenAreItems) return group
             }

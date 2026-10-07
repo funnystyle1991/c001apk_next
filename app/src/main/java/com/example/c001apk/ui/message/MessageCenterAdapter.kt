@@ -57,13 +57,20 @@ class MessageCenterAdapter(
 
             // 分类页里 @我 / @我的评论 点进动态详情；「我收到的赞」的 id 是点赞记录主键
             // （feed-<动态id>-<点赞人uid>），拿去开动态会开错，真正要开的是被赞的动态
-            // —— 归一化时它在 fid 上（V18 的 target_id）
+            // —— 归一化时它在 fid 上（取自条目自带的 url /feed/<动态id>）。
+            // 「赞了你的评论」还带一个评论 id（rid），有值时顺带滚到评论区。
             val target = if (category == "feedLike") data.fid.orEmpty() else data.id
+            val rid = if (category == "feedLike")
+                data.rid?.takeIf { it > 0 }?.toString().orEmpty() else ""
             itemView.setOnClickListener(
                 if (target.isBlank()) null
                 else { view ->
                     IntentUtil.startActivity<FeedActivity>(view.context) {
                         putExtra("id", target)
+                        if (rid.isNotBlank()) {
+                            putExtra("rid", rid)
+                            putExtra("viewReply", true)
+                        }
                     }
                 }
             )

@@ -45,6 +45,22 @@
                 app:shapeAppearance="@style/circleImageStyle"
                 tools:ignore="ContentDescription" />
 
+            <!-- 认证角标：压在头像右下角，没认证时 GONE（点评作者在 userInfo 里） -->
+            <ImageView
+                android:id="@+id/verifyBadge"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/bg_verify_badge"
+                android:contentDescription="@null"
+                android:padding="2dp"
+                android:src="@drawable/ic_verify_check"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@id/avatar"
+                app:layout_constraintEnd_toEndOf="@id/avatar"
+                app:verifyIcon="@{data.userInfo.verifyIcon}"
+                app:verifyStatus="@{data.userInfo.verifyStatus}"
+                app:verifyUid="@{data.uid}" />
+
             <TextView
                 android:id="@+id/username"
                 android:layout_width="wrap_content"

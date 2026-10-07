@@ -52,6 +52,22 @@
                 app:setImage="@{data.userInfo.userAvatar}"
                 app:shapeAppearance="@style/circleImageStyle" />
 
+            <!-- 认证角标：压在头像右下角，没认证时 GONE -->
+            <ImageView
+                android:id="@+id/verifyBadge"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:background="@drawable/bg_verify_badge"
+                android:contentDescription="@null"
+                android:padding="2dp"
+                android:src="@drawable/ic_verify_check"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="@id/avatar"
+                app:layout_constraintEnd_toEndOf="@id/avatar"
+                app:verifyIcon="@{data.userInfo.verifyIcon}"
+                app:verifyStatus="@{data.userInfo.verifyStatus}"
+                app:verifyUid="@{data.userInfo.uid}" />
+
             <ImageView
                 android:id="@+id/expand"
                 android:layout_width="wrap_content"

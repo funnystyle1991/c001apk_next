@@ -30,4 +30,11 @@
     <color name="outline">#1F000000</color>
     <color name="container">#E0F2F0</color>
     <color name="on_container">#004D40</color>
+    <!--
+        认证角标底色：绿标 / 黄标由服务端 verify_icon 决定。
+        「本应用自己的认证」不再写死在本地，改由云端认证表下发色号
+        （见 VerifyBadge.load / _rev/update_files/userverify/）。
+    -->
+    <color name="verify_badge_green">#4CAF50</color>
+    <color name="verify_badge_yellow">#FFB300</color>
 </resources>

@@ -46,6 +46,22 @@
             app:setImage="@{data.userInfo.userAvatar}"
             app:shapeAppearance="@style/circleImageStyle" />
 
+        <!-- 认证角标：压在头像右下角，没认证时 GONE -->
+        <ImageView
+            android:id="@+id/verifyBadge"
+            android:layout_width="13dp"
+            android:layout_height="13dp"
+            android:background="@drawable/bg_verify_badge"
+            android:contentDescription="@null"
+            android:padding="2dp"
+            android:src="@drawable/ic_verify_check"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/avatar"
+            app:layout_constraintEnd_toEndOf="@id/avatar"
+            app:verifyIcon="@{data.userInfo.verifyIcon}"
+            app:verifyStatus="@{data.userInfo.verifyStatus}"
+            app:verifyUid="@{data.userInfo.uid}" />
+
         <TextView
             android:id="@+id/uname"
             android:layout_width="0dp"
@@ -169,16 +185,46 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/forwarded" />
 
+        <!-- 底栏从左到右：点赞 / 回复 / 收藏 / 转发（约束是右锚定链，所以这里从右往左写）。
+             转发和收藏的数字来自接口（forwardnum / favnum），不点进去也能看出多少人转过、收过 -->
+        <TextView
+            android:id="@+id/forward"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:background="?attr/actionBarItemBackground"
+            android:onClick="@{() -> listener.onShareFeed(data.id)}"
+            android:textColor="@android:color/darker_gray"
+            app:customText="@{data.forwardnum}"
+            app:icon="@{@drawable/ic_feed_forward}"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/forwarded" />
+
+        <TextView
+            android:id="@+id/favorite"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
+            android:background="?attr/actionBarItemBackground"
+            android:onClick="@{() -> listener.onFavoriteClick(data.id)}"
+            android:textColor="@android:color/darker_gray"
+            app:customText="@{data.favnum}"
+            app:icon="@{@drawable/ic_feed_favorite}"
+            app:layout_constraintEnd_toStartOf="@id/forward"
+            app:layout_constraintTop_toBottomOf="@id/forwarded" />
+
         <TextView
             android:id="@+id/like"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
             android:background="?attr/actionBarItemBackground"
             android:onClick="@{() -> listener.onLikeClick(`feed`, data.id, likeData.isLike)}"
             android:text="@{likeData.likeNum}"
             android:textColor="@android:color/darker_gray"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/reply"
             app:layout_constraintTop_toBottomOf="@id/forwarded"
             app:setLike="@{likeData.isLike}" />
 
@@ -191,7 +237,7 @@
             android:textColor="@android:color/darker_gray"
             app:customText="@{data.replynum}"
             app:icon="@{@drawable/ic_message}"
-            app:layout_constraintEnd_toStartOf="@id/like"
+            app:layout_constraintEnd_toStartOf="@id/favorite"
             app:layout_constraintTop_toBottomOf="@id/forwarded" />
 
         <com.example.c001apk.view.ninegridimageview.NineGridImageView

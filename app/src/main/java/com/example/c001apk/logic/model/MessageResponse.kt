@@ -95,7 +95,26 @@ data class MessageResponse(
          */
         @SerializedName("messageUid") val messageUid: String? = null,
         @SerializedName("messageUsername") val messageUsername: String? = null,
-        @SerializedName("messageUserAvatar") val messageUserAvatar: String? = null
+        @SerializedName("messageUserAvatar") val messageUserAvatar: String? = null,
+        /**
+         * V18 通知里**发送方**的完整用户对象，认证三件套就在它里面（`verify_status` /
+         * `verify_icon` / `verify_title`）。`/v6/notificationV18/likeList` 实测每条都带
+         * （2026-10-07 抓包），所以「我收到的赞」的头像角标认它；
+         * 老 `/v6/notification/list` 与 `/v6/message/list` 没见下发，那时它为空，
+         * 角标退回按 uid 查云端认证表（见 [com.example.c001apk.util.VerifyBadge]）。
+         */
+        @SerializedName("fromUserInfo") val fromUserInfo: FromUserInfo? = null
+    )
+
+    /**
+     * 通知条目里的用户对象。只声明渲染用得上的几个键：同一个对象在别的接口里
+     * 是完整用户实体（一大串字段），这里只要认证三件套 —— 少声明一些非空字段
+     * 反而更安全，Gson 反射填值不走构造器，没下发的键会直接留 null。
+     */
+    data class FromUserInfo(
+        @SerializedName("verify_status") val verifyStatus: Int? = null,
+        @SerializedName("verify_icon") val verifyIcon: String? = null,
+        @SerializedName("verify_title") val verifyTitle: String? = null
     )
 
     /**

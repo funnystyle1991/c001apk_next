@@ -53,6 +53,38 @@ object MessageKit {
     }
 
     /**
+     * 通知条目发送方的认证图标。
+     *
+     * 认证三件套在 V18 通知流的 `fromUserInfo` 对象里（[MessageResponse.FromUserInfo]），
+     * 老 `/v6/notification/list`、私信会话 `/v6/message/list` 没见下发，那时是空 ——
+     * 角标会退回只按 uid 查云端认证表。这两个方法专门替布局挡掉
+     * 「嵌套对象可能为空」的那层解引用。
+     */
+    @JvmStatic
+    fun verifyIcon(data: MessageResponse.Data?): String? = data?.fromUserInfo?.verifyIcon
+
+    /**
+     * 通知条目发送方的认证状态，取值含义见
+     * [com.example.c001apk.util.VerifyBadge.isVerified]。
+     */
+    @JvmStatic
+    fun verifyStatus(data: MessageResponse.Data?): Int? = data?.fromUserInfo?.verifyStatus
+
+    /**
+     * 聊天页认证角标用的 uid。
+     *
+     * 自己发的消息、系统提示这两种情况下对方头像（`avatarLeft`）是 GONE 的，角标得跟着一起收，
+     * 不然会孤零零浮在气泡左边；这里统一给空串 —— 空 uid 在云端认证表里查不到，
+     * [com.example.c001apk.util.VerifyBadge.isVerified] 自然判成没认证。
+     *
+     * 角标不给「我的头像」那一侧：聊天记录里没有对方（也没有自己）的认证字段，
+     * 能用的只有会话带进来的对方 uid，查云端认证表。
+     */
+    @JvmStatic
+    fun badgeUid(data: MessageResponse.Data?, isMe: Boolean, partnerUid: String?): String =
+        if (isMe || isExtra(data)) "" else partnerUid.orEmpty()
+
+    /**
      * 是不是「系统提示」条目（比如「关注对方即可无限制聊天」）。
      * 这种条目居中显示灰字、不出气泡。
      *

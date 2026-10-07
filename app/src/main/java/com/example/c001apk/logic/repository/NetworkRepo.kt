@@ -413,6 +413,15 @@ class NetworkRepo @Inject constructor(
         Result.success(apiService.cancelTopFromNode(nodeType, nodeId, feedId).await())
     }
 
+    // 帖主置顶 / 取消置顶某条回复（只能操作自己动态下的回复）
+    suspend fun addReplyTopToFeed(replyId: String, feedId: String) = fire {
+        Result.success(apiService.addReplyTopToFeed(replyId, feedId).await())
+    }
+
+    suspend fun cancelReplyTopFromFeed(feedId: String) = fire {
+        Result.success(apiService.cancelReplyTopFromFeed(feedId).await())
+    }
+
     suspend fun postFollow(data: HashMap<String, String>) = fire {
         Result.success(apiService.postFollow(data).await())
     }

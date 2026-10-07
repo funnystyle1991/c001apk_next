@@ -1,5 +1,6 @@
 package com.example.c001apk.adapter
 
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.Drawable
 import android.text.Html
@@ -16,10 +17,12 @@ import com.example.c001apk.R
 import com.example.c001apk.constant.Constants
 import com.example.c001apk.logic.model.FeedArticleContentBean
 import com.example.c001apk.logic.model.HomeFeedResponse
+import com.example.c001apk.logic.model.UserProfileResponse
 import com.example.c001apk.util.ImageUtil
 import com.example.c001apk.util.NetWorkUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.SpannableStringBuilderUtil
+import com.example.c001apk.util.VerifyBadge
 import com.example.c001apk.util.dp
 import com.example.c001apk.view.LinkTextView
 import com.example.c001apk.view.ninegridimageview.NineGridImageView
@@ -86,6 +89,54 @@ fun setFollowText(textView: TextView, followAuthor: Int) {
 @BindingAdapter("followLoading")
 fun followLoading(view: View, followAuthor: Int) {
     view.isVisible = followAuthor == Constants.FOLLOW_AUTHOR_UNKNOWN
+}
+
+/**
+ * 头像右下角的认证角标，没有认证就 GONE。
+ *
+ * 收拆开的三个字段而不是整个 userInfo：详情页顶栏那一行只有 username / avatar，
+ * 手里没有 userInfo 对象可传。
+ */
+@BindingAdapter(value = ["verifyUid", "verifyIcon", "verifyStatus"], requireAll = false)
+fun setVerifyBadge(imageView: ImageView, uid: String?, icon: String?, status: Int?) =
+    VerifyBadge.applyTo(imageView, uid, icon, status)
+
+/**
+ * 用户卡片（搜索用户 / 关注粉丝 / 黑名单共用 item_search_user）的头像角标。
+ *
+ * 那三处的头像是三个来源，优先级得跟 UserViewHolder 的分支顺序一致：两个 userInfo 都在时
+ * 认 userInfo，只有 fUserInfo 时认它，最后才是 Data 自己的扁平字段 —— 用户搜索返回的实体
+ * 就是这个形状，verify_* 跟 uid / username 平级。
+ */
+@BindingAdapter("verifyUserData")
+fun setVerifyUserData(imageView: ImageView, data: HomeFeedResponse.Data?) {
+    val user = when {
+        data?.userInfo != null && data.fUserInfo != null -> data.userInfo
+        data?.fUserInfo != null -> data.fUserInfo
+        else -> null
+    }
+    VerifyBadge.applyTo(
+        imageView,
+        user?.uid ?: data?.uid,
+        user?.verifyIcon ?: data?.verifyIcon,
+        user?.verifyStatus ?: data?.verifyStatus,
+    )
+}
+
+/**
+ * 个人主页的认证行：角标 + 文字，认证文字只在这里出现（列表 / 详情页只挂头像角标）。
+ *
+ * 绑整行而不是绑文字：角标要和头像右下角那枚同色，文字又得能顶成本地特例的文案，
+ * 两者都吃同一份判定，写在一处省得各判一遍。
+ */
+@BindingAdapter("verifyTitle")
+fun setVerifyTitle(row: View, data: UserProfileResponse.Data?) {
+    val title = VerifyBadge.title(data?.uid, data?.verifyTitle)
+    row.isVisible = !title.isNullOrEmpty()
+    if (title.isNullOrEmpty()) return
+    row.findViewById<TextView>(R.id.verifyTitleText)?.text = title
+    row.findViewById<ImageView>(R.id.verifyTitleBadge)?.backgroundTintList =
+        ColorStateList.valueOf(VerifyBadge.badgeColor(row.context, data?.uid, data?.verifyIcon))
 }
 
 @BindingAdapter("setArticleImage")

@@ -71,6 +71,22 @@
             app:shapeAppearance="@style/circleImageStyle"
             tools:ignore="ContentDescription" />
 
+        <!-- 认证角标：压在主页大头像右下角，没认证时 GONE -->
+        <ImageView
+            android:id="@+id/verifyBadge"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:background="@drawable/bg_verify_badge"
+            android:contentDescription="@null"
+            android:padding="3dp"
+            android:src="@drawable/ic_verify_check"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="@id/avatar"
+            app:layout_constraintEnd_toEndOf="@id/avatar"
+            app:verifyIcon="@{userData.verifyIcon}"
+            app:verifyStatus="@{userData.verifyStatus}"
+            app:verifyUid="@{userData.uid}" />
+
         <TextView
             android:id="@+id/followBtn"
             android:layout_width="wrap_content"
@@ -150,49 +166,105 @@
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/verifyTitle"
-            style="@style/UserTextColor"
+        <!-- 认证行（角标 + 文字）只在这里（个人主页）出现：列表 / 详情页只挂头像右下角那枚角标。
+             走 adapter 而不是直接绑 verifyTitle，是因为本地特例那条认证服务端不下发 -->
+        <LinearLayout
+            android:id="@+id/verifyTitleRow"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginTop="6dp"
             android:layout_marginEnd="16dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="@{userData.verifyTitle}"
-            android:textSize="12sp"
-            android:visibility="@{userData.verifyTitle == null || userData.verifyTitle.isEmpty() ? View.GONE : View.VISIBLE}"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/nameRow" />
+            app:layout_constraintTop_toBottomOf="@id/nameRow"
+            app:verifyTitle="@{userData}">
 
-        <TextView
-            android:id="@+id/bio"
-            style="@style/UserTextColor"
+            <!-- 与头像右下角同款、同色，颜色由 adapter 按认证类型设 -->
+            <ImageView
+                android:id="@+id/verifyTitleBadge"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:background="@drawable/bg_verify_badge"
+                android:contentDescription="@null"
+                android:padding="2dp"
+                android:src="@drawable/ic_verify_check" />
+
+            <TextView
+                android:id="@+id/verifyTitleText"
+                style="@style/UserTextColor"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!--
+            签名 + 展开按钮：按钮钉在父容器右边缘、与签名垂直居中。
+
+            按钮用 INVISIBLE 而不是 GONE：它一占位就固定了签名的宽度，「要不要展开」的
+            判定就不会因为按钮自己显示/隐藏而改变可用宽度（否则判定是个反馈环，刷新一次
+            就可能翻到另一头，表现为「刚进页面有按钮、刷新后没了」）。判定见 bindBio。
+        -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/bioLayout"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginTop="6dp"
             android:layout_marginEnd="16dp"
-            android:ellipsize="end"
-            android:maxLines="2"
-            android:text="@{userData.bio}"
-            android:textSize="13sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/verifyTitle" />
+            app:layout_constraintTop_toBottomOf="@id/verifyTitleRow">
+
+            <TextView
+                android:id="@+id/bio"
+                style="@style/UserTextColor"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:text="@{userData.bio}"
+                android:textSize="13sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/bioExpand"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/bioExpand"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:gravity="center"
+                android:minWidth="40dp"
+                android:minHeight="28dp"
+                android:text="展开"
+                android:textColor="#B3FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="invisible"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
         <LinearLayout
             android:id="@+id/stats"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/bio">
+            app:layout_constraintTop_toBottomOf="@id/bioLayout">
 
             <TextView
                 style="@style/UserStatNum"
@@ -200,25 +272,56 @@
 
             <TextView
                 style="@style/UserStatLabel"
+                android:layout_marginEnd="8dp"
                 android:text="获赞" />
 
-            <TextView
-                style="@style/UserStatNum"
+            <!--
+                关注 / 粉丝：数字和文字整块做成可点热区（原来只有数字可点，太难点中）。
+                padding + minHeight 把热区撑到 40dp 高，标签自带的 marginEnd 在组内清零。
+            -->
+            <LinearLayout
+                android:id="@+id/followGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:gravity="center_vertical"
+                android:minHeight="40dp"
                 android:onClick="@{(view) -> listener.viewFFFList(view, userData.uid, true, `follow`)}"
-                android:text="@{UserCardUtils.countText(userData.follow)}" />
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp">
 
-            <TextView
-                style="@style/UserStatLabel"
-                android:text="关注" />
+                <TextView
+                    style="@style/UserStatNum"
+                    android:text="@{UserCardUtils.countText(userData.follow)}" />
 
-            <TextView
-                style="@style/UserStatNum"
+                <TextView
+                    style="@style/UserStatLabel"
+                    android:layout_marginEnd="0dp"
+                    android:text="关注" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/fansGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:gravity="center_vertical"
+                android:minHeight="40dp"
                 android:onClick="@{(view) -> listener.viewFFFList(view, userData.uid, true, `fans`)}"
-                android:text="@{UserCardUtils.countText(userData.fans)}" />
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp">
 
-            <TextView
-                style="@style/UserStatLabel"
-                android:text="粉丝" />
+                <TextView
+                    style="@style/UserStatNum"
+                    android:text="@{UserCardUtils.countText(userData.fans)}" />
+
+                <TextView
+                    style="@style/UserStatLabel"
+                    android:layout_marginEnd="0dp"
+                    android:text="粉丝" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout

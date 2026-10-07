@@ -42,6 +42,19 @@
                 android:layout_gravity="center"
                 tools:background="#FFFFFF" />
 
+            <!-- 这行被「@ 用户 / 话题」搜索建议复用时 logoCover 是用户头像，认证角标挂这儿；
+                 消息宫格里它一直是 GONE（没人设它） -->
+            <ImageView
+                android:id="@+id/verifyBadge"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:layout_gravity="bottom|end"
+                android:background="@drawable/bg_verify_badge"
+                android:contentDescription="@null"
+                android:padding="2dp"
+                android:src="@drawable/ic_verify_check"
+                android:visibility="gone" />
+
         </FrameLayout>
 
         <TextView

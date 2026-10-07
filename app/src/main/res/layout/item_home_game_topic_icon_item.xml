@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <variable
+            name="data"
+            type="com.example.c001apk.logic.model.HomeFeedResponse.Entities" />
+
+        <variable
+            name="listener"
+            type="com.example.c001apk.adapter.ItemListener" />
+
+    </data>
+
+    <!-- 热议手游的横滑条目：圆形图标 + 名字 -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/round_corners_12_win"
+        android:foreground="@drawable/selector_bg_12_trans"
+        android:gravity="center_horizontal"
+        android:onClick="@{(view) -> listener.onViewTopic(view, data.entityType, data.title, data.url, data.id)}"
+        android:orientation="vertical"
+        android:paddingStart="8dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="6dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/icon"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@color/cover"
+            app:setImage="@{data.logo}"
+            app:shapeAppearance="@style/circleImageStyle"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="72dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:ellipsize="end"
+            android:gravity="center_horizontal"
+            android:maxLines="1"
+            android:text="@{data.title}"
+            android:textSize="12sp"
+            tools:text="王者荣耀世界" />
+
+    </LinearLayout>
+
+</layout>

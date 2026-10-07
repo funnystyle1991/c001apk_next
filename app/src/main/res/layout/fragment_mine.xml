@@ -76,6 +76,19 @@
                         app:shapeAppearance="@style/circleImageStyle"
                         tools:ignore="ContentDescription" />
 
+                    <!-- 自己的认证角标：本地只认维护者那条特例，代码里设 -->
+                    <ImageView
+                        android:id="@+id/verifyBadge"
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:background="@drawable/bg_verify_badge"
+                        android:contentDescription="@null"
+                        android:padding="2dp"
+                        android:src="@drawable/ic_verify_check"
+                        android:visibility="gone"
+                        app:layout_constraintBottom_toBottomOf="@id/avatar"
+                        app:layout_constraintEnd_toEndOf="@id/avatar" />
+
                     <TextView
                         android:id="@+id/name"
                         android:layout_width="0dp"

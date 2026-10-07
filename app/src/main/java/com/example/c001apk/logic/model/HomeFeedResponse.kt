@@ -1,8 +1,14 @@
 package com.example.c001apk.logic.model
 
 import android.os.Parcelable
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.annotations.JsonAdapter
 import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
 import kotlinx.parcelize.Parcelize
+import java.lang.reflect.Type
 
 data class HomeFeedResponse(
     val status: Int?,
@@ -93,7 +99,8 @@ data class HomeFeedResponse(
         val commentnum: String?,
         val replynum: String?,
         val forwardnum: String?,
-        val favnum: String?,
+        // 可变：收藏夹弹窗操作后要把服务端回的新收藏数写回来
+        var favnum: String?,
         val dateline: Long?,
         @SerializedName("create_time") val createTime: String?,
         @SerializedName("device_title") val deviceTitle: String?,
@@ -102,6 +109,12 @@ data class HomeFeedResponse(
         @SerializedName("recent_like_list") val recentLikeList: String?,
         val entityId: String?,
         val userAvatar: String?,
+        /**
+         * 扁平用户实体（用户搜索返回的就是这种形状）自带的认证字段：
+         * 跟 uid / username 平级，不在 userInfo 里面，所以这里也得留一份。
+         */
+        @SerializedName("verify_status") val verifyStatus: Int? = null,
+        @SerializedName("verify_icon") val verifyIcon: String? = null,
         val infoHtml: String?,
         val title: String?,
         val commentStatusText: String?,
@@ -141,6 +154,8 @@ data class HomeFeedResponse(
         @SerializedName("star_total_count") val starTotalCount: String? = null,
         @SerializedName("config_name") val configName: String? = null,
         val productSpecs: List<String>? = null,
+        // 服务端可能下发对象（有评分项）或空数组 []（没有评分项），见 ProductRatingSpecsAdapter
+        @field:JsonAdapter(ProductRatingSpecsAdapter::class)
         val productRatingSpecs: Map<String, String>? = null,
 
         // ---- 活动页「线下」tab 的 pear_goods 实体字段 ----
@@ -283,7 +298,14 @@ data class HomeFeedResponse(
         val cover: String?,
         val fans: String?,
         val follow: String?,
-        val bio: String?
+        val bio: String?,
+        // ---- 认证：列表和详情都下发 ----
+        // 1 = 已认证，头像右下角挂角标
+        @SerializedName("verify_status") val verifyStatus: Int? = null,
+        // 角标图标名，样本里只有 v_green / v_yellow
+        @SerializedName("verify_icon") val verifyIcon: String? = null,
+        // 完整认证名（如「酷安认证: 酷安员工」），只在个人主页展示
+        @SerializedName("verify_title") val verifyTitle: String? = null
     ) : Parcelable
 
     @Parcelize
@@ -351,9 +373,48 @@ data class HomeFeedResponse(
         @SerializedName("star_total_count") val starTotalCount: String? = null,
         @SerializedName("config_name") val configName: String? = null,
         val productSpecs: List<String>? = null,
+        // 服务端可能下发对象（有评分项）或空数组 []（没有评分项），见 ProductRatingSpecsAdapter
+        @field:JsonAdapter(ProductRatingSpecsAdapter::class)
         val productRatingSpecs: Map<String, String>? = null,
-        val description: String? = null
+        val description: String? = null,
+        // ---- 游戏频道（/v6/page/dataList?url=V15_YOUXI）下发的 topic 实体字段 ----
+        // 讨论热度文本（热门新游卡片右下角那个数字）
+        @SerializedName("hot_num_txt") val hotNumTxt: String? = null,
+        // 发售日期原文，形如 "2026年11月19日"，也可能是 "未公布"
+        @SerializedName("release_time") val releaseTime: String? = null,
+        // 评分条数（游戏评分卡片显示「N 条」）
+        @SerializedName("rating_total_num") val ratingTotalNum: String? = null,
+        @SerializedName("commentnum_txt") val commentnumTxt: String? = null,
+        // feedListCard（最新点评）下发的就是完整 feed 结构，这里补上点评用得到的几个
+        // （message / username / id / url 主构造函数里已经有了，别再声明一遍）
+        val ttitle: String? = null,
+        // 点评对应的游戏图标
+        val tpic: String? = null
     ) : Parcelable
 
+}
+
+/**
+ * `product_rating_specs` 的容错解析。
+ *
+ * 机型对比列表（/v6/page/dataList?url=/product/productList?...）里，同一个字段有两种形式：
+ *   - 有评分项的机型下发对象：{"外观质感": "8.5", "性价比": "9.0"}
+ *   - 没评分项的新机 / 冷门机型下发**空数组** []
+ * 直接声明成 Map<String, String> 时，Gson 读到 [] 会抛
+ * `Expected BEGIN_OBJECT but was BEGIN_ARRAY`，整条响应解析失败，
+ * 列表页就是一片空白（20 条里只要有 1 条是 [] 就够毁掉整页）。
+ * 这里把「不是对象」的情况一律当作没有评分项，不让它影响其余条目。
+ */
+class ProductRatingSpecsAdapter : JsonDeserializer<Map<String, String>?> {
+    override fun deserialize(
+        json: JsonElement,
+        typeOfT: Type,
+        context: JsonDeserializationContext
+    ): Map<String, String>? =
+        if (json.isJsonObject) {
+            context.deserialize(json, object : TypeToken<Map<String, String>>() {}.type)
+        } else {
+            null
+        }
 }
 

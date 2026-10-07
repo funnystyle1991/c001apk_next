@@ -12,12 +12,29 @@
     android:paddingEnd="4dp"
     android:paddingBottom="8dp">
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/avatar"
+    <!-- 头像 + 认证角标：手动 inflate 的 ViewHolder，角标在代码里用 VerifyBadge.applyTo 设 -->
+    <FrameLayout
         android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:background="@color/cover"
-        app:shapeAppearance="@style/circleImageStyle" />
+        android:layout_height="40dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/avatar"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/cover"
+            app:shapeAppearance="@style/circleImageStyle" />
+
+        <ImageView
+            android:id="@+id/verifyBadge"
+            android:layout_width="13dp"
+            android:layout_height="13dp"
+            android:layout_gravity="bottom|end"
+            android:background="@drawable/bg_verify_badge"
+            android:contentDescription="@null"
+            android:padding="2dp"
+            android:src="@drawable/ic_verify_check"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"

@@ -18,6 +18,9 @@ data class BlackListUser(
     val username: String? = null,
     val displayUsername: String? = null,
     @SerializedName("userAvatar") val userAvatar: String? = null,
+    /** 黑名单用户实体同样是扁平用户对象，认证字段跟 uid / username 平级（样本里 2/2 都带） */
+    @SerializedName("verify_status") val verifyStatus: Int? = null,
+    @SerializedName("verify_icon") val verifyIcon: String? = null,
     val url: String? = null,
     val entityType: String? = null,
     val entityTemplate: String? = null,

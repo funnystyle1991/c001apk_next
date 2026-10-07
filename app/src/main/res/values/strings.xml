@@ -121,6 +121,14 @@
     <string name="type_article">图文</string>
     <string name="type_pic">酷图</string>
     <string name="type_reply">评论</string>
+    <!-- 应用内 WebView 打开非可信链接时，页面底部的风险提示；%1$s = 域名 -->
+    <string name="link_risk_tip">温馨提示：当前网页 (%1$s) 不在 c001apk 官方域名下，请注意您的账号安全</string>
+    <!-- 非可信链接跳外部浏览器前的二次确认 -->
+    <string name="link_external_title">外部链接</string>
+    <string name="link_external_confirm">确认</string>
+    <!-- 关于页 - 反馈栏里的装机量统计入口 -->
+    <string name="about_install_stats">查看本应用装机量</string>
+    <string name="about_install_stats_desc">打开统计页面</string>
     <string name="topic_order">排序规则</string>
     <string name="topic_latest_reply">最近回复</string>
     <string name="topic_latest_publish">最新发布</string>
@@ -142,6 +150,7 @@
     <string name="add">添加</string>
     <string name="block">加入黑名单</string>
     <string name="publishFeed">发布动态</string>
+    <string name="publishArticle">发布图文</string>
     <string name="share">分享</string>
     <string name="history">浏览历史</string>
     <string name="record_history">记录浏览历史</string>

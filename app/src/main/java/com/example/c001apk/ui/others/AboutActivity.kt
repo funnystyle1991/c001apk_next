@@ -12,6 +12,7 @@ import com.example.c001apk.databinding.ItemAboutEntryBinding
 import com.example.c001apk.databinding.ItemAboutLinkBinding
 import com.example.c001apk.ui.base.BaseActivity
 import com.example.c001apk.util.GitHubProfile
+import com.example.c001apk.util.NetWorkUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.UpdateChecker
 import com.google.android.material.color.MaterialColors
@@ -28,6 +29,13 @@ class AboutActivity : BaseActivity<ActivityAboutBinding>() {
 
     /** 维护者，同时是拉 GitHub bio 用的用户名 */
     private val maintainerUser = "kongwufang"
+
+    /**
+     * 装机量统计页。key 与 `_rev/stats_key.txt`、服务端 conf.php 的 STATS_KEY 同一份
+     * —— 那个 key 本来就会随 conf.php 下发（自更新接口要用），放在这里不会多泄露什么。
+     */
+    private val statsUrl =
+        "https://service.houlangs.cn/c001apk/stats.php?key=87cf6dccca45ab5ce25530c567026109ea063f29"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -109,7 +117,7 @@ class AboutActivity : BaseActivity<ActivityAboutBinding>() {
         }
     }
 
-    /** 反馈：仓库地址（固定）+ 服务端下发的群组按钮（可配多个，拉不到就不显示） */
+    /** 反馈：仓库地址（固定）+ 装机量统计 + 服务端下发的群组按钮（可配多个，拉不到就不显示） */
     private fun bindFeedback() {
         val repoUrl = getString(R.string.about_source_code_url)
         addLink(
@@ -117,6 +125,15 @@ class AboutActivity : BaseActivity<ActivityAboutBinding>() {
             getString(R.string.about_view_source_code, "GitHub"),
             repoUrl,
         ) { UpdateChecker.openExternal(this, repoUrl) }
+
+        // 装机量统计页。走 openLink 而不是 openExternal：它要遵守用户在设置里选的
+        // 「外部浏览器 / 应用内 WebView」；域名是自家的（*.houlangs.cn 在白名单里），
+        // 所以不会触发风险提示或外跳确认。
+        addLink(
+            binding.groupFeedback,
+            getString(R.string.about_install_stats),
+            getString(R.string.about_install_stats_desc),
+        ) { NetWorkUtil.openLink(this, statsUrl, getString(R.string.about_install_stats)) }
 
         lifecycleScope.launch {
             UpdateChecker.fetchOrgLinks().forEach { link ->

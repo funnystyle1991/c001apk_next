@@ -116,12 +116,28 @@
                 android:textSize="12sp" />
 
             <!-- 正文：整块一个输入框，不再分「文字块 / 图片块」 -->
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="正文"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="正文"
+                    android:textStyle="bold" />
+
+                <!-- 图片说明靠点击缩略图弹窗填，这里点一句免得没人知道 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="点击图片可加说明"
+                    android:textColor="@android:color/darker_gray"
+                    android:textSize="12sp" />
+            </LinearLayout>
 
             <FrameLayout
                 android:layout_width="match_parent"

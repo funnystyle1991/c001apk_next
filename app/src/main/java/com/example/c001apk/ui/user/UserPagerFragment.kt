@@ -159,8 +159,8 @@ class UserPagerFragment : BasePagerFragment() {
 
     /**
      * 签名折叠回 2 行，并判断要不要露出「展开」。
-     * 是否被截断只有等 TextView 布局完才知道，所以回调挂在 doOnLayout 上
-     * （文字或宽度变化都会再触发一次）。
+     * 按钮贴在签名右侧（横排，见 base_view_user.xml），不额外占高度。
+     * 是否被截断只有等 TextView 布局完才知道，所以回调挂在 doOnLayout 上。
      */
     private fun bindBio() {
         bioExpanded = false
@@ -170,7 +170,12 @@ class UserPagerFragment : BasePagerFragment() {
         userBinding.bio.doOnLayout { refreshBioExpand() }
     }
 
-    /** 折叠态下签名确实被截断了才显示「展开」，否则不留一行空白 */
+    /**
+     * 折叠态下签名确实被截断了才显示「展开」，否则按钮 GONE、签名自己占满整行。
+     *
+     * 判定用的是「按钮 GONE」时的整行宽度：这个宽度下都不截断就更用不着展开；
+     * 反过来露出按钮只会让签名更窄、截得更早，不会退回不需要按钮的状态，所以判一次即可。
+     */
     private fun refreshBioExpand() {
         if (bioExpanded) return
         val layout = userBinding.bio.layout ?: return

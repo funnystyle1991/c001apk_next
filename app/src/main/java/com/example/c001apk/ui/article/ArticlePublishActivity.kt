@@ -7,10 +7,15 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
+import android.text.InputFilter
+import android.text.InputType
 import android.text.Spanned
 import android.text.style.DynamicDrawableSpan
 import android.text.style.ImageSpan
 import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.widget.EditText
+import android.widget.FrameLayout
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -44,6 +49,9 @@ import kotlin.math.roundToInt
  * 正文是一个整块的输入框：图片以缩略图的形式**插在光标处**，跟着文字走，
  * 编辑体验和写一条带图的动态一样。官方要的是「text / image 块交替」的 message
  * 数组，这个转换放在发布时做（见 [buildMsgList]），输入过程中不维护块结构。
+ *
+ * 单张图的说明（image 块的 description）不在输入框里显示，靠**点击缩略图**弹窗填写，
+ * 存在 span 上，发布时一起写进 message（见 [editDescription]）。
  */
 @AndroidEntryPoint
 class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
@@ -80,6 +88,20 @@ class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
         binding.coverContainer.setOnClickListener { pickCover() }
         binding.addImage.setOnClickListener { pickBody() }
         binding.publish.setOnClickListener { publish() }
+        // 正文里的缩略图可点：点了弹窗写这张图的说明（对应 message 里 image 块的 description）
+        binding.articleBody.setOnTouchListener { _, event ->
+            val edit = binding.articleBody
+            // 长按选词那一套走的是选择状态，别把松手当成点图片
+            val span = if (event.action == MotionEvent.ACTION_UP &&
+                edit.selectionStart == edit.selectionEnd
+            ) imageAt(event.x, event.y) else null
+            if (span == null) {
+                false
+            } else {
+                editDescription(span)
+                true
+            }
+        }
     }
 
     private fun initLauncher() {
@@ -199,6 +221,55 @@ class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
         return text.getSpans(0, text.length, ArticleImageSpan::class.java)
             .map { it to text.getSpanStart(it) }
             .sortedBy { it.second }
+    }
+
+    /**
+     * 触摸点落在正文的某张图上就返回它。
+     *
+     * 光用 [EditText.getOffsetForPosition] 不够：点在图片左边的空白也会算成图片那个字符，
+     * 所以拿到 offset 后再拿 Layout 里这一行的水平范围比一次 x。
+     * 事件坐标相对 View 左上角，Layout 的原点在文本区（padding 之内，还要补上横向滚动）。
+     */
+    private fun imageAt(x: Float, y: Float): ArticleImageSpan? {
+        val edit = binding.articleBody
+        val layout = edit.layout ?: return null
+        val offset = edit.getOffsetForPosition(x, y)
+        val textX = x - edit.totalPaddingLeft + edit.scrollX
+        return bodyImages().firstOrNull { (_, start) ->
+            val end = start + PLACEHOLDER.length
+            offset in start until end &&
+                    textX >= layout.getPrimaryHorizontal(start) &&
+                    textX <= layout.getPrimaryHorizontal(end)
+        }?.first
+    }
+
+    /**
+     * 单张图片的说明弹窗。说明只挂在 span 上（输入框里不显示），
+     * 发布时由 [buildMsgList] 写进 message 的 image 块；留空即不带说明。
+     */
+    private fun editDescription(span: ArticleImageSpan) {
+        val editText = EditText(this).apply {
+            setText(span.block.description)
+            hint = "给这张图配个说明（可留空）"
+            filters = arrayOf(InputFilter.LengthFilter(DESC_MAX_LENGTH))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            maxLines = 3
+            setSelection(text.length)
+        }
+        val container = FrameLayout(this).apply {
+            val pad = (16 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad / 2, pad, 0)
+            addView(editText)
+        }
+        MaterialAlertDialogBuilder(this)
+            .setTitle("图片说明")
+            .setView(container)
+            .setPositiveButton("保存") { _, _ ->
+                span.block.description = editText.text.toString().trim()
+            }
+            .setNeutralButton("清除") { _, _ -> span.block.description = "" }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     /**
@@ -382,5 +453,8 @@ class ArticlePublishActivity : BaseActivity<ActivityArticlePublishBinding>() {
 
         /** 输入框里缩略图的显示高度（宽度按原图比例算） */
         private const val THUMB_HEIGHT_DP = 140f
+
+        /** 单张图片的说明最长多少字（与旧版块式布局的 maxLength 一致） */
+        private const val DESC_MAX_LENGTH = 200
     }
 }

@@ -206,8 +206,9 @@
         </LinearLayout>
 
         <!--
-            签名 + 展开按钮：整体放进垂直 LinearLayout，
-            这样按钮 GONE 时不会像 ConstraintLayout 里的 gone view 那样残留 margin。
+            签名 + 展开按钮：横向并排，按钮贴在签名右侧、垂直居中。
+            按钮放在签名下方会多占一行高度（头部整块高度不够，按钮会被下面的数据行顶掉看不见），
+            横排则只在签名那一行的高度里，按钮 GONE 时也不占宽度。
             行数与是否被截断由 UserPagerFragment 在布局完成后判断（见 bindBio）。
         -->
         <LinearLayout
@@ -217,7 +218,8 @@
             android:layout_marginStart="16dp"
             android:layout_marginTop="6dp"
             android:layout_marginEnd="16dp"
-            android:orientation="vertical"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/verifyTitleRow">
@@ -225,8 +227,9 @@
             <TextView
                 android:id="@+id/bio"
                 style="@style/UserTextColor"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:ellipsize="end"
                 android:maxLines="2"
                 android:text="@{userData.bio}"
@@ -236,12 +239,12 @@
                 android:id="@+id/bioExpand"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginStart="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:minHeight="28dp"
-                android:gravity="center_vertical"
-                android:paddingStart="0dp"
-                android:paddingEnd="12dp"
+                android:gravity="center"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
                 android:text="展开"
                 android:textColor="#B3FFFFFF"
                 android:textSize="12sp"

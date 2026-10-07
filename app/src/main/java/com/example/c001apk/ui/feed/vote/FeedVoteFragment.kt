@@ -94,7 +94,7 @@ class FeedVoteFragment : BaseFragment<FragmentFeedVoteBinding>() {
             setColorSchemeColors(
                 MaterialColors.getColor(
                     requireContext(),
-                    com.google.android.material.R.attr.colorPrimary,
+                    androidx.appcompat.R.attr.colorPrimary,
                     0
                 )
             )
@@ -138,7 +138,12 @@ class FeedVoteFragment : BaseFragment<FragmentFeedVoteBinding>() {
 
     private fun initView() {
         feedDataAdapter =
-            FeedDataAdapter(ItemClickListener(), viewModel.feedDataList, viewModel.articleList)
+            FeedDataAdapter(
+                ItemClickListener(),
+                viewModel.feedDataList,
+                viewModel.articleList,
+                viewModel.articleHeader
+            )
         feedReplyAdapter = FeedReplyAdapter(ItemClickListener())
         footerAdapter = FooterAdapter(ReloadListener())
         sLayoutManager = StaggeredGridLayoutManager(2, 1)

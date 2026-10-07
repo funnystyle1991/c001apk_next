@@ -75,7 +75,7 @@
             android:id="@+id/followBtn"
             android:layout_width="wrap_content"
             android:layout_height="32dp"
-            android:layout_marginEnd="16dp"
+            android:layout_marginEnd="8dp"
             android:background="@drawable/bg_user_follow"
             android:gravity="center"
             android:minWidth="76dp"
@@ -86,7 +86,24 @@
             android:textSize="13sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="@id/avatar"
-            app:layout_constraintEnd_toEndOf="parent" />
+            app:layout_constraintEnd_toStartOf="@id/mailBtn" />
+
+        <!--
+            私信圆钮：在关注按钮右侧（自己的主页不显示）。
+            从没聊过的人也能点进来发第一条消息，由服务端隐式建会话。
+        -->
+        <ImageView
+            android:id="@+id/mailBtn"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/bg_user_mail"
+            android:padding="7dp"
+            android:src="@drawable/ic_mail"
+            app:layout_constraintBottom_toBottomOf="@id/avatar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:tint="@color/white"
+            tools:ignore="ContentDescription" />
 
         <!--
             昵称 + 等级徽章：整行放在头像正下方，左边距与其他信息行一致（16dp）。

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 进入转场（新页从右滑入）：M3 emphasized-decelerate / duration-medium2 -->
 <translate xmlns:android="http://schemas.android.com/apk/res/android"
     android:duration="300"
     android:fromXDelta="100%"
+    android:interpolator="@interpolator/m3_sys_motion_easing_emphasized_decelerate"
     android:toXDelta="0" />

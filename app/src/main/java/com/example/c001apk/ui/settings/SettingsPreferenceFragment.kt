@@ -17,6 +17,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.preference.Preference
 import androidx.preference.PreferenceDataStore
@@ -28,11 +29,13 @@ import com.example.c001apk.R
 import com.example.c001apk.ui.blacklist.BlackListActivity
 import com.example.c001apk.ui.main.MainActivity
 import com.example.c001apk.ui.others.AboutActivity
+import com.example.c001apk.ui.others.CopyActivity
 import com.example.c001apk.ui.settings.params.ParamsActivity
 import com.example.c001apk.util.CacheDataManager
 import com.example.c001apk.util.IntentUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.SzlmIdPrompt
+import com.example.c001apk.util.TransitionAnim
 import com.example.c001apk.util.doOnMainThreadIdle
 import com.example.c001apk.util.setBottomPaddingSpace
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -80,28 +83,25 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
     }
 
     /**
-     * 进入二级设置页。
+     * 进入二级设置页：改为打开独立的 [SettingsDetailActivity]。
      *
-     * androidx 默认实现只是把当前 [PreferenceScreen] 换成子页（同一个 RecyclerView 换数据），
-     * 所以看起来是「闪现」；这里改成新开一个 Fragment 并压栈，配合自定义转场动画，
-     * 做出和 App 其它页面一致的「从右到左滑入 / 返回时向右滑出」。返回栈交给 FragmentManager。
+     * 不能再在本 Activity 内压 Fragment 返回栈 + setCustomAnimations：Fragment 1.7.0 的
+     * 预测性返回只对 Animator（res/animator）与 AndroidX Transition 1.5.0+ 生效，
+     * res/anim 的 View 动画拿不到跟手预览 —— 右滑时二级页纹丝不动，和帖子详情页手感不一致。
+     * 独立 Activity 则由系统处理跨 Activity 预测性返回，预览正常。
      */
     override fun onNavigateToScreen(preferenceScreen: PreferenceScreen) {
         val key = preferenceScreen.key ?: return
-        parentFragmentManager.beginTransaction()
-            .setCustomAnimations(
-                R.anim.right_in, R.anim.left_out_fragment,
-                R.anim.left_in, R.anim.right_out
-            )
-            .replace(R.id.settingsContainer, newInstance(key), key)
-            .addToBackStack(key)
-            .commit()
+        IntentUtil.startActivity<SettingsDetailActivity>(requireContext()) {
+            putExtra(SettingsDetailActivity.ARG_ROOT_KEY, key)
+        }
     }
 
+    /** 一级页标题固定是「设置」，二级页标题取当前子屏的 title（两个 Activity 共用本 Fragment） */
     private fun syncToolbarTitle() {
         val title = preferenceScreen?.title?.takeIf { it.isNotBlank() }
             ?: getString(R.string.tab_setting)
-        (activity as? SettingsActivity)?.supportActionBar?.title = title
+        (activity as? AppCompatActivity)?.supportActionBar?.title = title
     }
 
     override fun onResume() {
@@ -116,6 +116,9 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             return when (key) {
                 "darkTheme" -> PrefManager.darkTheme.toString()
                 "themeColor" -> PrefManager.themeColor
+                "animCurve" -> PrefManager.animCurve
+                "animType" -> PrefManager.animType
+                "animDuration" -> PrefManager.animDuration.toString()
                 else -> throw IllegalArgumentException("Invalid key: $key")
             }
         }
@@ -124,6 +127,11 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             when (key) {
                 "darkTheme" -> PrefManager.darkTheme = value?.toInt() ?: 0
                 "themeColor" -> PrefManager.themeColor = value ?: "MATERIAL_DEFAULT"
+                "animCurve" -> PrefManager.animCurve =
+                    value ?: TransitionAnim.CURVE_M3_EMPHASIZED
+
+                "animType" -> PrefManager.animType = value ?: TransitionAnim.TYPE_SLIDE
+                "animDuration" -> PrefManager.animDuration = value?.toIntOrNull() ?: 300
                 else -> throw IllegalArgumentException("Invalid key: $key")
             }
         }
@@ -287,6 +295,14 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+
+        // 首页工具栏原来那个「编辑Tab」按钮，位置让给消息入口后挪到了这里
+        findPreference<Preference>("editTab")?.setOnPreferenceClickListener {
+            IntentUtil.startActivity<CopyActivity>(requireContext()) {
+                putExtra("type", "homeMenu")
+            }
+            true
+        }
 
         findPreference<Preference>("clearCache")?.apply {
             summary = CacheDataManager.getTotalCacheSize(requireContext())

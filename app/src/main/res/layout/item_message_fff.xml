@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    「我的」页的 动态 / 关注 / 粉丝 统计卡。
+    2026-10-05 对齐桌面版：数字 22sp 常规字重，标签 12sp 二级色，卡片 12dp 圆角。
+-->
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
@@ -11,12 +15,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         app:cardBackgroundColor="@color/home_card_background_color"
+        app:cardCornerRadius="12dp"
         app:cardElevation="0dp"
         app:strokeWidth="0dp">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
 
             <LinearLayout
                 android:id="@+id/feedLayout"
@@ -26,8 +33,6 @@
                 android:clickable="true"
                 android:focusable="true"
                 android:orientation="vertical"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/line1"
                 app:layout_constraintStart_toStartOf="parent"
@@ -38,15 +43,17 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
+                    android:textSize="22sp"
                     tools:text="0" />
 
                 <TextView
                     android:id="@+id/feedTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
                     android:gravity="center"
+                    android:textColor="?android:textColorSecondary"
+                    android:textSize="12sp"
                     tools:text="动态" />
 
             </LinearLayout>
@@ -65,13 +72,10 @@
                 android:id="@+id/followLayout"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
                 android:orientation="vertical"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toStartOf="@id/line2"
                 app:layout_constraintStart_toEndOf="@id/line1"
@@ -82,15 +86,17 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
+                    android:textSize="22sp"
                     tools:text="0" />
 
                 <TextView
                     android:id="@+id/followTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
                     android:gravity="center"
+                    android:textColor="?android:textColorSecondary"
+                    android:textSize="12sp"
                     tools:text="关注" />
 
             </LinearLayout>
@@ -109,13 +115,10 @@
                 android:id="@+id/fansLayout"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:focusable="true"
                 android:orientation="vertical"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/line2"
@@ -126,15 +129,17 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
+                    android:textSize="22sp"
                     tools:text="0" />
 
                 <TextView
                     android:id="@+id/fansTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
                     android:gravity="center"
+                    android:textColor="?android:textColorSecondary"
+                    android:textSize="12sp"
                     tools:text="粉丝" />
 
             </LinearLayout>

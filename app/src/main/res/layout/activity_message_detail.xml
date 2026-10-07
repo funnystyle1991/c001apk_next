@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    私信聊天页：工具栏（对方昵称）+ 消息列表 + 底部输入栏。
+    独立 Activity 是为了右滑返回能跟手预览。
+-->
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="false"
+        app:consumeSystemWindowsInsets="end"
+        app:edgeToEdge="true"
+        app:fitsSystemWindowsInsets="end">
+
+        <!--
+            顶部状态栏内边距必须由 AppBarLayout 吃（wrap_content 会把内边距补进高度里），
+            不能直接给固定高的 MaterialToolbar：那样内边距会变成工具栏的 padding，
+            56dp 高度里再扣掉状态栏，标题/返回键就被挤到底边、被下面的分割线切掉。
+        -->
+        <com.google.android.material.appbar.AppBarLayout
+            android:id="@+id/appBar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:background="@null"
+            android:fitsSystemWindows="false"
+            app:fitsSystemWindowsInsets="@integer/internal_fragment_top_insets"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/toolBar"
+                android:layout_width="match_parent"
+                android:layout_height="?actionBarSize"
+                android:background="@null"
+                app:navigationIcon="@drawable/ic_back"
+                tools:title="对方昵称" />
+
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <View
+            android:id="@+id/divider"
+            android:layout_width="0dp"
+            android:layout_height="1px"
+            android:background="?attr/colorSurfaceVariant"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/appBar" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:clipToPadding="false"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:scrollbars="none"
+            app:layout_constraintBottom_toTopOf="@id/inputBar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/divider" />
+
+        <LinearLayout
+            android:id="@+id/inputBar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="6dp"
+            app:layout_constraintBottom_toTopOf="@id/emojiLayout"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent">
+
+            <EditText
+                android:id="@+id/editText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@null"
+                android:hint="发消息…"
+                android:importantForAutofill="no"
+                android:inputType="textMultiLine|textCapSentences"
+                android:maxLines="4"
+                android:minHeight="44dp"
+                android:textSize="15sp"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/emojiBtn"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="表情"
+                app:icon="@drawable/ic_emoji"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/imageBtn"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="发送图片"
+                app:icon="@drawable/ic_photo"
+                tools:ignore="HardcodedText" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/sendBtn"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="发送"
+                app:icon="@drawable/ic_send"
+                tools:ignore="HardcodedText" />
+
+            <!--
+                只读会话（酷安小秘书）用它顶掉输入框：对方是官方机器人，发消息没有意义。
+            -->
+            <TextView
+                android:id="@+id/readOnlyTip"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:text="酷安小秘书只会推送登录提醒和站内信，无法回复"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="13sp"
+                android:visibility="gone"
+                tools:ignore="HardcodedText"
+                tools:visibility="visible" />
+
+        </LinearLayout>
+
+        <!--
+            表情面板，跟回复页同一套（最近 / 默认 / 酷币 三页，见 MessageDetailActivity.initEmojiPanel）。
+            高度写死 288dp：键盘和面板不会同时出现（点输入框或点表情键互相顶掉），
+            所以不用像回复页那样跟键盘高度对齐；面板开着时它自己吃导航栏内边距，
+            输入栏只留 6dp（见 applyInputBarInsets）。
+        -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/emojiLayout"
+            android:layout_width="0dp"
+            android:layout_height="288dp"
+            android:background="?attr/colorSurface"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:visibility="visible">
+
+            <androidx.viewpager2.widget.ViewPager2
+                android:id="@+id/emojiPanel"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                app:layout_constraintBottom_toTopOf="@id/line2"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <View
+                android:id="@+id/line2"
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:background="?attr/colorSurfaceVariant"
+                app:layout_constraintBottom_toTopOf="@id/indicator"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <LinearLayout
+                android:id="@+id/indicator"
+                android:layout_width="match_parent"
+                android:layout_height="41dp"
+                android:orientation="horizontal"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</layout>

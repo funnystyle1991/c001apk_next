@@ -29,6 +29,7 @@ import com.example.c001apk.logic.model.StringDataResponse
 import com.example.c001apk.logic.model.TotalReplyResponse
 import com.example.c001apk.logic.model.UserProfileResponse
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.http.Field
@@ -349,6 +350,57 @@ interface ApiService {
         @Query("page") page: Int,
         @Query("lastItem") lastItem: String?
     ): Call<MessageResponse>
+
+    /** 某个私信会话的聊天记录，`ukey` 来自会话列表 */
+    @GET("/v6/message/chat")
+    fun getChatHistory(
+        @Query("ukey") ukey: String,
+        @Query("page") page: Int
+    ): Call<MessageResponse>
+
+    /**
+     * 发私信（multipart）。`uid` 传的是**对方**的 uid，服务端据此隐式建立会话，
+     * 所以对从没聊过的人也能直接发 —— 这就是「主页 → 私信」按钮的底层能力。
+     *
+     * 每个 part 都用 [RequestBody]（不能用 String）：String 会走 Gson 转换器被序列化成
+     * 带引号的 JSON 字符串，服务端收到的会是 `"内容"`。官方的空图片 / 空扩展字段也要带上，
+     * 所以发纯文字时 `message_pic` / `message_extra` / `message_card` 都传空串。
+     *
+     * 图片消息（2026-10-06 抓包）：`message` 空、`message_pic` 是 OSS 对象名
+     * `/message/2026/1006/xxx@320x480.png`（**带前导斜杠**，而 `ossUploadPrepare`
+     * 返回的 uploadFileName 没有），`message_extra` / `message_card` 仍为空。
+     */
+    @Multipart
+    @POST("/v6/message/send")
+    fun sendMessage(
+        @Query("uid") uid: String,
+        @Query("quick_reply") quickReply: String,
+        @Part("message") message: RequestBody,
+        @Part("message_pic") messagePic: RequestBody,
+        @Part("message_extra") messageExtra: RequestBody,
+        @Part("message_card") messageCard: RequestBody
+    ): Call<MessageResponse.ActionResponse>
+
+    /** 把某个私信会话标记为已读 */
+    @GET("/v6/message/read")
+    fun readMessage(
+        @Query("ukey") ukey: String
+    ): Call<MessageResponse.ActionResponse>
+
+    /**
+     * 私信图片的地址：回 302，`Location` 才是带 `auth_key` 的 CDN 地址。
+     *
+     * 不能直接拼 `message_pic` 加载 —— CDN 裸地址会被挡（`403 denied by req auth`）。
+     * 这个接口同样要登录态，所以调用方必须用**不跟随重定向**的 client 才拿得到 Location
+     * （跟随了就只剩图片体，跟 `getAppDownloadLink` 是同一个套路）。
+     *
+     * `type=n` 是抓包里的取值，两种消息（自己发的 / 对方发的）都一样。
+     */
+    @GET("/v6/message/showImage")
+    fun getMessageImage(
+        @Query("id") id: String,
+        @Query("type") type: String = "n",
+    ): Call<ResponseBody>
 
     @POST
     fun postFollowUnFollow(

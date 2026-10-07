@@ -13,6 +13,7 @@ import android.text.style.ClickableSpan
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.widget.TextView
+import com.example.c001apk.R
 import com.example.c001apk.util.SpannableStringBuilderUtil
 import io.noties.markwon.ext.tables.TableRowSpan
 import rikka.material.widget.FakeFontWeightMaterialTextView
@@ -27,10 +28,28 @@ class LinkTextView : FakeFontWeightMaterialTextView {
     private var dontConsumeNonUrlClicks = true
     var linkHit = false
 
+    /**
+     * 正文里的「查看链接」是否画成胶囊按钮（`app:linkAsChip`）。
+     * 私信气泡要它一眼能认出来是能点的链接，默认 false 保持其它页面不变。
+     */
+    private var linkAsChip = false
+
     constructor(context: Context) : super(context)
-    constructor(context: Context, attrs: AttributeSet?) : super(context, attrs)
+    constructor(context: Context, attrs: AttributeSet?) : super(context, attrs) {
+        initAttrs(attrs)
+    }
+
     constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) :
-            super(context, attrs, defStyleAttr)
+            super(context, attrs, defStyleAttr) {
+        initAttrs(attrs)
+    }
+
+    private fun initAttrs(attrs: AttributeSet?) {
+        if (attrs == null) return
+        val ta = context.obtainStyledAttributes(attrs, R.styleable.LinkTextView)
+        linkAsChip = ta.getBoolean(R.styleable.LinkTextView_linkAsChip, false)
+        ta.recycle()
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -111,7 +130,8 @@ class LinkTextView : FakeFontWeightMaterialTextView {
                 context,
                 text.toString(),
                 this.textSize,
-                null
+                null,
+                linkAsChip = linkAsChip
             )
         super.setText(spText, type)
         scheduleTableRows(spText)

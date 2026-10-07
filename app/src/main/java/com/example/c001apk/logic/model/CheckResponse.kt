@@ -30,8 +30,14 @@ data class CheckResponse(
         val commentme: Int,
         val feedlike: Int,
         val badge: Int,
-        val dateline: String
-    )
+        val dateline: String,
+        /** 登录响应与 checkCount 一样，未读总数在 v18 字段上 */
+        @SerializedName("badge_v18") val badgeV18: Int? = null,
+        @SerializedName("notification_v18") val notificationV18: Int? = null
+    ) {
+        val unreadBadge: Int get() = badgeV18 ?: badge
+        val unreadNotification: Int get() = notificationV18 ?: notification
+    }
 
 }
 

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：parallax 旧页退场（左移半屏，纯位移）/ spring / 300ms -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="300"
+    android:fromXDelta="0"
+    android:interpolator="@interpolator/exp_spring_decelerate"
+    android:toXDelta="-50%" />

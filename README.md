@@ -1,6 +1,20 @@
-# c001apk
+# c001apk_next
 
 fake coolapk
+
+[![装机量](https://service.houlangs.cn/c001apk/stats.php?format=svg&metric=installs)](https://service.houlangs.cn/c001apk/stats.php)
+[![今日活跃](https://service.houlangs.cn/c001apk/stats.php?format=svg&metric=active)](https://service.houlangs.cn/c001apk/stats.php)
+[![今日新增](https://service.houlangs.cn/c001apk/stats.php?format=svg&metric=new)](https://service.houlangs.cn/c001apk/stats.php)
+
+![装机量历史](https://service.houlangs.cn/c001apk/stats.php?format=svg&metric=chart)
+
+## 下载 / 更新
+
+最新正式版：**[release-latest](https://github.com/kongwufang/c001apk_next/releases/tag/release-latest)**（正式版与测试版共用同一 versionCode，可互相覆盖安装）
+
+App 内「设置 → 关于」可检查更新：更新检查走自建接口，支持多线路下载。
+
+上面的徽章与曲线来自自建统计页，30 分钟刷新一次。统计只按**匿名随机 ID** 计（客户端自造，与账号、设备号都无关，一次安装一个）：超过 60 天没有请求的 ID 视为已卸载，从装机量里扣除；请求量不作为指标。
 
 ## 关于本项目 / Origin
 

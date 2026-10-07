@@ -36,16 +36,13 @@ import com.example.c001apk.ui.home.HomeFragment
 import com.example.c001apk.ui.message.MineFragment
 import com.example.c001apk.ui.settings.SettingsActivity
 import com.example.c001apk.util.ActivityCollector
-import com.example.c001apk.util.CookieUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.UpdateChecker
 import com.example.c001apk.view.DragBottomNavigationView
 import com.example.c001apk.view.DragNavigationRailView
 import com.example.c001apk.view.FrostedGlassDrawable
 import com.example.c001apk.view.GlassLensDrawable
-import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.google.android.material.color.MaterialColors
 import com.google.android.material.navigation.NavigationBarView
 import com.hihonor.smartgripkit.SmartGripEventListener
 import com.hihonor.smartgripkit.SmartGripEventManager
@@ -80,12 +77,11 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             checkSelfUpdate()
         }
 
+        // 底部导航不再挂未读角标：那个位置的历史语义是「消息」，现在消息已独立成
+        // MessageCenterActivity，未读提示统一走消息中心宫格（见 MessageThirdAdapter）。
         if (viewModel.isInit) {
             viewModel.isInit = false
             genData()
-            initObserve()
-        } else if (CookieUtil.badge != 0) {
-            setBadge()
         }
 
         binding.viewPager.apply {
@@ -210,9 +206,6 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                         slideIndicator(1)
                         slideLens(1)
                         binding.viewPager.setCurrentItem(1, true)
-                        if (CookieUtil.badge != 0) {
-                            navView.removeBadge(R.id.navigation_mine)
-                        }
                     }
                 }
                 true
@@ -511,62 +504,22 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         }
     }
 
-    private fun initObserve() {
-        viewModel.setBadge.observe(this) { event ->
-            event.getContentIfNotHandledOrReturnNull()?.let {
-                if (it)
-                    setBadge()
-            }
-        }
-    }
-
     /**
-     * 启动时的自更新检查：正式版优先，有正式版更新就不再弹 Beta 的。
+     * 启动时的自更新检查（只看正式版，Beta 通道已去掉）。
      *
-     * 自建接口一次响应里同时有 stable / beta，两次调用共用 60 秒缓存，不会重复请求。
+     * 自建接口一次响应里还有关于页按钮那段，跟这里共用 60 秒缓存，不会重复请求。
      */
     private fun checkSelfUpdate() {
+        if (!PrefManager.isCheckUpdateStable) return
         lifecycleScope.launch {
-            fun alive() = !isFinishing && !isDestroyed
-            if (PrefManager.isCheckUpdateStable) {
-                UpdateChecker.fetchUpdate(UpdateChecker.CHANNEL_STABLE)?.let {
-                    if (it.isNewer && alive()) {
-                        UpdateChecker.showUpdateDialog(this@MainActivity, it, UpdateChecker.CHANNEL_STABLE)
-                        return@launch
-                    }
-                }
-            }
-            if (PrefManager.isCheckUpdateBeta) {
-                UpdateChecker.fetchUpdate(UpdateChecker.CHANNEL_BETA)?.let {
-                    if (it.isNewer && alive())
-                        UpdateChecker.showUpdateDialog(this@MainActivity, it, UpdateChecker.CHANNEL_BETA)
-                }
-            }
+            val info = UpdateChecker.fetchUpdate() ?: return@launch
+            if (info.isNewer && !isFinishing && !isDestroyed)
+                UpdateChecker.showUpdateDialog(this@MainActivity, info)
         }
     }
 
     private fun genData() {
         viewModel.fetchAppInfo("com.coolapk.market")
-    }
-
-    private fun setBadge() {
-        val badge = navView.getOrCreateBadge(R.id.navigation_mine)
-        badge.number = CookieUtil.badge
-        badge.backgroundColor =
-            MaterialColors.getColor(
-                this,
-                com.google.android.material.R.attr.colorPrimary,
-                0
-            )
-        badge.badgeTextColor =
-            MaterialColors.getColor(
-                this,
-                com.google.android.material.R.attr.colorOnPrimary,
-                0
-            )
-        badge.badgeGravity = BadgeDrawable.TOP_END
-        badge.verticalOffset = 5
-        badge.horizontalOffset = 5
     }
 
     private val onBackPressedCallback = object : OnBackPressedCallback(false) {

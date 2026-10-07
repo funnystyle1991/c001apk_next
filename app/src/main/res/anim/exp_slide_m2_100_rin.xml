@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 生成物，勿手改：slide / m2 / 进入 100ms（进出两层同曲线同时长） -->
+<translate xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="100"
+    android:fromXDelta="100%"
+    android:interpolator="@interpolator/exp_m2_standard"
+    android:toXDelta="0" />

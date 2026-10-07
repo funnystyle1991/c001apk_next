@@ -1,6 +1,9 @@
 import com.android.build.gradle.internal.api.ApkVariantOutputImpl
 import org.jetbrains.kotlin.konan.properties.Properties
 import java.io.ByteArrayOutputStream
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 plugins {
     alias(libs.plugins.android.application)
@@ -65,12 +68,18 @@ fun String.execute(currentWorkingDir: File = file("./")): String {
     return String(byteOut.toByteArray()).trim()
 }
 
-// ===== 发行版本（唯一真源：仓库根目录 version.properties，发布只改那个文件）=====
-// 规则：只有 beta 阶段主动推进版本号，main 继承 beta 的版本号；debug 快速迭代不涨号。
+// ===== 发行版本（唯一真源：仓库根目录 version.properties）=====
+// 规则：正式版只在 main 分支发布，每发一次 CI 自动把 patch +1、versionCode +1：
+//       CI 用 -PoverrideVersionName / -PoverrideVersionCode 把本次要发的号传进来，
+//       构建完再把新号写回 version.properties 提交，作为下一次的基线。
+//       debug 线不涨号，沿用文件里的当前号 —— 与正式版同一个 versionCode，可来回覆盖安装。
 val releaseProps = Properties().also { it.load(rootProject.file("version.properties").inputStream()) }
-val verCode = releaseProps.getProperty("VERSION_CODE").trim().toInt()
-val verTag = releaseProps.getProperty("VERSION_NAME").trim()
-// 发行渠道：CI 按分支传 -Pchannel=release|beta|debug；本地不传默认 release
+val fileCode = releaseProps.getProperty("VERSION_CODE").trim().toInt()
+val fileTag = releaseProps.getProperty("VERSION_NAME").trim()
+// CI 发正式版时传入的本次版本号；本地构建 / debug 线不传，用文件里的值
+val verCode = (findProperty("overrideVersionCode") as String?)?.takeIf { it.isNotBlank() }?.trim()?.toInt() ?: fileCode
+val verTag = (findProperty("overrideVersionName") as String?)?.takeIf { it.isNotBlank() }?.trim() ?: fileTag
+// 发行渠道：CI 按分支传 -Pchannel=release|debug；本地不传默认 release
 val channel = (findProperty("channel") as String?)?.takeIf { it.isNotBlank() } ?: "release"
 // 测试渠道把 commit 短哈希拼进 versionName：每轮包文件名都不同，
 // 真机不会装到下载缓存里的旧包，设置页也能一眼对上代码版本
@@ -82,12 +91,22 @@ val gitSha = try {
 }
 // versionName 统一前缀（与仓库同名）：c001apk_next-V1.0.1-release
 val apkPrefix = "c001apk_next"
+// 打包时刻，关于页显示用。固定按北京时间打：CI 跑在 UTC，不锁时区的话
+// 装机后会看到「编译于 04:12」这种跟本机钟点对不上的值。
+// 注意：这里不能写 java.time.*，Gradle Kotlin DSL 里 `java` 会解析成 JavaPluginExtension，
+// 把 java 包名整个遮住（Unresolved reference: time），所以走文件顶部的 import。
+val buildTime = DateTimeFormatter
+    .ofPattern("yyyy-MM-dd HH:mm")
+    .withZone(ZoneId.of("Asia/Shanghai"))
+    .format(Instant.now())
 
 android {
     // 注意：namespace 决定 R / ViewBinding / DataBinding 生成类的包名，
     // 源码里全是 import com.example.c001apk.R / com.example.c001apk.databinding.*，不能跟着改名
     namespace = "com.example.c001apk"
-    compileSdk = 34
+    // compileSdk 35：material 1.14 传递依赖 androidx.core 1.16，其 AAR metadata 要求编译目标 >= 35
+    // targetSdk 仍留在 34，避免 Android 15 强制 edge-to-edge 改变既有窗口行为（实验分支先只对齐编译目标）
+    compileSdk = 35
 
     defaultConfig {
         // 包名同样保持不变：改 applicationId 等于换一个 App，老用户无法覆盖安装
@@ -97,6 +116,9 @@ android {
         versionCode = verCode
         // 完整 versionName = 前缀-版本号-渠道，渠道后缀由 buildTypes.versionNameSuffix 追加
         versionName = "$apkPrefix-$verTag"
+
+        // 关于页显示「编译于 …」；纯展示字段，不参与逻辑
+        buildConfigField("String", "BUILD_TIME", "\"$buildTime\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -128,7 +150,7 @@ android {
             buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
         }
         release {
-            // 拼出完整版本名：c001apk_next-V1.0.1-release（beta 分支为 -beta）；
+            // 拼出完整版本名：c001apk_next-V1.0.3-release；
             // 测试渠道带上 commit 哈希，每轮包文件名都不同，下载缓存不会冒充新包
             versionNameSuffix =
                 if (channel == "debug" && gitSha.isNotBlank()) "-$channel-g$gitSha" else "-$channel"
@@ -219,7 +241,6 @@ dependencies {
     implementation(project(":GlideImageLoader"))
     implementation(libs.appcenter.analytics)
     implementation(libs.appcenter.crashes)
-    implementation(libs.drakeet.about)
     implementation(libs.jbcrypt)
     implementation(libs.jsoup)
     implementation(libs.markwon.core)

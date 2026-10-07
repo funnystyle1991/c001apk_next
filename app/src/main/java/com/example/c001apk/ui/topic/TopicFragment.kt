@@ -22,6 +22,7 @@ import com.example.c001apk.util.ImageUtil
 import com.example.c001apk.util.IntentUtil
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.ReplaceViewHelper
+import com.example.c001apk.view.AppBarLayoutStateChangeListener
 import com.google.android.material.appbar.CollapsingToolbarLayout
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -127,7 +128,8 @@ class TopicFragment : BasePagerFragment() {
 
     /**
      * 头部卡片铺在折叠标题栏里（复用 base_tablayout_viewpager 的占位 View）：
-     * 展开时可见，向上滚动时随标题栏收起、TabLayout 吸顶。
+     * 展开时可见，向上滚动时随标题栏收起、TabLayout 吸顶，
+     * 收起过程中整块淡出（见 BasePagerFragment.applyHeaderFade），最后只剩折叠标题。
      */
     private fun initHeader() {
         val header = ItemTopicHeaderBinding.inflate(layoutInflater, null, false)
@@ -153,7 +155,7 @@ class TopicFragment : BasePagerFragment() {
     private fun bindFollowBtn(followed: Boolean) {
         val header = headerBinding ?: return
         val accent = MaterialColors.getColor(
-            requireContext(), com.google.android.material.R.attr.colorPrimary, 0
+            requireContext(), androidx.appcompat.R.attr.colorPrimary, 0
         )
         val onAccent = MaterialColors.getColor(
             requireContext(), com.google.android.material.R.attr.colorOnPrimary, 0
@@ -204,6 +206,9 @@ class TopicFragment : BasePagerFragment() {
     private fun bindHeader(header: TopicHeader) {
         val headerBinding = headerBinding ?: return
         headerBinding.root.isVisible = true
+        // 头部数据是异步来的，等它到的时候用户可能已经滑下去了。
+        // 补一次当前折叠进度，否则这里会把一个收起状态下本该不可见的头部点亮。
+        applyHeaderFade(headerBinding.root, headerFadePercent)
 
         ImageUtil.showIMG(headerBinding.logo, header.logo)
         headerBinding.title.text = header.title.orEmpty()
@@ -215,6 +220,10 @@ class TopicFragment : BasePagerFragment() {
         )
         headerBinding.stats.text = stats.joinToString(" · ")
         headerBinding.stats.isVisible = stats.isNotEmpty()
+
+        // 简介放头部里（不放工具栏 subtitle：见 initBar 的注释）
+        headerBinding.intro.text = header.intro.orEmpty()
+        headerBinding.intro.isVisible = !header.intro.isNullOrEmpty()
 
         val avatars = header.avatars.take(3)
         listOf(headerBinding.avatar1, headerBinding.avatar2, headerBinding.avatar3)
@@ -271,13 +280,38 @@ class TopicFragment : BasePagerFragment() {
 
     override fun initBar() {
         super.initBar()
-        binding.collapsingToolbar.isTitleEnabled = false
         initHeader()
-        binding.toolBar.apply {
-            title = if (viewModel.type == "topic") viewModel.url.replace("/t/", "")
-            else viewModel.title
-            viewModel.subtitle?.let { subtitle = it }
 
+        // 标题交给 CollapsingToolbarLayout 画：展开时 expandedTitleTextColor 是透明的、
+        // 根本不显示，收起后才出现；配合下滑时把头部整块淡掉，最后只剩这一个标题
+        // —— 和用户主页一套做法。
+        // 原先走的是 isTitleEnabled = false + toolBar.title，标题常驻，
+        // 收起过程中会和头部里的机型名 / 话题名叠在一起。
+        binding.collapsingToolbar.title = if (viewModel.type == "topic")
+            viewModel.url.replace("/t/", "")
+        else
+            viewModel.title
+        binding.collapsingToolbar.setCollapsedTitleTextColor(
+            MaterialColors.getColor(
+                requireContext(),
+                com.google.android.material.R.attr.colorOnSurface,
+                0
+            )
+        )
+        // 简介不放工具栏 subtitle：CollapsingToolbarLayout 会把工具栏的 subtitle 收进
+        // 自己的折叠文字，并按「展开态」画在头部下沿（Material 1.14 的
+        // updateTitleFromToolbarIfNeeded），于是那行字直接压在头部卡片上。
+        // 现在简介画在头部卡片里（item_topic_header 的 intro），跟着头部一起淡出。
+
+        // percent: 1 = 完全展开，0 = 完全收起
+        binding.appBar.addOnOffsetChangedListener(object : AppBarLayoutStateChangeListener() {
+            override fun onScroll(percent: Float) {
+                // 顶栏图标不用换色：这块头部本身是浅色的，收起后底色也是 colorSurface
+                applyHeaderFade(headerBinding?.root, percent)
+            }
+        })
+
+        binding.toolBar.apply {
             inflateMenu(R.menu.topic_product_menu)
 
             menuBlock = menu.findItem(R.id.block)

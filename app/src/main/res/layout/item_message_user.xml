@@ -8,6 +8,8 @@
 
         <import type="com.example.c001apk.util.DateUtils" />
 
+        <import type="com.example.c001apk.util.MessageKit" />
+
         <variable
             name="type"
             type="String" />
@@ -27,7 +29,7 @@
         android:layout_height="wrap_content"
         android:clickable="true"
         android:focusable="true"
-        android:onClick="@{(view) -> listener.onViewUser(view, data.uid)}"
+        android:onClick="@{(view) -> listener.onViewUser(view, MessageKit.partnerUid(data))}"
         app:cardBackgroundColor="@color/home_card_background_color"
         app:cardElevation="0dp"
         app:strokeWidth="0dp">
@@ -46,9 +48,15 @@
                 app:layout_constraintDimensionRatio="H, 1"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
-                app:setImage="@{data.fromUserAvatar}"
+                app:setImage="@{MessageKit.partnerAvatar(data)}"
                 app:shapeAppearance="@style/circleImageStyle" />
 
+            <!--
+                要展示的是**对方**：私信会话认 messageUsername / messageUserAvatar，
+                通知条目（好友关注）认 fromusername / fromUserAvatar——
+                partnerName / partnerAvatar 内部已经按这个顺序兜底了。
+                直接拿 username / userAvatar 会显示成我自己（最后一条消息是我发的时）。
+            -->
             <TextView
                 android:id="@+id/uname"
                 android:layout_width="0dp"
@@ -56,7 +64,7 @@
                 android:layout_marginStart="10dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="@{data.fromusername}"
+                android:text="@{MessageKit.partnerName(data)}"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/avatar"
                 app:layout_constraintTop_toTopOf="parent" />
@@ -79,20 +87,29 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
                 android:layout_marginTop="5dp"
-                android:text="@{type == `contactsFollow` ? `关注了你` : ``}"
+                android:text="@{MessageKit.isContactsFollow(type) ? `关注了你` : ``}"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="13sp"
+                android:visibility="@{MessageKit.isContactsFollow(type) ? View.VISIBLE : View.GONE}"
                 app:layout_constraintStart_toEndOf="@id/follow"
                 app:layout_constraintTop_toBottomOf="@id/uname" />
 
+            <!--
+                第二行：私信会话显示「最后一条消息」预览。
+                fans 在 list 下是 GONE，所以这一条会紧贴在时间右侧，占满剩余宽度。
+            -->
             <TextView
                 android:id="@+id/act"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="5dp"
                 android:layout_marginTop="5dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@{MessageKit.isList(type) ? MessageKit.preview(data) : ``}"
                 android:textColor="@android:color/darker_gray"
                 android:textSize="13sp"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toEndOf="@id/fans"
                 app:layout_constraintTop_toBottomOf="@id/uname" />
 

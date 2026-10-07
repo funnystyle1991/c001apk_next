@@ -92,17 +92,21 @@ class TapHelper extends GestureDetector.SimpleOnGestureListener {
     @Override
     public boolean onDoubleTap(@NonNull MotionEvent ev) {
         try {
-            float currentScaleFormat = SketchUtils.formatFloat(imageZoomer.getZoomScale(), 2);
-            float finalScale = -1;
-            for (float scale : imageZoomer.getZoomScales().getZoomScales()) {
-                if (finalScale == -1) {
-                    finalScale = scale;
-                } else if (currentScaleFormat < SketchUtils.formatFloat(scale, 2)) {
-                    finalScale = scale;
-                    break;
-                }
-            }
-            imageZoomer.zoom(finalScale, true);
+            ZoomScales zoomScales = imageZoomer.getZoomScales();
+            float initScale = zoomScales.getInitZoomScale();
+            float maxScale = zoomScales.getMaxZoomScale();
+            float currentScale = imageZoomer.getZoomScale();
+
+            // 已经放大过就归位到初始的完整显示比例，没放大过就放大到最大档。
+            //
+            // 原来的实现是"取比当前比例大一档"（getZoomScales() 返回的是 [min, max] 两档），
+            // 在 min/max 之间来回跳：只要用户先用双指捏到一个中间比例，双击就只会继续往上跳，
+            // 回不到原比例，双击也就做不到"再双击归位"。
+            float finalScale = currentScale > initScale + 0.01f ? initScale : maxScale;
+
+            // 以双击点为缩放中心（原来的 zoom(scale, animate) 是以屏幕中心为缩放中心，
+            // 双击画面边缘的内容时会跑偏）
+            imageZoomer.zoom(finalScale, ev.getX(), ev.getY(), true);
         } catch (ArrayIndexOutOfBoundsException e) {
             // Can sometimes happen when getX() and getY() is called
         }

@@ -14,6 +14,15 @@ object Constants {
     const val CHANNEL = "coolapk"
     const val MODE = "universal"
     const val APP_LABEL = "token://com.coolapk.market/dcf01e569c1e3db93a3d0fcf191a622c"
+
+    /**
+     * `userAction.followAuthor` 的"还没拿到"哨兵值。
+     *
+     * 列表接口不下发这个字段（详情 `/v6/feed/detail` 才有），而详情页现在拿列表项先出首屏，
+     * 所以首屏这段时间它是未知的。不能兜底成 0，否则已关注的作者会先错显成「关注」
+     * （点下去还会发反请求）；用这个值让关注按钮位显示转圈，详情回来再补上真值。
+     */
+    const val FOLLOW_AUTHOR_UNKNOWN = -2
     const val VERSION_NAME = "16.4.0"
     const val API_VERSION = "16"
     const val VERSION_CODE = "2607021"

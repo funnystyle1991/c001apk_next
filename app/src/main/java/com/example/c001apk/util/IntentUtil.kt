@@ -1,6 +1,5 @@
 package com.example.c001apk.util
 
-import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import com.example.c001apk.R
@@ -21,12 +20,8 @@ object IntentUtil {
     inline fun <reified T> startActivity(context: Context, block: Intent.() -> Unit) {
         val intent = Intent(context, T::class.java)
         intent.block()
-        val animationBundle = ActivityOptions.makeCustomAnimation(
-            context,
-            R.anim.right_in,
-            R.anim.left_out
-        ).toBundle()
-        context.startActivity(intent, animationBundle)
+        // enterOptions 会在旧页侧置「进入」标记，新页的 onCreate 据此播内容动画
+        context.startActivity(intent, TransitionAnim.enterOptions(context).toBundle())
     }
 
 }

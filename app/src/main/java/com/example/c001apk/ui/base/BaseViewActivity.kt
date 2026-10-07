@@ -6,11 +6,13 @@ import android.graphics.Color
 import android.os.Bundle
 import androidx.core.view.isVisible
 import com.example.c001apk.R
+import com.google.android.material.color.MaterialColors
 import com.example.c001apk.adapter.LoadingState
 import com.example.c001apk.constant.Constants
 import com.example.c001apk.databinding.BaseFragmentContainerBinding
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.ThemeUtils
+import com.example.c001apk.util.TransitionAnim
 import rikka.material.app.MaterialActivity
 
 abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
@@ -23,11 +25,44 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         binding = BaseFragmentContainerBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        applyPageBackground()
+
         getSavedData(savedInstanceState)
 
         initData()
         initObserve()
         initError()
+    }
+
+    /** 是否给窗口上页面底色；本身就是半透明浮层的页面置 false */
+    protected open val pageBackground: Boolean = true
+
+    /**
+     * 页面底色由**窗口**提供（不再是 `android.R.id.content`）：转场动画作用在整个 window
+     * surface 上，窗口必须不透明（见 themes.xml 的 `Theme.C001apk`），底色也就得由窗口自己带。
+     *
+     * 关键是**什么时候解析**：rikkax 的 MaterialActivity 把「配色 / 夜间」overlay apply 到
+     * theme 上的时机晚于 onCreate（在 [onPostCreate]），所以这里不能只靠 onCreate 那一次
+     * ——那时读到的还是亮色 colorSurface，暗色模式下页面底色会一直停在浅色（详情页顶栏
+     * 是 `android:background="@null"`，会把这条错误底色直接暴露在状态栏区域）。
+     * 幂等，重复调用只是重设一次背景色。
+     *
+     * 用 `peekDecorView()` 而不是 `window.decorView`：后者会把 DecorView 立刻创建出来，
+     * 而 [onApplyUserThemeResource] 正是在 DecorView 创建过程中回调的，读它会把这条路径
+     * 递归进去。Decor 还没建就跳过，[onPostCreate] 会兜底。
+     */
+    private fun applyPageBackground() {
+        if (!pageBackground) return
+        val decor = window.peekDecorView() ?: return
+        decor.setBackgroundColor(
+            MaterialColors.getColor(decor, com.google.android.material.R.attr.colorSurface)
+        )
+    }
+
+    override fun onPostCreate(savedInstanceState: Bundle?) {
+        super.onPostCreate(savedInstanceState)
+        // 此时主题 overlay 已经落定，重解析一次才是当前明暗下的真色
+        applyPageBackground()
     }
 
     open fun getSavedData(savedInstanceState: Bundle?) {}
@@ -103,11 +138,14 @@ abstract class BaseViewActivity<VM : BaseAppViewModel> : MaterialActivity() {
         if (!ThemeUtils.isSystemAccent)
             theme.applyStyle(ThemeUtils.colorThemeStyleRes, true)
         theme.applyStyle(ThemeUtils.getNightThemeStyleRes(this), true) //blackDarkMode
+        // overlay 刚落定，把页面底色跟着刷成新明暗下的 colorSurface（Decor 还没建就跳过，
+        // onPostCreate 会兜底）
+        applyPageBackground()
     }
 
     override fun finish() {
         super.finish()
-        overridePendingTransition(R.anim.left_in, R.anim.right_out)
+        TransitionAnim.applyReturn(this)
     }
 
 }

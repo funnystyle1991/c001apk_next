@@ -17,7 +17,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:onClick="@{(view) -> listener.onViewFeed(view, data.id, data.userInfo.uid, data.userInfo.username, data.userInfo.userAvatar, data.deviceTitle, data.message, String.valueOf(data.dateline), null, null)}"
+        android:onClick="@{(view) -> listener.onViewFeed(view, data.id, data.userInfo.uid, data.userInfo.username, data.userInfo.userAvatar, data.deviceTitle, data.message, String.valueOf(data.dateline), null, null, null)}"
         android:foreground="@drawable/selector_bg_12_trans">
 
         <com.google.android.material.imageview.ShapeableImageView

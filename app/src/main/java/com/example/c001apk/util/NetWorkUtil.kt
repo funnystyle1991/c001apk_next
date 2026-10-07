@@ -47,6 +47,16 @@ object NetWorkUtil {
             .replace("www.", "")
             .replace("coolapk1s", "coolapk")
             .replace("coolapk.com", "")
+            // coolmarket://<host>/... 这类要单独收尾，两个坑：
+            // 1. 换 scheme 时留下了一个前导 "/"，再削掉 www. / coolapk.com 之后就成了
+            //    `//feed/74194931`；多这一个斜杠会让下面所有 startsWith 全部落空，
+            //    直接掉进 else 弹「unsupported url」——浏览器里「用 App 打开」给的正是
+            //    这个形态（coolmarket://www.coolapk.com/feed/74194931?s=...）。
+            //    注意只能压「两个及以上」的前导斜杠：`#/feed/xxx`（coolpic）那支不能被碰。
+            // 2. com.coolapk.market 也是我们自己在 manifest 里声明支持的 host，
+            //    不削掉同样会落到 else。
+            .replace("com.coolapk.market", "")
+            .replaceFirst(Regex("^//+"), "/")
 
         if (replace.startsWith("/feed/")) {
             with(replace.indexOfFirst { it == '?' }) {

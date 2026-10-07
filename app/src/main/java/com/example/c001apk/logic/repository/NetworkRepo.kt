@@ -4,10 +4,13 @@ import com.example.c001apk.di.Api1Service
 import com.example.c001apk.di.Api1ServiceNoRedirect
 import com.example.c001apk.di.Api2Service
 import com.example.c001apk.logic.network.ApiService
+import com.example.c001apk.util.NotificationV18Kit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -282,8 +285,66 @@ class NetworkRepo @Inject constructor(
             Result.success(apiService.getDyhDetail(dyhId, type, page, lastItem).await())
         }
 
+    /**
+     * 一页通知。
+     *
+     * V18 的两条流（[NotificationV18Kit.URL] 通知流、[NotificationV18Kit.LIKE_URL] 我收到的赞）
+     * 都要多走一道归一化：键名和正文形状跟老接口不同，调用方按老模型读字段。
+     * 通知流是混排（夹带 @我 / 系统 / 活动消息），只留「回复我的」两类；赞列表整页都是
+     * `feed_like`，不用过滤。调用方（消息中心的汇总列表、各个分类页）都从这儿过，
+     * 免得各自判一遍。
+     */
     suspend fun getMessage(url: String, page: Int, lastItem: String?) = fire {
-        Result.success(apiService.getMessage(url, page, lastItem).await())
+        val response = apiService.getMessage(url, page, lastItem).await()
+        val data = when (url) {
+            NotificationV18Kit.URL ->
+                response.data
+                    ?.filter { NotificationV18Kit.isReplyType(it.noteType) }
+                    ?.map { NotificationV18Kit.toMessage(it) }
+                    // V18 的成功响应只有 data、没有 status / message。真把 null 透上去，
+                    // 调用方会落在「既不 LoadingDone 也不 Failed」的空档里（老接口靠 message 兜底），
+                    // 所以这里统一按「本页没有内容」处理，让它正常走到翻页结束。
+                    ?: emptyList()
+
+            NotificationV18Kit.LIKE_URL ->
+                response.data?.map { NotificationV18Kit.toLikeMessage(it) } ?: emptyList()
+
+            else -> response.data
+        }
+        Result.success(response.copy(data = data))
+    }
+
+    suspend fun getChatHistory(ukey: String, page: Int) = fire {
+        Result.success(apiService.getChatHistory(ukey, page).await())
+    }
+
+    /**
+     * 发私信（multipart）。文本 part 必须用 RequestBody，String 会被 Gson 加上引号。
+     * `messagePic` 是图片消息在 OSS 上的对象名（`ossUploadPrepare` 返回的 uploadFileName，
+     * 调用方要自己加前导斜杠），发纯文字时留空。
+     */
+    suspend fun sendMessage(uid: String, message: String, messagePic: String = "") = fire {
+        val text = "text/plain; charset=utf-8".toMediaTypeOrNull()
+        val empty = "".toRequestBody(text)
+        Result.success(
+            apiService.sendMessage(
+                uid, "1", message.toRequestBody(text), messagePic.toRequestBody(text), empty, empty
+            ).await()
+        )
+    }
+
+    /**
+     * 私信图片的真实地址。`message_pic` 只是 OSS 对象名，CDN 的裸地址会被 auth_key 拦，
+     * 必须先问 showImage；它回 302，Location 才是带签名（有效期约半小时）的地址。
+     * 必须用不跟随重定向的 client，否则 Location 取不到（跟 [getAppDownloadLink] 同套路）。
+     */
+    suspend fun getMessagePicUrl(id: String) = fire {
+        val response = apiServiceNoRedirect.getMessageImage(id).response()
+        Result.success(response.headers()["Location"])
+    }
+
+    suspend fun readMessage(ukey: String) = fire {
+        Result.success(apiService.readMessage(ukey).await())
     }
 
     suspend fun postFollowUnFollow(url: String, uid: String) = fire {

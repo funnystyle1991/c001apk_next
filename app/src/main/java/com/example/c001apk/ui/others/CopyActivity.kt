@@ -50,7 +50,7 @@ class CopyActivity : BaseActivity<ActivityCopyBinding>() {
                 highlightColor = ColorUtils.setAlphaComponent(
                     MaterialColors.getColor(
                         this,
-                        com.google.android.material.R.attr.colorPrimaryDark,
+                        androidx.appcompat.R.attr.colorPrimaryDark,
                         0
                     ), 128
                 )

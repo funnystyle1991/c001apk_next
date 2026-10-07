@@ -20,7 +20,9 @@ class HomeFeedDiffCallback : DiffUtil.ItemCallback<HomeFeedResponse.Data>() {
         oldItem: HomeFeedResponse.Data,
         newItem: HomeFeedResponse.Data
     ): Boolean {
-        return oldItem.entityId == newItem.entityId
+        // 版本历史（/v6/apk/downloadVersionList）的条目不带 entityId，
+        // 不退回 versionId 的话 DiffUtil 会把整列视为同一条，列表只会剩一行
+        return (oldItem.entityId ?: oldItem.versionId) == (newItem.entityId ?: newItem.versionId)
     }
 
     override fun areContentsTheSame(

@@ -1,6 +1,5 @@
 package com.example.c001apk.ui.main
 
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.c001apk.constant.Constants
@@ -8,7 +7,6 @@ import com.example.c001apk.logic.repository.BlackListRepo
 import com.example.c001apk.logic.repository.NetworkRepo
 import com.example.c001apk.logic.repository.SpamConfigRepo
 import com.example.c001apk.util.CookieUtil
-import com.example.c001apk.util.Event
 import com.example.c001apk.util.PrefManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +24,6 @@ class MainViewModel @Inject constructor(
 
     var lastCheck = System.currentTimeMillis()
     var isInit: Boolean = true
-    val setBadge = MutableLiveData<Event<Boolean>>()
 
     fun fetchAppInfo(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -62,11 +59,13 @@ class MainViewModel @Inject constructor(
                         response.body()?.let {
                             if (response.body()?.data?.token != null) {
                                 response.body()?.data?.let { login ->
-                                    CookieUtil.badge = login.notifyCount.badge
+                                    CookieUtil.badge = login.notifyCount.unreadBadge
                                     CookieUtil.atme = login.notifyCount.atme
                                     CookieUtil.atcommentme = login.notifyCount.atcommentme
                                     CookieUtil.feedlike = login.notifyCount.feedlike
                                     CookieUtil.contacts_follow = login.notifyCount.contactsFollow
+                                    CookieUtil.message = login.notifyCount.message
+                                    CookieUtil.commentme = login.notifyCount.commentme
                                     PrefManager.isLogin = true
                                     PrefManager.uid = login.uid
                                     PrefManager.username =
@@ -93,9 +92,6 @@ class MainViewModel @Inject constructor(
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
-
-                            if (CookieUtil.badge != 0)
-                                setBadge.postValue(Event(true))
 
                             syncBlackList()
                         }
@@ -125,10 +121,10 @@ class MainViewModel @Inject constructor(
                         CookieUtil.atcommentme = it.atcommentme
                         CookieUtil.feedlike = it.feedlike
                         CookieUtil.contacts_follow = it.contactsFollow
-                        CookieUtil.badge = it.badge
-                        CookieUtil.notification = it.notification
-                        if (CookieUtil.badge != 0)
-                            setBadge.postValue(Event(true))
+                        CookieUtil.badge = it.unreadBadge
+                        CookieUtil.notification = it.unreadNotification
+                        CookieUtil.message = it.message
+                        CookieUtil.commentme = it.commentme
                     }
                 }
         }

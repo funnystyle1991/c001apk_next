@@ -39,8 +39,6 @@ class TopicViewModel @AssistedInject constructor(
         ): TopicViewModel
     }
 
-    var subtitle: String? = null
-
     var isAInit: Boolean = true
     var postFollowData: HashMap<String, String>? = null
     var isFollow: Boolean = false
@@ -71,7 +69,6 @@ class TopicViewModel @AssistedInject constructor(
                             id = data.data.id ?: ""
                             publishHeader(data.data)
                             type = data.data.entityType
-                            subtitle = data.data.intro
                             getTopicList(data.data.tabList, data.data.selectedTab.toString())
                             checkFollow()
                             activityState.postValue(LoadingState.LoadingDone)
@@ -96,7 +93,6 @@ class TopicViewModel @AssistedInject constructor(
                             return@collect
                         } else if (data.data != null) {
                             isFollow = data.data.userAction?.follow == 1
-                            subtitle = data.data.intro
                             publishHeader(data.data)
                             // 「参数」tab 原生渲染需要的版本配置 + 评分子项
                             configRows = data.data.configRows
@@ -190,6 +186,7 @@ class TopicViewModel @AssistedInject constructor(
                 title = data.title,
                 hotNum = data.hotNumTxt,
                 commentNum = data.commentnumTxt,
+                intro = data.intro,
                 followNum = data.follownumTxt,
                 avatars = avatars,
             )

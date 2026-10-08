@@ -62,6 +62,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
     private lateinit var navView: NavigationBarView
     private val isLogin by lazy { PrefManager.isLogin }
     private var gripListener: SmartGripEventListener? = null
+    // 缓存 SDK 最近一次下发的握持状态。因为 onSmartGripEventChanged 只在"状态变化"时回调、
+    // 连续相同状态不重复触发，且初始那次回调往往来得极早（底栏尚未测量完，shiftBarToGrip
+    // 会因 bar.width==0 直接返回）——把状态先存这里，等布局完成后再补应用，避免打开即丢失。
+    private var curGripState: Int = 0
     private var lensAnim: ValueAnimator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -231,6 +235,9 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             } else {
                 railItemCenterY(0)?.let { placeLensAtY(it) }
             }
+            // 底栏测量完后再补一次握持状态：开局 SDK 那次初始回调常早于布局、
+            // 被 shiftBarToGrip 的 width==0 守卫丢掉，这里用缓存值补回来，做到"打开即生效"
+            shiftBarToGrip(curGripState)
         }
 
         registerGripFollow()
@@ -257,8 +264,13 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         }
         val listener = object : SmartGripEventListener() {
             override fun onSmartGripEventChanged(state: Int) {
-                // 回调来自 binder 线程，改 View 得回主线程
-                runOnUiThread { shiftBarToGrip(state) }
+                // 回调来自 binder 线程，改 View 得回主线程；先缓存当前状态，
+                // 这样即便此刻底栏还没测量完（bar.width==0，shiftBarToGrip 会直接返回），
+                // 等布局完成后也能在 navGlass.post / onResume 里把状态补应用上，不会丢
+                runOnUiThread {
+                    curGripState = state
+                    shiftBarToGrip(state)
+                }
             }
         }
         val ok = try {
@@ -650,6 +662,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                 }
             }
         }
+        // 回到前台再补一次握持状态：兜底开局那次初始回调晚于布局、或后台期间状态变化
+        binding.navGlass.post { shiftBarToGrip(curGripState) }
     }
 
     override fun onPause() {

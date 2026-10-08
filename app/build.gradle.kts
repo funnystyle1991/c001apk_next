@@ -133,6 +133,8 @@ android {
     val config = localProperties.getProperty("KEYSTORE_PATH")?.let {
         signingConfigs.create("release") {
             storeFile = file(it)
+            // 显式指定 PKCS12：新生成的 release 密钥库是 PKCS12 格式（即便 CI 解码成 key.jks 也按 PKCS12 读取）
+            storeType = "PKCS12"
             storePassword = localProperties.getProperty("KEYSTORE_PASSWORD")
             keyAlias = localProperties.getProperty("KEY_ALIAS")
             keyPassword = localProperties.getProperty("KEY_PASSWORD")

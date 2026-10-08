@@ -62,9 +62,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
     private lateinit var navView: NavigationBarView
     private val isLogin by lazy { PrefManager.isLogin }
     private var gripListener: SmartGripEventListener? = null
-    // 缓存 SDK 最近一次下发的握持状态。因为 onSmartGripEventChanged 只在"状态变化"时回调、
-    // 连续相同状态不重复触发，且初始那次回调往往来得极早（底栏尚未测量完，shiftBarToGrip
-    // 会因 bar.width==0 直接返回）——把状态先存这里，等布局完成后再补应用，避免打开即丢失。
+    // 缓存 SDK 最近一次下发的握持状态，是底栏贴位的唯一状态来源。因为
+    // onSmartGripEventChanged 只在"状态变化"时回调、连续相同状态不重复触发，且初始那次
+    // 回调往往来得极早（底栏尚未测量完，applyGrip 会因 bar.width==0 直接返回）——把状态先
+    // 存这里，等布局完成（OnLayoutChangeListener / navGlass.post / onResume）再补应用，避免打开即丢失。
     private var curGripState: Int = 0
     private var lensAnim: ValueAnimator? = null
 
@@ -235,11 +236,14 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
             } else {
                 railItemCenterY(0)?.let { placeLensAtY(it) }
             }
-            // 底栏测量完后再补一次握持状态：开局 SDK 那次初始回调常早于布局、
-            // 被 shiftBarToGrip 的 width==0 守卫丢掉，这里用缓存值补回来，做到"打开即生效"
-            shiftBarToGrip(curGripState)
+            // 底栏测量完即按当前握持状态贴位（开局 SDK 初始回调若已到，这里直接生效）
+            applyGrip(false)
         }
-
+        // 布局驱动兜底：底栏每次完成测量/重布局（含首帧、旋转、安全区变化）都按当前
+        // curGripState 贴位。类比 Compose 派生状态——回调再早也不丢，打开即生效
+        binding.navGlassHost.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> applyGrip(false) }
+        // 注册随心握监听（幂等）。放在 onCreate 让注册尽量早，对齐 TiebaLite 参考实现的
+        // 注册时机（其 DisposableEffect 在组合阶段≈onCreate 就注册），初始握持状态回调更早下发
         registerGripFollow()
     }
 
@@ -250,6 +254,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
      * 所以每个入口都按 Throwable 兜住——兜住就是底栏一直居中，不影响任何人。
      */
     private fun registerGripFollow() {
+        if (gripListener != null) return
         // 横屏是竖排 NavigationRail，往左右靠没有意义
         if (navView !is BottomNavigationView) return
         val support = try {
@@ -265,11 +270,11 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         val listener = object : SmartGripEventListener() {
             override fun onSmartGripEventChanged(state: Int) {
                 // 回调来自 binder 线程，改 View 得回主线程；先缓存当前状态，
-                // 这样即便此刻底栏还没测量完（bar.width==0，shiftBarToGrip 会直接返回），
-                // 等布局完成后也能在 navGlass.post / onResume 里把状态补应用上，不会丢
+                // 再驱动动画。真正贴位由 applyGrip（含布局监听）兜底，回调来得再早也不丢
                 runOnUiThread {
                     curGripState = state
-                    shiftBarToGrip(state)
+                    Log.i("MainActivity", "grip event state=$state -> applyGrip")
+                    applyGrip(true)
                 }
             }
         }
@@ -284,21 +289,33 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         Log.i("MainActivity", "grip follow registered=$ok")
     }
 
-    private fun shiftBarToGrip(state: Int) {
+    /**
+     * 按当前缓存的握持状态 [curGripState] 把底栏整条平移到对应一侧。
+     *
+     * 关键：读取的是 [curGripState]（状态唯一来源），而不是一次性传入的 state——
+     * 这样无论 SDK 的回调什么时候到（开局初始回调常早于底栏测量），只要 [curGripState]
+     * 被更新，下一次 applyGrip / 布局监听都会把底栏贴到正确位置，绝不丢回调。
+     * TiebaLite 用 Compose 派生状态天然做到这点；View 版靠这里 + OnLayoutChangeListener 对齐。
+     */
+    private fun applyGrip(animated: Boolean) {
         val bar = binding.navGlassHost
         val screenWidth = (bar.parent as? View)?.width ?: return
         val marginStart = (bar.layoutParams as? ViewGroup.MarginLayoutParams)?.marginStart?.toFloat() ?: return
         if (bar.width == 0 || screenWidth == 0) return
         // 居中时左右留白相等，靠到某一侧就是把外侧那份留白让出来
         val max = (screenWidth - bar.width) / 2f - marginStart
-        val target = when (state) {
+        val target = when (curGripState) {
             SmartGripEventManager.GRIP_STATE_LEFT_HAND -> -max
             SmartGripEventManager.GRIP_STATE_RIGHT_HAND -> max
             else -> 0f
         }
         if (bar.translationX == target) return
-        bar.animate().translationX(target).setDuration(300)
-            .setInterpolator(DecelerateInterpolator(1.6f)).start()
+        if (animated) {
+            bar.animate().translationX(target).setDuration(300)
+                .setInterpolator(DecelerateInterpolator(1.6f)).start()
+        } else {
+            bar.translationX = target
+        }
     }
 
     private fun placeLensAt(cx: Float) {
@@ -662,8 +679,12 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                 }
             }
         }
-        // 回到前台再补一次握持状态：兜底开局那次初始回调晚于布局、或后台期间状态变化
-        binding.navGlass.post { shiftBarToGrip(curGripState) }
+        // 荣耀随心握：onResume 再注册一次（onCreate 已注册过，这里幂等 no-op），
+        // 作为兜底确保监听一定在线；同时按当前状态补贴位一次，覆盖"初始回调晚于布局
+        // / 后台期间状态变化"的情况。
+        registerGripFollow()
+        // 回到前台再补一次握持状态：兜底初始回调晚于布局、或后台期间状态变化
+        binding.navGlass.post { applyGrip(false) }
     }
 
     override fun onPause() {

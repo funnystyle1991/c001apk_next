@@ -4,14 +4,20 @@ import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import androidx.appcompat.app.AppCompatDelegate
 import com.example.c001apk.constant.Constants
 import com.example.c001apk.ui.others.BugHandlerActivity
+import com.example.c001apk.util.GripStateHolder
 import com.example.c001apk.util.PrefManager
 import com.example.c001apk.util.RemoteConfig
 import com.example.c001apk.util.RiskControlPrompter
 import com.example.c001apk.util.SslErrorPrompter
 import com.example.c001apk.util.SslVerify
+import com.hihonor.smartgripkit.SmartGripEventManager
+import com.hihonor.smartgripkit.SmartGripEventListener
 import dagger.hilt.android.HiltAndroidApp
 import net.mikaelzero.mojito.Mojito
 import net.mikaelzero.mojito.loader.glide.GlideImageLoader
@@ -53,6 +59,12 @@ class MyApplication : Application() {
         RemoteConfig.initFromCache()
         RemoteConfig.refreshAsync()
 
+        // 荣耀 AI 随心握：进程级常驻监听，冷启动即开始感测（比 Activity 早）。
+        // 状态变化持续写入 GripStateHolder（内存 + 落盘），供 MainActivity 贴底栏，
+        // 也供下次冷启动按"上次用手"预贴位。公开 SDK 只在状态变化时回调、无查询当前状态
+        // 的接口，所以开局已握持时不会主动下发——预贴上次的手是唯一能让"打开即触发"的折中。
+        initGripFollow(this)
+
         // 图片加载同样走 OkHttp（Mojito 的 Glide 会替换 GlideUrl 加载器）。
         // 这个客户端必须给：图片 CDN 按 UA 放行，没 UA 会被判 567 直接黑屏，
         // SslVerify.imageClient() 会补上酷安 UA（并在调试模式下放开证书校验）
@@ -88,6 +100,45 @@ class MyApplication : Application() {
     companion object {
         @SuppressLint("StaticFieldLeak")
         lateinit var context: Context
+    }
+
+    /**
+     * 荣耀 AI 随心握：在 Application 级常驻注册监听，让感测尽量早开始（冷启动即注册，
+     * 早于任何 Activity），状态变化持续写入 [GripStateHolder]（内存 + 落盘），MainActivity
+     * 读取它来贴底栏、并订阅变化即时重贴。
+     *
+     * 非荣耀机型 getSmartGripSupportState 会抛异常或返回非 SUPPORT，按 Throwable 兜住即可，
+     * 兜住后底栏保持居中，不影响其它任何功能。监听常驻进程级、用 applicationContext 注册，无泄漏。
+     */
+    private fun initGripFollow(context: Context) {
+        GripStateHolder.init(context)
+        val support = try {
+            SmartGripEventManager.getSmartGripSupportState(context)
+        } catch (t: Throwable) {
+            Log.i("MyApplication", "grip follow unavailable: ${t.javaClass.simpleName}")
+            return
+        }
+        if (support != SmartGripEventManager.SMART_GRIP_SUPPORT) {
+            Log.i("MyApplication", "grip follow off, supportState=$support")
+            return
+        }
+        val mainHandler = Handler(Looper.getMainLooper())
+        val listener = object : SmartGripEventListener() {
+            override fun onSmartGripEventChanged(state: Int) {
+                // 回调来自 binder 线程，回主线程更新共享状态（含落盘 + 通知 UI 观察者）
+                mainHandler.post {
+                    GripStateHolder.update(state)
+                    Log.i("MyApplication", "grip event state=$state")
+                }
+            }
+        }
+        val ok = try {
+            SmartGripEventManager.registerSmartGripMotionListener(context, listener)
+        } catch (t: Throwable) {
+            Log.e("MyApplication", "registerSmartGripMotionListener failed", t)
+            false
+        }
+        Log.i("MyApplication", "grip follow registered=$ok")
     }
 
 }

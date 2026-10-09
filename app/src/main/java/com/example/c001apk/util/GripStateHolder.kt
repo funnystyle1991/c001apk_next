@@ -100,14 +100,17 @@ object GripStateHolder {
                 if (!probeActive) return
                 val gx = event.values[0]
                 val gy = event.values[1]
-                Log.d(TAG, "accel sample gx=$gx gy=$gy")
-                // 仅竖屏姿态（gy 主导）判定；接近水平不强行贴位
-                if (abs(gy) <= abs(gx)) return
-                if (gy > -2f) return
+                val gz = event.values[2]
+                Log.d(TAG, "accel sample gx=$gx gy=$gy gz=$gz")
+                // 仅「大致竖直握持」时判定：手机接近水平/平放时 roll 无意义，放弃。
+                // 手机竖直屏幕朝前时 gy≈+9.8（重力沿 -Y 轴），故判定「竖直」应看 |gy| 是否主导，
+                // 而非与 -2 比——之前误用 `gy > -2f` 反而把正常竖直姿态全部排除，导致补丁完全失效。
+                if (abs(gy) <= abs(gz)) return   // 接近水平/平放，roll 无意义，不强行贴位
+                if (abs(gy) < 3f) return         // 不够竖直，放弃判定
                 val hand = when {
                     gx > TILT_THRESHOLD -> GRIP_RIGHT
                     gx < -TILT_THRESHOLD -> GRIP_LEFT
-                    else -> return // 死区内，继续等更明确的样本
+                    else -> return // 死区内（握持过正），继续等更明确的样本
                 }
                 setState(hand)
                 Log.i(TAG, "cold probe hand=$hand (gx=$gx)")

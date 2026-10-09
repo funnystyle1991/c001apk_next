@@ -45,7 +45,6 @@ import com.example.c001apk.view.GlassLensDrawable
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.navigation.NavigationBarView
-import com.hihonor.smartgripkit.SmartGripEventManager
 import com.example.c001apk.util.GripStateHolder
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -238,9 +237,9 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         // 布局驱动兜底：底栏每次完成测量/重布局（含首帧、旋转、安全区变化）都按当前
         // 握持状态贴位。回调再早也不丢，打开即生效（状态来自 GripStateHolder，详见其注释）
         binding.navGlassHost.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> applyGrip(false) }
-        // 订阅握持状态变化：Application 级监听更新 GripStateHolder 后，这里即时重贴底栏
-        // （换只手等"状态变化"场景立刻生效）。开局按 GripStateHolder 里上次落盘的手预贴位，
-        // 由上方 post / 布局监听器在底栏测量完成后 applyGrip(false) 完成。
+        // 订阅握持状态变化：GripStateHolder（传感器兜底 + 荣耀官方信号）更新后，这里即时重贴
+        // 底栏（换只手等"状态变化"场景立刻生效）。开局由传感器兜底按当前倾斜预贴位，由上方 post
+        // / 布局监听器在底栏测量完成后 applyGrip(false) 完成。
         gripObserver = { applyGrip(true) }
         GripStateHolder.addObserver(gripObserver!!)
     }
@@ -248,8 +247,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
     /**
      * 按当前握持状态 [GripStateHolder.currentState] 把底栏整条平移到对应一侧。
      *
-     * 状态唯一来源是 GripStateHolder（由 MyApplication 级常驻监听维护，含落盘），
-     * 不再用一次性 state 参数——无论 SDK 回调什么时候到，只要 currentState 被更新，
+     * 状态唯一来源是 GripStateHolder（传感器兜底 + 荣耀官方信号共同维护，冷启动即按当前
+     * 倾斜贴手，不再依赖记忆上次用手），不再用一次性 state 参数——只要 currentState 被更新，
      * 下一次 applyGrip / 布局监听 / observer 都会把底栏贴到正确位置，绝不丢回调。
      */
     private fun applyGrip(animated: Boolean) {
@@ -260,8 +259,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
         // 居中时左右留白相等，靠到某一侧就是把外侧那份留白让出来
         val max = (screenWidth - bar.width) / 2f - marginStart
         val target = when (GripStateHolder.currentState) {
-            SmartGripEventManager.GRIP_STATE_LEFT_HAND -> -max
-            SmartGripEventManager.GRIP_STATE_RIGHT_HAND -> max
+            GripStateHolder.GRIP_LEFT -> -max
+            GripStateHolder.GRIP_RIGHT -> max
             else -> 0f
         }
         if (bar.translationX == target) return
@@ -629,8 +628,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), IOnBottomClickContaine
                 }
             }
         }
-        // 荣耀随心握：回到前台按当前状态（GripStateHolder，含上次落盘的手）补贴一次，
-        // 覆盖"初始回调晚于布局 / 后台期间状态变化"的情况。监听已在 Application 级常驻，无需在此注册。
+        // 荣耀随心握：回到前台按当前状态（GripStateHolder，由传感器兜底实时测得）补贴一次，
+        // 覆盖"初始传感器事件晚于布局 / 后台期间状态变化"的情况。监听已在 Application 级常驻，无需在此注册。
         binding.navGlass.post { applyGrip(false) }
     }
 

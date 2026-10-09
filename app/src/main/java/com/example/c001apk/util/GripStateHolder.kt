@@ -11,21 +11,22 @@ import android.util.Log
 import com.hihonor.smartgripkit.SmartGripEventManager
 
 /**
- * 荣耀 AI 随心握 + 通用传感器兜底：跨组件共享的握持状态。
+ * 荣耀 AI 随心握：跨组件共享的握持状态（荣耀机型专用）。
  *
  * 状态值：GRIP_UNKNOWN=0 / GRIP_LEFT=1 / GRIP_RIGHT=2，为唯一真源，MainActivity 只读它贴底栏，
  * 并透过 [addObserver] 订阅变化即时重贴。
  *
- * 两个数据源，最终都汇入 [currentState]：
- *  1) 荣耀官方 SmartGripKit（仅支持的机型）：公开 SDK 只在「握持状态变化」时回调，没有查询
- *     当前状态的接口，所以作为更精确的信号叠加在传感器之上，变化时才下发。
- *  2) 加速度计兜底（任何安卓机都能读标准传感器）：竖屏握持时手机因手部解剖会有轻微左右倾斜，
- *     体现在加速度 x 重力分量上，据此近似判左右手。它最大的好处是「随时可读当前状态」——
- *     冷启动第一个传感器事件即可定位当前握持手，实现「打开即贴手」，不依赖任何记忆/猜测。
+ * 两个时机，分工明确：
+ *  1) 冷启动一次性定位（加速度计）：荣耀 SmartGrip 公开 SDK 只在「握持状态变化」时回调、没有查询
+ *     当前状态的接口，所以进程刚起来、用户已经握持时不会主动下发。为此在冷启动用一次加速度计
+ *     读「当前」倾斜，首个通过死区的有效样本即定位握持手、实现「打开即贴手」，随后立即注销
+ *     加速度计（只此一次，不持续监听、不污染后续、不耗电）。超时未拿到有效样本（如手机平放）则放弃。
+ *  2) 运行期全靠荣耀官方 SmartGrip：监听在 Application 级常驻，进程不被杀则前后台都生效——app 内
+ *     操作或后台切回前台，握持有变即回调校正；无变化底栏本就正确，无需动作。无「查询当前状态」接口，
+ *     故不主动轮询。
  *
- * 不再落盘记忆上次用手：开局直接测当前倾斜，比「猜上次」更准也更省心（换人/换姿势不会卡旧值）；
- * 荣耀机上 SmartGrip 变化时再校正传感器近似值的误差。非荣耀机型（三星/小米等）也能有基本的
- * 随心握；华为鸿蒙机装不了本 App，与此无关。
+ * 仅荣耀机型：非荣耀机 getSmartGripSupportState 非 SUPPORT，直接不启用任何握持逻辑（底栏居中），
+ * 不再做通用传感器兜底（按需求只服务荣耀用户）。
  */
 object GripStateHolder {
     const val GRIP_UNKNOWN = 0
@@ -41,18 +42,15 @@ object GripStateHolder {
     private var sensorManager: SensorManager? = null
     private var accelListener: SensorEventListener? = null
     private var smartGripListener: com.hihonor.smartgripkit.SmartGripEventListener? = null
+    private var coldProbeDone = false
     private var initialized = false
 
-    /** 进程冷启动调用一次：并行启用传感器兜底 + （支持时）荣耀官方监听。 */
+    /** 进程冷启动调用一次：注册荣耀官方常驻监听 + 用加速度计做一次冷启动定位（仅荣耀机型）。 */
     fun init(context: Context) {
         if (initialized) return
         initialized = true
         val app = context.applicationContext
 
-        // 1) 通用传感器兜底：任何机器都能跑，开局即出当前握持手
-        startSensorFallback(app)
-
-        // 2) 荣耀官方 SmartGrip：支持的机型叠加更精确的变化信号
         val support = try {
             SmartGripEventManager.getSmartGripSupportState(app)
         } catch (t: Throwable) {
@@ -63,9 +61,10 @@ object GripStateHolder {
             Log.i(TAG, "SmartGrip off, supportState=$support")
             return
         }
+
+        // 运行期：荣耀官方变化信号（常驻，前后台都生效）
         smartGripListener = object : com.hihonor.smartgripkit.SmartGripEventListener() {
             override fun onSmartGripEventChanged(state: Int) {
-                // 回调来自 binder 线程，回主线程更新共享状态并通知 UI 观察者
                 val mapped = when (state) {
                     SmartGripEventManager.GRIP_STATE_LEFT_HAND -> GRIP_LEFT
                     SmartGripEventManager.GRIP_STATE_RIGHT_HAND -> GRIP_RIGHT
@@ -82,40 +81,52 @@ object GripStateHolder {
             false
         }
         Log.i(TAG, "SmartGrip registered=$ok")
+
+        // 冷启动一次性定位：补「已握持但 SDK 不主动下发」的空窗，拿到即注销加速度计
+        startColdStartProbe(app)
     }
 
     /**
-     * 传感器兜底：注册加速度计，按当前 x 重力分量判左右手（详见类注释）。
-     * 首个事件即在冷启动给出「当前」握持手，实现打开即贴手（无需记忆/猜测）。
-     * 死区避免竖直握持时抖动；横屏/接近水平时不强行贴位。
+     * 冷启动一次性倾斜探针：仅取首个通过姿态校验 + 死区的有效握持手样本，定位后即注销加速度计，
+     * 不再持续监听（运行期交给 SmartGrip）。超时 [COLD_PROBE_TIMEOUT_MS] 仍无有效样本则放弃（居中）。
+     * 仅竖屏握持姿态判定（横屏/接近水平不强行贴位）。
      */
-    private fun startSensorFallback(context: Context) {
+    private fun startColdStartProbe(context: Context) {
         sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         val accel = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: run {
-            Log.i(TAG, "no accelerometer, grip fallback disabled")
+            Log.i(TAG, "no accelerometer, cold probe disabled")
             return
         }
         accelListener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
+                if (coldProbeDone) return
                 val gx = event.values[0]
                 val gy = event.values[1]
-                // 仅竖屏姿态（gy 主导）判左右手：横屏时 x 轴被重力主导，逻辑不适用
+                // 仅竖屏姿态（gy 主导且非接近水平）判定；否则继续等下一个样本
                 if (kotlin.math.abs(gy) <= kotlin.math.abs(gx)) return
-                // 接近水平（|gy| 很小）也不强行贴位
                 if (gy > -3f) return
-                // 右手握持手机略向右倾→gx>0；左手略向左倾→gx<0；死区内保持当前状态
                 val hand = when {
                     gx > TILT_THRESHOLD -> GRIP_RIGHT
                     gx < -TILT_THRESHOLD -> GRIP_LEFT
-                    else -> currentState
+                    else -> return  // 死区内，等更明确的样本
                 }
-                if (hand != GRIP_UNKNOWN) setState(hand)
+                coldProbeDone = true
+                setState(hand)
+                stopColdProbe()
+                Log.i(TAG, "cold probe hand=$hand")
             }
 
             override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {}
         }
         sensorManager?.registerListener(accelListener, accel, SensorManager.SENSOR_DELAY_UI)
-        Log.i(TAG, "sensor fallback started")
+        Log.i(TAG, "cold probe started")
+        // 超时保底：未拿到有效样本则放弃，避免加速度计空转
+        mainHandler.postDelayed({ stopColdProbe() }, COLD_PROBE_TIMEOUT_MS)
+    }
+
+    private fun stopColdProbe() {
+        accelListener?.let { sensorManager?.unregisterListener(it) }
+        accelListener = null
     }
 
     /** 更新状态（去重）并通知 UI 观察者（主线程）。 */
@@ -138,4 +149,6 @@ object GripStateHolder {
     private const val TAG = "GripStateHolder"
     // 倾斜死区（m/s^2）：手机基本竖直时 gx 接近 0，超过此阈才判为某只手（约 ≥12° 倾斜）
     private const val TILT_THRESHOLD = 2.0f
+    // 冷启动探针超时（ms）：超时仍未拿到有效握持样本则放弃，保持居中
+    private const val COLD_PROBE_TIMEOUT_MS = 1500L
 }
